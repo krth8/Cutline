@@ -298,6 +298,8 @@ def init_schema(conn):
     add_column_if_not_exists(conn, "comments", "parent_id", "TEXT")
     add_column_if_not_exists(conn, "comments", "clip_base_name", "TEXT")
     add_column_if_not_exists(conn, "comments", "clip_version", "INTEGER")
+    # Element anchor for comments on HTML clips (selector, hash, click point)
+    add_column_if_not_exists(conn, "comments", "anchor_json", "TEXT")
 
     # Annotations table
     execute(conn, f"""

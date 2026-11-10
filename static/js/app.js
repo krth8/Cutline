@@ -923,6 +923,7 @@ function initSessionUI(project) {
 
     // Reset current clip when loading a new project
     AppState.currentClip = null;
+    if (typeof HtmlReview !== 'undefined') HtmlReview.unload();
 
     // Load clips
     if (project.clips) {
@@ -1375,6 +1376,8 @@ function escapeHtml(text) {
 }
 
 function getCurrentFrame() {
+    // HTML pages have no timeline; their comments are anchored to elements instead.
+    if (AppState.currentMediaType === 'html') return 0;
     return Math.floor(elements.video.currentTime * AppState.fps);
 }
 
@@ -1974,6 +1977,7 @@ async function deleteProject(projectId) {
             AppState.projectId = null;
             AppState.clips = {};
             AppState.currentClip = null;
+            if (typeof HtmlReview !== 'undefined') HtmlReview.unload();
             if (elements.videoPlayer) {
                 elements.videoPlayer.src = '';
             }
@@ -2045,6 +2049,7 @@ async function deleteClipFromProject(projectId, baseName) {
             // If this was the current clip, clear selection
             if (AppState.currentClip?.baseName === baseName) {
                 AppState.currentClip = null;
+                if (typeof HtmlReview !== 'undefined') HtmlReview.unload();
                 const remainingClips = Object.keys(AppState.clips);
                 if (remainingClips.length > 0) {
                     const firstClip = AppState.clips[remainingClips[0]];
@@ -3449,6 +3454,7 @@ function adminLogout() {
     AppState.sessionId = null;
     AppState.clips = {};
     AppState.currentClip = null;
+    if (typeof HtmlReview !== 'undefined') HtmlReview.unload();
 
     // Clear storage
     localStorage.removeItem('authData');

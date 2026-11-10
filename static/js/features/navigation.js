@@ -579,9 +579,10 @@ function renderUntaggedAssets(clips) {
     // Render clip cards using same structure as clip bin
     list.innerHTML = clips.map(clip => {
         const isImage = clip.mediaType === 'image';
-        const placeholderIcon = isImage ? 'icon-image' : 'icon-film-strip';
-        const typePillClass = isImage ? 'image' : 'video';
-        const typePillIcon = isImage ? 'icon-image' : 'icon-video';
+        const isHtml = clip.mediaType === 'html';
+        const placeholderIcon = isHtml ? 'icon-code' : isImage ? 'icon-image' : 'icon-film-strip';
+        const typePillClass = isHtml ? 'html' : isImage ? 'image' : 'video';
+        const typePillIcon = isHtml ? 'icon-code' : isImage ? 'icon-image' : 'icon-video';
 
         // Thumbnail HTML
         let thumbnailHtml = `<div class="clip-thumb-placeholder"><svg class="icon icon-xl"><use href="/static/icons.svg#${placeholderIcon}"/></svg></div>`;

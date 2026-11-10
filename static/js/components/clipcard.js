@@ -44,17 +44,18 @@ class ClipCard {
         // Determine media type
         const mediaType = activeClip?.mediaType || 'video';
         const isImage = mediaType === 'image';
+        const isHtml = mediaType === 'html';
 
         // Thumbnail
-        const placeholderIcon = isImage ? 'icon-image' : 'icon-film-strip';
+        const placeholderIcon = isHtml ? 'icon-code' : isImage ? 'icon-image' : 'icon-film-strip';
         let thumbnailHtml = `<div class="clip-thumb-placeholder"><svg class="icon icon-xl"><use href="/static/icons.svg#${placeholderIcon}"/></svg></div>`;
         if (activeClip?.thumbnail) {
             thumbnailHtml = `<img src="/thumbnail/${activeClip.thumbnail}" alt="${ClipCard.escapeHtml(baseName)}" onerror="this.parentElement.innerHTML='<svg class=\\'icon icon-xl\\'><use href=\\'/static/icons.svg#${placeholderIcon}\\'/></svg>'">`;
         }
 
         // Media type pill
-        const typePillClass = isImage ? 'image' : 'video';
-        const typePillIcon = isImage ? 'icon-image' : 'icon-video';
+        const typePillClass = isHtml ? 'html' : isImage ? 'image' : 'video';
+        const typePillIcon = isHtml ? 'icon-code' : isImage ? 'icon-image' : 'icon-video';
         const typePillHtml = `<div class="clip-type-pill ${typePillClass}"><svg class="icon icon-sm"><use href="/static/icons.svg#${typePillIcon}"/></svg></div>`;
 
         // Version pill

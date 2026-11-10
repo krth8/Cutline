@@ -819,6 +819,10 @@
                         <!-- Main video/image (left side in compare) -->
                         <video id="video" preload="auto"></video>
                         <img id="stillImage" class="still-image" alt="Still image" style="display: none;">
+                        <!-- HTML clip: opaque-origin sandbox (no allow-same-origin), can't reach Cutline's storage -->
+                        <iframe id="htmlFrame" class="html-frame" title="HTML page under review"
+                                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-pointer-lock"
+                                allow="fullscreen; autoplay; webgpu" referrerpolicy="no-referrer" style="display: none;"></iframe>
 
                         <!-- Compare video/image (right side, clipped) -->
                         <video id="videoCompare" class="video-compare" preload="auto" style="display: none;"></video>
@@ -1045,6 +1049,10 @@
             </div>
 
             <div class="comment-input-area">
+                <div class="comment-anchor-active" id="commentAnchorArea">
+                    <span class="comment-anchor-hint"><svg class="icon icon-sm"><use href="/static/icons.svg#icon-cursor"/></svg> Pinned to <span id="commentAnchorLabel"></span></span>
+                    <button class="comment-anchor-clear" onclick="HtmlReview.clearPendingAnchor()" title="Remove pin">&times;</button>
+                </div>
                 <div class="comment-drawing-active" id="commentDrawingArea">
                     <span class="comment-drawing-hint"><svg class="icon icon-sm"><use href="/static/icons.svg#icon-pencil"/></svg> Drawing attached to this comment</span>
                 </div>
@@ -1095,6 +1103,7 @@
                 <textarea class="comment-input" id="commentInput" placeholder="Add a comment at current frame..."></textarea>
                 <div class="comment-actions">
                     <div class="comment-tools">
+                        <button class="btn-comment-tool html-only" id="htmlPickBtn" title="Comment on an element (E)" onclick="HtmlReview.togglePick()"><svg class="icon"><use href="/static/icons.svg#icon-cursor"/></svg></button>
                         <button class="btn-comment-tool" id="drawToggleBtn" title="Draw annotation (D)"><svg class="icon"><use href="/static/icons.svg#icon-pencil"/></svg></button>
                         <button class="btn-comment-tool" id="clearDrawingBtn" title="Clear drawing"><svg class="icon"><use href="/static/icons.svg#icon-trash"/></svg></button>
                     </div>
@@ -1121,7 +1130,7 @@
     </div>
 
     <!-- Hidden file input for multi-upload -->
-    <input type="file" id="fileInput" accept="video/*,image/*" multiple style="display:none">
+    <input type="file" id="fileInput" accept="video/*,image/*,.html,.htm,text/html" multiple style="display:none">
 
     <!-- Scripts: Core modules first -->
     <script src="/static/js/core/state.js?v=2"></script>
@@ -1143,7 +1152,7 @@
     <script src="/static/js/components/contextmenu.js?v=1"></script>
     <script src="/static/js/components/avatar.js?v=1"></script>
     <script src="/static/js/components/badge.js?v=1"></script>
-    <script src="/static/js/components/clipcard.js?v=1"></script>
+    <script src="/static/js/components/clipcard.js?v=2"></script>
     <script src="/static/js/components/taskComments.js?v=8"></script>
     <script src="/static/js/components/clipTasks.js?v=1"></script>
     <script src="/static/js/components/index.js?v=2"></script>
@@ -1170,12 +1179,13 @@
     <script src="/static/js/modules/lounge/LoungeModule.js?v=6"></script>
     <!-- Feature modules -->
     <script src="/static/js/features/settingsUI.js?v=2"></script>
-    <script src="/static/js/features/navigation.js?v=17"></script>
+    <script src="/static/js/features/navigation.js?v=18"></script>
     <!-- Main application -->
-    <script src="/static/js/app.js?v=76"></script>
+    <script src="/static/js/app.js?v=77"></script>
     <script src="/static/js/video-player.js?v=30"></script>
     <script src="/static/js/websocket.js?v=22"></script>
-    <script src="/static/js/comments.js?v=32"></script>
-    <script src="/static/js/clips.js?v=37"></script>
+    <script src="/static/js/html-review.js?v=1"></script>
+    <script src="/static/js/comments.js?v=33"></script>
+    <script src="/static/js/clips.js?v=38"></script>
 </body>
 </html>

@@ -195,6 +195,10 @@ def principal_from_token(token: Optional[str]) -> Optional[dict]:
     if payload is None:
         return None
 
+    # Media tokens only unlock a single file (see /html/...); never treat them as a login.
+    if payload.get("scope") == "media":
+        return None
+
     if payload.get("scope") == "share":
         project_id = payload.get("project_id")
         if not project_id:

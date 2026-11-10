@@ -78,9 +78,13 @@ async function submitComment() {
         return;
     }
 
-    const currentFrame = getCurrentFrame();
+    const isHtml = AppState.currentMediaType === 'html';
+    const currentFrame = isHtml ? 0 : getCurrentFrame();
+    // Element anchor (HTML clips): only on top-level comments, replies follow their parent
+    const anchor = isHtml && !replyingToCommentId ? (AppState.pendingAnchor || null) : null;
     const comment = {
         frame: currentFrame,
+        anchor: anchor,
         user: AppState.userId,
         userName: AppState.userName || AppState.userId,
         userProfileImage: AppState.adminUser?.profileImage || null,
@@ -107,6 +111,10 @@ async function submitComment() {
         const savedComment = await response.json();
         AppState.comments.push(savedComment);
         renderComments();
+    }
+
+    if (response.ok && anchor && typeof HtmlReview !== 'undefined') {
+        HtmlReview.clearPendingAnchor();
     }
 
     // Notify others to clear the remote drawing preview
@@ -288,6 +296,10 @@ function renderComments() {
     const container = document.getElementById('commentsList');
     if (!container) return;
 
+    // Keep the pins inside an HTML page in step with the comment list
+    const htmlMode = typeof HtmlReview !== 'undefined' && HtmlReview.isActive();
+    if (htmlMode) HtmlReview.sendPins();
+
     // Check if a clip is selected
     if (!AppState.currentClip) {
         container.innerHTML = '<div class="comments-empty">Select a clip to view comments</div>';
@@ -343,8 +355,17 @@ function renderComments() {
         }
     });
 
+    const pinNumbers = htmlMode ? HtmlReview.pinNumbers(filteredComments) : new Map();
+
     container.innerHTML = orderedComments.map((c) => {
         const hasDrawing = c.drawing && c.drawing.strokes && c.drawing.strokes.length > 0;
+        // HTML clips: numbered pin badge (current version) or the version the anchor was made on
+        let pinBadge = '';
+        if (htmlMode && c.anchor && !c.parentId) {
+            pinBadge = pinNumbers.has(c.id)
+                ? `<span class="comment-pin-badge" title="${escapeHtml(c.anchor.label || c.anchor.tag || '')}">${pinNumbers.get(c.id)}</span>`
+                : `<span class="comment-pin-badge other-version" title="Pinned on another version">v${escapeHtml(String(c.clipVersion ?? '?'))}</span>`;
+        }
         const userColor = AppState.users[c.user]?.color || '#6366f1';
         const displayName = c.userName || c.user;
         const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().substr(0, 2) || c.user.substr(-2).toUpperCase();
@@ -394,6 +415,7 @@ function renderComments() {
                         <div class="comment-author-avatar" style="${avatarStyle}">${avatarContent}</div>
                         <span class="comment-author-name">${escapeHtml(displayName)}</span>
                         <span class="comment-frame-badge">${getFrameDisplay(c.frame)}</span>
+                        ${pinBadge}
                     </div>
                     <div class="comment-header-right">
                         ${drawingIndicator}
@@ -413,6 +435,21 @@ function renderComments() {
 }
 
 function handleCommentClick(frame, commentId) {
+    if (typeof HtmlReview !== 'undefined' && HtmlReview.isActive()) {
+        // HTML page: jump to the element instead of a frame (replies use their parent's anchor)
+        let comment = AppState.comments.find(c => c.id === commentId);
+        if (comment && !comment.anchor && comment.parentId) {
+            comment = AppState.comments.find(c => c.id === comment.parentId) || comment;
+        }
+        if (comment?.anchor) HtmlReview.focusComment(comment);
+        const commentEl = document.querySelector(`[data-comment-id="${commentId}"]`);
+        if (commentEl) {
+            commentEl.classList.add('highlighted');
+            setTimeout(() => commentEl.classList.remove('highlighted'), 3000);
+        }
+        return;
+    }
+
     goToFrame(frame);
 
     // Highlight the corresponding marker on the timeline

@@ -129,6 +129,8 @@ def db_get_project(project_id: str) -> Optional[dict]:
             }
             if c_row["drawing_json"]:
                 comment["drawing"] = json.loads(c_row["drawing_json"])
+            if c_row.get("anchor_json"):
+                comment["anchor"] = json.loads(c_row["anchor_json"])
             project["comments"].append(comment)
 
         # Get annotations

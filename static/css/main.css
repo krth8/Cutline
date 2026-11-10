@@ -4438,6 +4438,11 @@ video,
     color: var(--white);
 }
 
+.clip-type-pill.html {
+    background: #f59e0b;
+    color: var(--white);
+}
+
 .clip-type-pill .icon {
     width: 12px;
     height: 12px;
@@ -8270,6 +8275,103 @@ video,
 .app.image-mode .player-controls {
     padding: 8px 16px;
     min-height: auto;
+}
+
+/* ============ HTML Mode (HTML pages under review) ============ */
+.html-frame {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #fff;
+    line-height: normal;
+}
+
+/* No timeline, transport, quality, compare or drawing for HTML pages */
+.app.html-mode .timeline-container,
+.app.html-mode .controls-row-primary,
+.app.html-mode .quality-control,
+.app.html-mode #qualityControl,
+.app.html-mode .speed-control,
+.app.html-mode #speedControl,
+.app.html-mode .volume-control,
+.app.html-mode #volumeControl,
+.app.html-mode .compare-control,
+.app.html-mode .comment-frame-badge,
+.app.html-mode #drawToggleBtn,
+.app.html-mode #clearDrawingBtn,
+.app.html-mode .canvas-overlay,
+.app.html-mode .svg-overlay {
+    display: none !important;
+}
+
+.app.html-mode .player-controls {
+    padding: 8px 16px;
+    min-height: auto;
+}
+
+.html-only {
+    display: none;
+}
+
+.app.html-mode .html-only {
+    display: inline-flex;
+}
+
+.comment-anchor-active {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: var(--bg-dark);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.comment-anchor-active.visible {
+    display: flex;
+}
+
+.comment-anchor-hint {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.comment-anchor-clear {
+    background: none;
+    border: 0;
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.comment-anchor-clear:hover {
+    color: var(--text);
+}
+
+.comment-pin-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px 10px 10px 2px;
+    background: var(--accent);
+    color: var(--white);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.comment-pin-badge.other-version {
+    background: var(--bg-dark);
+    color: var(--text-muted);
+    font-weight: 500;
 }
 
 /* ============ Focus Mode (QuickTime-style) ============ */

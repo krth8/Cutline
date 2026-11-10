@@ -22,6 +22,7 @@ def db_batch_upsert_comments(project_id: str, comments: List[dict]) -> int:
     with get_connection() as conn:
         for comment in comments:
             drawing_json = json.dumps(comment.get("drawing")) if comment.get("drawing") else None
+            anchor_json = json.dumps(comment.get("anchor")) if comment.get("anchor") else None
 
             resolved = 1 if comment.get("resolved") else 0
             parent_id = comment.get("parentId")
@@ -30,37 +31,38 @@ def db_batch_upsert_comments(project_id: str, comments: List[dict]) -> int:
                 execute(conn, """
                     INSERT INTO comments (id, project_id, frame, user_id, user_name, text,
                                          drawing_json, color, created_at, user_profile_image, client_hash,
-                                         clip_base_name, clip_version, resolved, parent_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                         clip_base_name, clip_version, resolved, parent_id, anchor_json)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (id) DO UPDATE SET
                         text = EXCLUDED.text,
                         drawing_json = EXCLUDED.drawing_json,
                         clip_base_name = EXCLUDED.clip_base_name,
                         clip_version = EXCLUDED.clip_version,
                         resolved = EXCLUDED.resolved,
-                        parent_id = EXCLUDED.parent_id
+                        parent_id = EXCLUDED.parent_id,
+                        anchor_json = EXCLUDED.anchor_json
                 """, (
                     comment["id"], project_id, comment.get("frame"),
                     comment.get("user"), comment.get("userName"), comment.get("text"),
                     drawing_json, comment.get("color"), comment.get("createdAt"),
                     comment.get("userProfileImage"), comment.get("_clientHash"),
                     comment.get("clipBaseName"), comment.get("clipVersion"),
-                    resolved, parent_id
+                    resolved, parent_id, anchor_json
                 ))
             else:
                 execute(conn, """
                     INSERT OR REPLACE INTO comments
                     (id, project_id, frame, user_id, user_name, text, drawing_json, color,
                      created_at, user_profile_image, client_hash, clip_base_name, clip_version,
-                     resolved, parent_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     resolved, parent_id, anchor_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     comment["id"], project_id, comment.get("frame"),
                     comment.get("user"), comment.get("userName"), comment.get("text"),
                     drawing_json, comment.get("color"), comment.get("createdAt"),
                     comment.get("userProfileImage"), comment.get("_clientHash"),
                     comment.get("clipBaseName"), comment.get("clipVersion"),
-                    resolved, parent_id
+                    resolved, parent_id, anchor_json
                 ))
 
     return len(comments)

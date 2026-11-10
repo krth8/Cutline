@@ -13,11 +13,12 @@ def db_add_comment(project_id: str, comment: dict) -> dict:
     comment_id = comment.get("id")
     created_at = comment.get("createdAt") or datetime.now().isoformat()
     drawing_json = json.dumps(comment["drawing"]) if comment.get("drawing") else None
+    anchor_json = json.dumps(comment["anchor"]) if comment.get("anchor") else None
 
     with get_db() as conn:
         execute(conn, """
-            INSERT INTO comments (id, project_id, frame, user_id, user_name, text, drawing_json, color, created_at, user_profile_image, client_hash, clip_base_name, clip_version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO comments (id, project_id, frame, user_id, user_name, text, drawing_json, color, created_at, user_profile_image, client_hash, clip_base_name, clip_version, anchor_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             comment_id,
             project_id,
@@ -31,7 +32,8 @@ def db_add_comment(project_id: str, comment: dict) -> dict:
             comment.get("userProfileImage"),
             comment.get("_clientHash"),
             comment.get("clipBaseName"),
-            comment.get("clipVersion")
+            comment.get("clipVersion"),
+            anchor_json
         ))
 
     return comment

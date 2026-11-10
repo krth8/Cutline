@@ -95,7 +95,10 @@ function selectClipVersion(baseName, version) {
         const mediaType = clip.mediaType || 'video';
         AppState.currentMediaType = mediaType;
 
-        if (mediaType === 'image') {
+        if (mediaType === 'html') {
+            // Sandboxed iframe with element-anchored comments
+            HtmlReview.load(clip, baseName);
+        } else if (mediaType === 'image') {
             // Load image
             loadImage(`/video/${clip.filename}`);
         } else {
@@ -171,7 +174,8 @@ function loadVideo(src) {
     const video = elements.video;
     const stillImage = document.getElementById('stillImage');
 
-    // Show video, hide image
+    // Show video, hide image and HTML page
+    if (typeof HtmlReview !== 'undefined') HtmlReview.unload();
     if (video) video.style.display = 'block';
     if (stillImage) stillImage.style.display = 'none';
 
@@ -189,7 +193,8 @@ function loadImage(src) {
     const video = elements.video;
     const stillImage = document.getElementById('stillImage');
 
-    // Hide video, show image
+    // Hide video and HTML page, show image
+    if (typeof HtmlReview !== 'undefined') HtmlReview.unload();
     if (video) {
         video.pause();
         video.style.display = 'none';
@@ -216,12 +221,15 @@ function updateMediaTypeUI(mediaType) {
     const app = document.querySelector('.app');
     if (!app) return;
 
-    if (mediaType === 'image') {
-        app.classList.add('image-mode');
-        app.classList.remove('video-mode');
-    } else {
-        app.classList.add('video-mode');
-        app.classList.remove('image-mode');
+    app.classList.toggle('image-mode', mediaType === 'image');
+    app.classList.toggle('html-mode', mediaType === 'html');
+    app.classList.toggle('video-mode', mediaType !== 'image' && mediaType !== 'html');
+
+    const input = document.getElementById('commentInput');
+    if (input) {
+        input.placeholder = mediaType === 'html'
+            ? 'Add a comment… (press E to pin it to an element)'
+            : 'Add a comment at current frame...';
     }
 }
 
@@ -409,6 +417,7 @@ async function deleteClip(baseName) {
         // If this was the current clip, clear selection
         if (AppState.currentClip?.baseName === baseName) {
             AppState.currentClip = null;
+            if (typeof HtmlReview !== 'undefined') HtmlReview.unload();
             // Select first available clip if any
             const remainingClips = Object.keys(AppState.clips);
             if (remainingClips.length > 0) {

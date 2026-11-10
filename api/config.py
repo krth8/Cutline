@@ -28,12 +28,18 @@ PROFILES_DIR = os.environ.get("PROFILES_DIR", "profiles")
 # Media type detection
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.tiff', '.tif', '.bmp'}
 VIDEO_EXTENSIONS = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.mxf', '.prores'}
+HTML_EXTENSIONS = {'.html', '.htm'}
+
+# Single-file HTML deliverables (decks, landing pages) are stored as-is.
+MAX_HTML_BYTES = int(os.environ.get("MAX_HTML_MB", "100")) * 1024 * 1024
 
 def get_media_type(filename: str) -> str:
-    """Determine if file is 'image' or 'video' based on extension."""
+    """Determine if file is 'image', 'html' or 'video' based on extension."""
     ext = Path(filename).suffix.lower()
     if ext in IMAGE_EXTENSIONS:
         return 'image'
+    if ext in HTML_EXTENSIONS:
+        return 'html'
     return 'video'
 
 for dir_path in [UPLOAD_DIR, TRANSCODED_DIR, THUMBNAILS_DIR, COVERS_DIR, PROFILES_DIR]:

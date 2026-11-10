@@ -11,17 +11,19 @@ from fastapi import (
     Request,
 )
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import re
 import uuid
+import shutil
 import asyncio
 import secrets
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from pathlib import Path
+from urllib.parse import quote
 from PIL import Image
 
 # Database module for persistence
@@ -68,11 +70,13 @@ from api.auth import (
     require_project_access,
     require_project_viewer,
     resolve_project_id,
+    verify_jwt_token,
 )
 from api.config import (
     COVERS_DIR,
     FFMPEG_PATH,
     FFPROBE_PATH,
+    MAX_HTML_BYTES,
     PROFILES_DIR,
     THUMBNAILS_DIR,
     TRANSCODED_DIR,
@@ -313,7 +317,7 @@ def parse_clip_filename(filename: str) -> dict:
     }
 
 
-async def add_clip_to_project(project_id: str, filename: str, thumbnail: str = None, proxies: dict = None, default_quality: str = None, media_type: str = 'video'):
+async def add_clip_to_project(project_id: str, filename: str, thumbnail: str = None, proxies: dict = None, default_quality: str = None, media_type: str = 'video', stored_filename: str = None):
     """Add a clip version to the project with optional proxy information.
 
     If the file has no explicit version (version=None), auto-assigns the next version number.
@@ -357,7 +361,9 @@ async def add_clip_to_project(project_id: str, filename: str, thumbnail: str = N
         # Check if version exists - if so, replace it
         existing_idx = next((i for i, v in enumerate(clip_entry['versions']) if v['version'] == version), None)
 
-        actual_filename = filename
+        # stored_filename lets a version keep its own file on disk while
+        # `filename` still decides which clip/version it belongs to.
+        actual_filename = stored_filename or filename
         actual_default_quality = default_quality
 
         # Add proxy information if available
@@ -732,6 +738,51 @@ async def process_image_upload(job_id: str, original_path: str, project_id: str,
         transcode_jobs[job_id]['error'] = str(e)
 
 
+async def process_html_upload(job_id: str, original_path: str, project_id: str, original_filename: str):
+    """Store an uploaded single-file HTML page as a reviewable clip.
+
+    The file is kept byte-for-byte. Each upload gets its own file on disk so
+    older versions (and the comments made on them) keep pointing at what was reviewed.
+    Pages are only ever served through /html/... (sandboxed, token-gated), never /video.
+    """
+    try:
+        transcode_jobs[job_id]['status'] = 'processing'
+        transcode_jobs[job_id]['progress'] = 30
+
+        size = os.path.getsize(original_path)
+        if size > MAX_HTML_BYTES:
+            raise ValueError(f"HTML file is too large ({size // (1024 * 1024)} MB, max {MAX_HTML_BYTES // (1024 * 1024)} MB)")
+
+        original_stem = Path(original_filename).stem
+        logical_filename = f"{project_id[:8]}_{original_stem}.html"
+        stored_filename = f"{project_id[:8]}_{original_stem}_{job_id}.html"
+        shutil.move(original_path, os.path.join(TRANSCODED_DIR, stored_filename))
+
+        transcode_jobs[job_id]['progress'] = 80
+
+        await add_clip_to_project(
+            project_id,
+            logical_filename,
+            thumbnail=None,
+            media_type='html',
+            stored_filename=stored_filename,
+        )
+
+        transcode_jobs[job_id]['status'] = 'done'
+        transcode_jobs[job_id]['progress'] = 100
+        transcode_jobs[job_id]['final_filename'] = stored_filename
+        transcode_jobs[job_id]['media_type'] = 'html'
+
+    except Exception as e:
+        print(f"HTML processing error: {e}")
+        transcode_jobs[job_id]['status'] = 'error'
+        transcode_jobs[job_id]['error'] = str(e)
+        try:
+            os.remove(original_path)
+        except OSError:
+            pass
+
+
 async def process_upload(job_id: str, original_path: str, project_id: str, original_filename: str):
     """Process uploaded file: transcode multiple proxies and generate thumbnail."""
     try:
@@ -832,6 +883,13 @@ async def transcode_worker():
 
             if media_type == 'image':
                 await process_image_upload(
+                    job_data['job_id'],
+                    job_data['original_path'],
+                    job_data['project_id'],
+                    job_data['original_filename']
+                )
+            elif media_type == 'html':
+                await process_html_upload(
                     job_data['job_id'],
                     job_data['original_path'],
                     job_data['project_id'],
@@ -1637,6 +1695,102 @@ async def get_all_transcode_status(job_ids: str = Query(...)):
     }
 
 
+# ============ HTML Review Pages ============
+
+HTML_TOKEN_HOURS = 4
+HTML_BRIDGE_TAG = b'<script src="/static/js/html-review-bridge.js?v=1"></script>'
+
+
+def _find_clip_version(project_id: str, base_name: str, version: int) -> Optional[dict]:
+    clip = projects.get(project_id, {}).get("clips", {}).get(base_name)
+    if not clip:
+        return None
+    return next((v for v in clip.get("versions", []) if v.get("version") == version), None)
+
+
+@app.get("/api/projects/{project_id}/clips/{base_name}/html-url")
+async def get_html_review_url(project_id: str, base_name: str, version: int, principal: Optional[dict] = Depends(get_principal)):
+    """Hand out a short-lived URL for one HTML clip version.
+
+    The iframe can't send our Authorization header, so the URL carries a token
+    that only unlocks this one file (it is rejected everywhere else).
+    """
+    if project_id not in projects:
+        raise HTTPException(status_code=404, detail="Project not found")
+    require_project_viewer(principal, project_id)
+
+    clip_version = _find_clip_version(project_id, base_name, version)
+    if not clip_version or clip_version.get("mediaType") != "html":
+        raise HTTPException(status_code=404, detail="HTML clip not found")
+
+    filename = clip_version["filename"]
+    token = create_jwt_token(
+        principal["id"],
+        principal.get("username") or "viewer",
+        False,
+        role="media",
+        expires_delta=timedelta(hours=HTML_TOKEN_HOURS),
+        extra_claims={
+            "scope": "media",
+            "project_id": project_id,
+            "file": filename,
+            "guest": bool(principal.get("is_guest")),
+        },
+    )
+    return {"url": f"/html/{quote(filename)}?t={token}", "expiresInHours": HTML_TOKEN_HOURS}
+
+
+@app.get("/html/{filename}")
+async def serve_html_page(filename: str, t: str = Query(...)):
+    """Serve an uploaded HTML page for review.
+
+    - Only with a media token for exactly this file.
+    - `Content-Security-Policy: sandbox` gives the page an opaque origin, so its
+      scripts can never read Cutline's storage or call the API as the viewer,
+      even if the URL is opened directly in a tab.
+    - A small bridge script is injected so the review UI can pick elements and show pins.
+    """
+    safe_filename = Path(filename).name
+    if safe_filename != filename or '..' in filename or Path(filename).suffix.lower() not in {'.html', '.htm'}:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    payload = verify_jwt_token(t)
+    if not payload or payload.get("scope") != "media" or payload.get("file") != safe_filename:
+        raise HTTPException(status_code=403, detail="Link expired - reload the review page")
+    project_id = payload.get("project_id")
+    if project_id not in projects:
+        raise HTTPException(status_code=404, detail="Project not found")
+    # Logged-in users are re-checked so revoked access takes effect right away.
+    if not payload.get("guest") and not db_check_project_access(payload.get("sub"), project_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    path = os.path.join(TRANSCODED_DIR, safe_filename)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Page not found")
+
+    with open(path, "rb") as f:
+        data = f.read()
+
+    # Inject the bridge as early as possible so it runs before the page's own scripts.
+    head = re.search(rb'<head\b[^>]*>', data, re.IGNORECASE)
+    if head:
+        data = data[:head.end()] + HTML_BRIDGE_TAG + data[head.end():]
+    else:
+        data = HTML_BRIDGE_TAG + data
+
+    return Response(
+        content=data,
+        media_type="text/html; charset=utf-8",
+        headers={
+            "Content-Security-Policy": "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals allow-pointer-lock",
+            "X-Content-Type-Options": "nosniff",
+            # Don't leak the token to fonts/CDNs the page loads.
+            "Referrer-Policy": "no-referrer",
+            "Cache-Control": "private, no-store",
+        },
+    )
+
+
 # ============ Video/Image and Thumbnail Serving ============
 
 @app.get("/video/{filename}")
@@ -1646,6 +1800,10 @@ async def serve_media(filename: str):
     safe_filename = Path(filename).name
     if safe_filename != filename or '..' in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
+
+    # HTML pages must never be served from Cutline's own origin.
+    if Path(safe_filename).suffix.lower() in {'.html', '.htm'}:
+        raise HTTPException(status_code=404, detail="Media not found")
 
     # Detect media type from file extension
     ext = Path(safe_filename).suffix.lower()
@@ -1696,6 +1854,35 @@ async def serve_thumbnail(clip_id: str):
 
 # ============ Comments API ============
 
+def clean_comment_anchor(anchor) -> Optional[dict]:
+    """Keep only the known fields of an HTML element anchor, with sane sizes."""
+    if not isinstance(anchor, dict):
+        return None
+
+    def text(key, limit):
+        value = anchor.get(key)
+        return value[:limit] if isinstance(value, str) else None
+
+    def num(key):
+        value = anchor.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        return max(-1.0, min(2.0, float(value)))  # fractions; small overshoot allowed
+
+    cleaned = {
+        "selector": text("selector", 1000),
+        "hash": text("hash", 200),
+        "tag": text("tag", 40),
+        "label": text("label", 120),
+        "ox": num("ox"),
+        "oy": num("oy"),
+        "vx": num("vx"),
+        "vy": num("vy"),
+    }
+    cleaned = {k: v for k, v in cleaned.items() if v is not None}
+    return cleaned or None
+
+
 @app.post("/api/session/{session_id}/comment")
 @app.post("/api/projects/{session_id}/comment")
 async def add_comment(session_id: str, comment: dict, request: Request, user: Optional[dict] = Depends(get_current_user), principal: Optional[dict] = Depends(get_principal)):
@@ -1719,6 +1906,8 @@ async def add_comment(session_id: str, comment: dict, request: Request, user: Op
     comment["id"] = str(uuid.uuid4())[:8]
     # Store client IP hash for ownership verification (guests)
     comment["_clientHash"] = hashlib.sha256(client_ip.encode()).hexdigest()[:16]
+
+    comment["anchor"] = clean_comment_anchor(comment.get("anchor"))
 
     # Handle drawing data
     if comment.get("drawing"):
