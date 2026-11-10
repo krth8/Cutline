@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+ENV/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# User uploads and generated files
+uploads/*
+!uploads/.gitkeep
+transcoded/*
+!transcoded/.gitkeep
+thumbnails/*
+!thumbnails/.gitkeep
+covers/*
+!covers/.gitkeep
+profiles/*
+!profiles/.gitkeep
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Chat uploads
+chat_uploads/*
+!chat_uploads/.gitkeep
+
+# Local Claude Code settings
+.claude/settings.local.json

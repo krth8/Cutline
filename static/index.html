@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EchoPlay</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/main.css?v=196">
+</head>
+<body>
+    <!-- Login Overlay (shown when not authenticated) -->
+    <div class="upload-overlay login-overlay" id="loginOverlay">
+        <div class="upload-box login-box">
+            <img src="/static/logo.png" alt="Logo" class="login-logo">
+            <p>Sign in to continue</p>
+
+            <div class="login-form" onclick="event.stopPropagation()">
+                <input type="text" id="loginUsername" placeholder="Username" autocomplete="username">
+                <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+                <button class="btn btn-primary btn-large" id="mainLoginBtn" onclick="mainLogin()">
+                    Sign In
+                </button>
+                <p class="login-error hidden" id="loginError">Invalid username or password</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setup Wizard Overlay (shown on first run) -->
+    <div class="upload-overlay hidden" id="setupOverlay">
+        <div class="upload-box setup-box">
+            <div class="setup-badge">First Time Setup</div>
+            <div class="setup-icon">
+                <svg class="icon icon-2xl"><use href="/static/icons.svg#icon-gear"/></svg>
+            </div>
+            <h2>Welcome to EchoPlay</h2>
+            <p class="setup-subtitle">Create your administrator account to get started</p>
+
+            <div class="setup-form" onclick="event.stopPropagation()">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" id="setupUsername" placeholder="e.g. admin" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="setupPassword" placeholder="Min. 4 characters">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" id="setupPasswordConfirm" placeholder="Re-enter password">
+                </div>
+                <button class="btn btn-primary btn-large setup-btn" onclick="completeSetup()">
+                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-check"/></svg>
+                    Create Admin Account
+                </button>
+                <p class="setup-error hidden" id="setupError">Error message</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Welcome Overlay (shown when authenticated) -->
+    <div class="upload-overlay hidden" id="uploadOverlay">
+        <div class="upload-box welcome-box">
+            <div class="upload-icon"><svg class="icon icon-2xl"><use href="/static/icons.svg#icon-film-strip"/></svg></div>
+            <h2>EchoPlay</h2>
+            <p>Collaborative video review</p>
+
+            <div class="join-form" onclick="event.stopPropagation()">
+                <input type="text" id="nameInput" placeholder="Your name" autofocus>
+
+                <div class="welcome-section">
+                    <div class="welcome-section-title">Join existing session</div>
+                    <div class="welcome-sessions-list" id="welcomeSessionsList">
+                        <div class="welcome-sessions-loading">Loading sessions...</div>
+                    </div>
+                    <button class="btn btn-primary btn-large" id="joinSessionBtn" onclick="joinSelectedSession()" disabled>
+                        Join Selected
+                    </button>
+                </div>
+
+                <div class="divider">or</div>
+
+                <div class="welcome-section">
+                    <button class="btn btn-secondary btn-large" onclick="showCreateSession()">
+                        Create New Session
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sessions Popup -->
+    <div class="modal-overlay hidden" id="sessionsModal">
+        <div class="modal sessions-modal">
+            <div class="modal-header">
+                <h3>Active Sessions</h3>
+                <button class="modal-close" onclick="hideSessionsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="sessions-list" id="sessionsList">
+                    <div class="sessions-empty">No active sessions</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="startNewSession()">Start New Session</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Progress Modal -->
+    <div class="modal-overlay hidden" id="uploadProgressModal">
+        <div class="modal upload-progress-modal">
+            <div class="modal-header">
+                <h3>Processing Clips</h3>
+            </div>
+            <div class="modal-body">
+                <div class="upload-jobs-list" id="uploadJobsList">
+                    <!-- Jobs will be rendered here -->
+                </div>
+                <div class="upload-summary" id="uploadSummary">
+                    <span class="upload-count">0 of 0 complete</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="uploadDoneBtn" onclick="hideUploadProgress()" disabled>OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Overlay -->
+    <div class="shortcuts-overlay" id="shortcutsOverlay">
+        <div class="shortcuts-modal">
+            <div class="shortcuts-header">
+                <h3>Keyboard Shortcuts</h3>
+                <button class="shortcuts-close" onclick="closeShortcutsOverlay()">×</button>
+            </div>
+            <div class="shortcuts-grid">
+                <div class="shortcut-item">
+                    <span class="shortcut-key">Space</span>
+                    <span class="shortcut-desc">Play / Pause</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">←</span>
+                    <span class="shortcut-desc">Previous frame</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">→</span>
+                    <span class="shortcut-desc">Next frame</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">Shift+←</span>
+                    <span class="shortcut-desc">-10 frames</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">Shift+→</span>
+                    <span class="shortcut-desc">+10 frames</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">D</span>
+                    <span class="shortcut-desc">Toggle draw mode</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">I</span>
+                    <span class="shortcut-desc">Set In point</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">O</span>
+                    <span class="shortcut-desc">Set Out point</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">L</span>
+                    <span class="shortcut-desc">Toggle loop</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">M</span>
+                    <span class="shortcut-desc">Toggle mute</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">F</span>
+                    <span class="shortcut-desc">Focus mode</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">?</span>
+                    <span class="shortcut-desc">Show shortcuts</span>
+                </div>
+                <div class="shortcut-item">
+                    <span class="shortcut-key">Esc</span>
+                    <span class="shortcut-desc">Exit draw / Close</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Project Modal -->
+    <div class="modal-overlay hidden" id="shareModal">
+        <div class="modal share-modal">
+            <div class="modal-header">
+                <h3>Share Project</h3>
+                <button class="modal-close" onclick="hideShareModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="share-section">
+                    <label class="share-label">Create New Link</label>
+                    <div class="share-options">
+                        <div class="share-option">
+                            <input type="checkbox" id="sharePasswordToggle" onchange="toggleSharePassword()">
+                            <label for="sharePasswordToggle">Require password</label>
+                        </div>
+                        <div class="share-password-input hidden" id="sharePasswordInputWrapper">
+                            <input type="password" id="sharePasswordInput" placeholder="Enter password" class="input-medium">
+                        </div>
+                        <div class="share-option">
+                            <label for="shareExpirySelect">Expires</label>
+                            <select id="shareExpirySelect" class="input-small">
+                                <option value="">Never</option>
+                                <option value="1">1 day</option>
+                                <option value="7" selected>7 days</option>
+                                <option value="30">30 days</option>
+                                <option value="90">90 days</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="createShareLink()">Generate Link</button>
+                </div>
+
+                <div class="share-section share-result hidden" id="shareResult">
+                    <label class="share-label">Share Link</label>
+                    <div class="share-link-display">
+                        <input type="text" id="shareLinkUrl" readonly class="input-large share-link-input">
+                        <button class="btn btn-secondary" onclick="copyShareLink()">Copy</button>
+                    </div>
+                    <p class="share-copied hidden" id="shareCopied">Copied to clipboard!</p>
+                </div>
+
+                <div class="share-section" id="existingLinksSection">
+                    <label class="share-label">Existing Links</label>
+                    <div class="share-links-list" id="shareLinksList">
+                        <div class="share-links-empty">No links created yet</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay hidden" id="settingsModal">
+        <div class="modal settings-modal">
+            <div class="modal-header">
+                <nav class="settings-tabs">
+                    <button class="settings-tab active" data-settings-tab="profile">Profile</button>
+                    <button class="settings-tab admin-only-tab" data-settings-tab="users">Users</button>
+                    <button class="settings-tab" data-settings-tab="sharing">Sharing</button>
+                    <button class="settings-tab" data-settings-tab="settings">Settings</button>
+                </nav>
+                <button class="modal-close" onclick="hideSettingsPanel()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Profile Tab -->
+                <div class="settings-tab-content active" id="settingsTabProfile">
+                    <div class="settings-section">
+                        <label class="settings-label">Account</label>
+                        <div class="profile-account-info">
+                            <div class="profile-picture-preview" id="profilePicturePreview">
+                                <span class="profile-initials" id="profileInitials">?</span>
+                            </div>
+                            <div class="profile-account-details">
+                                <span class="profile-username" id="profileUsername">Username</span>
+                                <span class="profile-role" id="profileRole">User</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <label class="settings-label">Profile Picture</label>
+                        <div class="profile-picture-actions">
+                            <label class="btn btn-secondary btn-small profile-upload-btn">
+                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-upload"/></svg>
+                                Upload Photo
+                                <input type="file" id="profileImageInput" accept="image/*" onchange="uploadProfileImage(this)" hidden>
+                            </label>
+                            <button class="btn btn-ghost btn-small" onclick="deleteProfileImage()" id="deleteProfileBtn" style="display:none;">
+                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-trash"/></svg>
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <label class="settings-label">Theme</label>
+                        <div class="theme-options">
+                            <label class="theme-option">
+                                <input type="radio" name="theme" value="dark" checked onchange="setTheme('dark')">
+                                <span class="theme-option-label">
+                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-moon"/></svg>
+                                    Dark
+                                </span>
+                            </label>
+                            <label class="theme-option">
+                                <input type="radio" name="theme" value="light" onchange="setTheme('light')">
+                                <span class="theme-option-label">
+                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-sun"/></svg>
+                                    Light
+                                </span>
+                            </label>
+                            <label class="theme-option">
+                                <input type="radio" name="theme" value="custom" onchange="setTheme('custom')">
+                                <span class="theme-option-label">
+                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-palette"/></svg>
+                                    Custom
+                                </span>
+                            </label>
+                        </div>
+                        <div class="theme-custom-options hidden" id="themeCustomOptions">
+                            <div class="color-picker-row">
+                                <label>Background</label>
+                                <input type="color" id="customBgColor" value="#0f0c14" onchange="updateCustomTheme()">
+                            </div>
+                            <div class="color-picker-row">
+                                <label>Panels</label>
+                                <input type="color" id="customPanelColor" value="#1e1a2e" onchange="updateCustomTheme()">
+                            </div>
+                            <div class="color-picker-row">
+                                <label>Accent</label>
+                                <input type="color" id="customAccentColor" value="#5f5de5" onchange="updateCustomTheme()">
+                            </div>
+                            <div class="color-picker-row">
+                                <label>Text</label>
+                                <input type="color" id="customTextColor" value="#f0ebd8" onchange="updateCustomTheme()">
+                            </div>
+                            <button class="btn btn-ghost btn-small" onclick="resetCustomTheme()">
+                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-arrow-counter-clockwise"/></svg>
+                                Reset to defaults
+                            </button>
+                        </div>
+                    </div>
+                    <div class="settings-section settings-section-footer">
+                        <button class="btn btn-ghost" onclick="logout()">
+                            <svg class="icon"><use href="/static/icons.svg#icon-sign-out"/></svg>
+                            Log out
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Users Tab (admin only) -->
+                <div class="settings-tab-content" id="settingsTabUsers">
+                    <div class="settings-section">
+                        <label class="settings-label">Registered Users</label>
+                        <div class="users-list" id="settingsUsersList">
+                            <div class="users-list-empty">Loading...</div>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <label class="settings-label">Guests</label>
+                        <div class="users-list" id="settingsGuestsList">
+                            <div class="users-list-empty">No guests yet</div>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <label class="settings-label">Active Invite Links</label>
+                        <div class="invite-links-list" id="inviteLinksList">
+                            <div class="invite-links-empty">No pending invites</div>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <label class="settings-label">Create New Invite</label>
+                        <div class="invite-create-form">
+                            <div class="invite-form-row">
+                                <label class="input-label">Role</label>
+                                <select id="inviteRole" class="input-small" onchange="updateInviteAccessVisibility()">
+                                    <option value="viewer">Viewer</option>
+                                    <option value="editor">Editor</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <div class="invite-form-row">
+                                <label class="input-label">Project</label>
+                                <select id="inviteProject" class="input-small">
+                                    <option value="">All accessible projects</option>
+                                </select>
+                            </div>
+                            <div class="invite-form-row" id="inviteAccessOptions">
+                                <label class="input-label">Permissions</label>
+                                <div class="checkbox-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="inviteCanReview" checked>
+                                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-eye"/></svg>
+                                        <span>Review</span>
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="inviteCanTasks">
+                                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-check"/></svg>
+                                        <span>Tasks</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="invite-form-row">
+                                <label class="input-label">Max uses</label>
+                                <select id="inviteMaxUses" class="input-small">
+                                    <option value="1">Single use</option>
+                                    <option value="5">5 uses</option>
+                                    <option value="10">10 uses</option>
+                                    <option value="0">Unlimited</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" onclick="createInviteLink()">
+                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
+                                Create Invite Link
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sharing Tab -->
+                <div class="settings-tab-content" id="settingsTabSharing">
+                    <div class="settings-section">
+                        <label class="settings-label">Share Links</label>
+                        <div class="share-links-grouped" id="settingsShareLinks">
+                            <div class="share-links-empty">No share links</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="settings-tab-content" id="settingsTabSettings">
+                    <!-- Scope Toggle -->
+                    <div class="settings-section">
+                        <label class="settings-label">Settings Scope</label>
+                        <div class="settings-scope-toggle">
+                            <button class="scope-btn active" id="scopeGlobalBtn" onclick="setSettingsScope('global')">
+                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-globe"/></svg>
+                                Global
+                            </button>
+                            <button class="scope-btn" id="scopeProjectBtn" onclick="setSettingsScope('project')" disabled>
+                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-folder"/></svg>
+                                Project
+                            </button>
+                        </div>
+                        <p class="settings-hint" id="settingsScopeHint">Global settings apply to all projects</p>
+                    </div>
+
+                    <!-- Priority Preset -->
+                    <div class="settings-section">
+                        <label class="settings-label">Priority Preset</label>
+                        <div class="preset-selector">
+                            <select class="input-large" id="priorityPresetSelect" onchange="changePriorityPreset(this.value)">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                        <div class="preset-preview" id="priorityPresetPreview">
+                            <!-- Priority options preview -->
+                        </div>
+                        <div class="preset-actions">
+                            <button class="btn btn-ghost btn-small" onclick="showCreatePriorityPreset()">
+                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
+                                Create Custom
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Status Preset -->
+                    <div class="settings-section">
+                        <label class="settings-label">Status Preset</label>
+                        <div class="preset-selector">
+                            <select class="input-large" id="statusPresetSelect" onchange="changeStatusPreset(this.value)">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                        <div class="preset-preview" id="statusPresetPreview">
+                            <!-- Status options preview -->
+                        </div>
+                        <div class="preset-actions">
+                            <button class="btn btn-ghost btn-small" onclick="showCreateStatusPreset()">
+                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
+                                Create Custom
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stage Preset -->
+                    <div class="settings-section">
+                        <label class="settings-label">Stage Preset</label>
+                        <div class="preset-selector">
+                            <select class="input-large" id="stagePresetSelect" onchange="changeStagePreset(this.value)">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                        <div class="preset-preview" id="stagePresetPreview">
+                            <!-- Stage options preview -->
+                        </div>
+                        <div class="preset-actions">
+                            <button class="btn btn-ghost btn-small" onclick="showCreateStagePreset()">
+                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
+                                Create Custom
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Clip Statuses (legacy) -->
+                    <div class="settings-section">
+                        <label class="settings-label">Clip Statuses</label>
+                        <div class="status-list" id="settingsStatusList">
+                            <div class="status-list-empty">No statuses defined</div>
+                        </div>
+                        <div class="status-add-form" id="statusAddForm">
+                            <input type="text" id="newStatusName" placeholder="Status name" class="input-small">
+                            <input type="color" id="newStatusColor" value="#6366f1" class="input-color">
+                            <button class="btn btn-primary btn-small" onclick="addStatus()">Add</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Detail Modal (Centered popup) -->
+    <div class="task-modal-overlay hidden" id="taskDetailOverlay" onclick="closeTaskDetail()"></div>
+    <div class="task-modal hidden" id="taskDetailPanel">
+        <div class="task-modal-header">
+            <input type="text" class="task-modal-name" id="taskDetailName" placeholder="Task name">
+            <button class="btn-icon btn-icon-danger" onclick="deleteCurrentTask()" title="Delete task">
+                <svg class="icon"><use href="/static/icons.svg#icon-trash"/></svg>
+            </button>
+            <button class="task-modal-close" onclick="closeTaskDetail()" title="Close">
+                <svg class="icon"><use href="/static/icons.svg#icon-x"/></svg>
+            </button>
+        </div>
+        <div class="task-modal-body">
+            <!-- Left Column: Main Content -->
+            <div class="task-modal-main">
+                <!-- Properties Grid -->
+                <div class="task-modal-properties">
+                    <div class="task-modal-prop">
+                        <label>Status</label>
+                        <div class="task-modal-prop-value" id="taskDetailStatus" onclick="openTaskDetailStatusDropdown(event)">
+                            <span class="status-badge">-</span>
+                        </div>
+                    </div>
+                    <div class="task-modal-prop">
+                        <label>Priority</label>
+                        <div class="task-modal-prop-value" id="taskDetailPriority" onclick="openTaskDetailPriorityDropdown(event)">
+                            <span class="priority-pill">-</span>
+                        </div>
+                    </div>
+                    <div class="task-modal-prop">
+                        <label>Assignees</label>
+                        <div class="task-modal-prop-value task-modal-assignees" id="taskDetailAssignees" onclick="openTaskDetailAssigneeDropdown(event)">
+                            <span class="assignee-placeholder"><svg class="icon icon-sm"><use href="/static/icons.svg#icon-user"/></svg></span>
+                        </div>
+                    </div>
+                    <div class="task-modal-prop">
+                        <label>Due Date</label>
+                        <div class="task-modal-prop-value" id="taskDetailDueDate" onclick="openTaskDetailDatePicker(event)">
+                            <span>-</span>
+                        </div>
+                    </div>
+                    <div class="task-modal-prop">
+                        <label>Stage</label>
+                        <div class="task-modal-prop-value" id="taskDetailStage" onclick="openTaskDetailStageDropdown(event)">
+                            <span>-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="task-modal-field">
+                    <label>Description</label>
+                    <textarea class="task-modal-textarea" id="taskDetailDescription" placeholder="Add a description..."></textarea>
+                </div>
+
+                <!-- Linked Clips Section -->
+                <div class="task-modal-section" id="taskDetailClipsSection">
+                    <div class="task-modal-section-header">
+                        <label>Linked Clips <span class="task-modal-count" id="taskDetailClipsCount">(0)</span></label>
+                        <button class="btn-link" onclick="openClipLinkModal()">+ Link Clip</button>
+                    </div>
+                    <div class="task-modal-clips" id="taskDetailClips">
+                        <div class="task-modal-clips-empty">No clips linked</div>
+                    </div>
+                </div>
+
+                <!-- Subtasks Section -->
+                <div class="task-modal-section">
+                    <div class="task-modal-section-header">
+                        <label>Subtasks <span class="task-modal-count" id="taskDetailSubtasksCount">(0)</span></label>
+                    </div>
+                    <div class="task-modal-subtasks" id="taskDetailSubtasks">
+                        <!-- Subtasks will be rendered here -->
+                    </div>
+                    <div class="task-modal-subtask-add">
+                        <input type="text" id="taskDetailSubtaskInput" placeholder="Add a subtask..." onkeydown="handleSubtaskInputKeydown(event)">
+                        <button class="btn btn-ghost btn-sm" onclick="createSubtaskFromInput()">
+                            <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Checklist Section -->
+                <div class="task-modal-section">
+                    <div class="task-modal-section-header">
+                        <label>Checklist <span class="task-modal-count" id="taskDetailChecklistCount">(0)</span></label>
+                    </div>
+                    <div class="task-modal-checklist" id="taskDetailChecklist">
+                        <!-- Checklist items will be rendered here -->
+                    </div>
+                    <div class="task-modal-checklist-add">
+                        <input type="text" id="taskDetailChecklistInput" placeholder="Add an item..." onkeydown="handleChecklistInputKeydown(event)">
+                        <button class="btn btn-ghost btn-sm" onclick="createChecklistItemFromInput()">
+                            <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Comments -->
+            <div class="task-modal-sidebar">
+                <div class="task-modal-sidebar-content" id="taskDetailComments">
+                    <!-- TaskComments component renders here (including header) -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clip Selection Modal -->
+    <div class="modal-overlay hidden" id="clipSelectModal" onclick="hideClipSelectModal()">
+        <div class="modal modal-md clip-select-modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Link Clips to Task</h3>
+                <button class="modal-close" onclick="hideClipSelectModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="clip-select-search">
+                    <input type="text" id="clipSelectSearch" placeholder="Search clips..." oninput="filterClipSelectList()">
+                </div>
+                <div class="clip-select-list" id="clipSelectList">
+                    <!-- Clips will be rendered here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="hideClipSelectModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmClipSelection()">Link Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Task Modal -->
+    <div class="modal-overlay hidden" id="createTaskModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Create Task</h3>
+                <button class="modal-close" onclick="hideCreateTaskModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-field">
+                    <label>Task Name</label>
+                    <input type="text" id="newTaskName" placeholder="Enter task name" class="input-large" autofocus>
+                </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>Status</label>
+                        <select id="newTaskStatus" class="input-large">
+                            <option value="">No status</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Assignee</label>
+                        <select id="newTaskAssignee" class="input-large">
+                            <option value="">Unassigned</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>Due Date</label>
+                        <input type="date" id="newTaskDueDate" class="input-large">
+                    </div>
+                    <div class="form-field">
+                        <label>Stage</label>
+                        <select id="newTaskStage" class="input-large">
+                            <option value="">No stage</option>
+                            <option value="Previz">Previz</option>
+                            <option value="Layout">Layout</option>
+                            <option value="Animation">Animation</option>
+                            <option value="Lighting">Lighting</option>
+                            <option value="FX">FX</option>
+                            <option value="Compositing">Compositing</option>
+                            <option value="Review">Review</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="hideCreateTaskModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitCreateTask()">Create Task</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Flash Toast -->
+    <div class="sync-toast" id="syncToast">
+        <div class="sync-toast-avatar" id="syncToastAvatar">JD</div>
+        <div class="sync-toast-content">
+            <span class="sync-toast-user" id="syncToastUser">User</span>
+            <span class="sync-toast-action" id="syncToastAction">changed something</span>
+        </div>
+    </div>
+
+    <!-- Sync Overlay Flash -->
+    <div class="sync-overlay-flash" id="syncOverlayFlash"></div>
+
+    <!-- Main App -->
+    <div class="app" data-view="projects">
+        <!-- Row 1: Global Navigation -->
+        <header class="header-global">
+            <div class="logo" onclick="goHome()" style="cursor: pointer;" title="Go to Projects">
+                <img src="/static/logo.png" alt="Logo" class="logo-img">
+            </div>
+
+            <nav class="main-tabs">
+                <div class="tab-indicator"></div>
+                <button class="main-tab active" data-tab="projects">Projects</button>
+                <button class="main-tab" data-tab="review">Review</button>
+                <button class="main-tab" data-tab="docs">Docs</button>
+                <button class="main-tab" data-tab="lounge">Lounge</button>
+            </nav>
+
+            <div class="header-actions">
+                <!-- Notifications -->
+                <div class="notifications-menu" id="notificationsMenu">
+                    <button class="notifications-btn" id="notificationsBtn" onclick="toggleNotificationsPanel()">
+                        <svg class="icon"><use href="/static/icons.svg?v=2#icon-bell"/></svg>
+                        <span class="notifications-badge hidden" id="notificationsBadge">0</span>
+                    </button>
+                    <div class="notifications-panel hidden" id="notificationsPanel">
+                        <div class="notifications-header">
+                            <span class="notifications-title">Notifications</span>
+                            <button class="btn-link" onclick="markAllNotificationsRead()">Mark all read</button>
+                        </div>
+                        <div class="notifications-list" id="notificationsList">
+                            <div class="notifications-empty">No notifications</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="user-menu" id="userMenu">
+                    <button class="user-menu-btn" id="userMenuBtn" onclick="showSettingsPanel()">
+                        <div class="user-avatar" id="userAvatar">?</div>
+                        <span class="user-name" id="userNameDisplay">Guest</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Row 2: Context Toolbar (Review) -->
+        <div class="context-toolbar" id="contextToolbar">
+            <div class="toolbar-review" id="toolbarReview">
+                <div class="panel-toggles">
+                    <button class="btn-icon panel-toggle active" id="toggleProjectsBtn" title="Toggle projects panel" onclick="togglePanel('projects')"><svg class="icon"><use href="/static/icons.svg#icon-folder"/></svg></button>
+                    <button class="btn-icon panel-toggle active" id="toggleCommentsBtn" title="Toggle comments panel" onclick="togglePanel('comments')"><svg class="icon"><use href="/static/icons.svg#icon-chat-circle"/></svg></button>
+                    <button class="btn-icon panel-toggle active" id="toggleClipsBtn" title="Toggle clips panel" onclick="togglePanel('clips')"><svg class="icon"><use href="/static/icons.svg#icon-film-strip"/></svg></button>
+                </div>
+
+                <div class="toolbar-center">
+                    <button class="session-badge-btn" id="sessionBadge" onclick="showSessionsModal()" title="View sessions">
+                        <span class="session-badge-icon"><svg class="icon icon-sm"><use href="/static/icons.svg#icon-dot"/></svg></span>
+                        <span class="session-badge-text">No session</span>
+                        <span class="session-badge-arrow"><svg class="icon icon-sm"><use href="/static/icons.svg#icon-caret-down"/></svg></span>
+                    </button>
+
+                    <div class="sync-control" id="syncControl">
+                        <div class="sync-toggle" id="syncToggle"></div>
+                        <span>Sync</span>
+                    </div>
+
+                    <div class="cursor-control" id="cursorControl" title="Toggle cursor sharing">
+                        <div class="cursor-toggle" id="cursorToggle"><svg class="icon"><use href="/static/icons.svg#icon-cursor"/></svg></div>
+                    </div>
+                </div>
+
+                <div class="toolbar-right">
+                    <button class="btn-icon" title="Keyboard shortcuts (?)" onclick="toggleShortcutsOverlay()"><svg class="icon"><use href="/static/icons.svg#icon-keyboard"/></svg></button>
+                    <div class="users-online" id="usersOnline"></div>
+                </div>
+            </div>
+
+            <div class="toolbar-projects hidden" id="toolbarProjects">
+                <div class="toolbar-left">
+                    <button class="btn btn-ghost hidden" id="projectsBackBtn" onclick="backToProjects()">
+                        <svg class="icon"><use href="/static/icons.svg#icon-caret-left"/></svg> Back
+                    </button>
+                    <h2 class="toolbar-title" id="projectsCurrentTitle">Projects</h2>
+                </div>
+                <div class="toolbar-center">
+                    <div class="search-box">
+                        <svg class="icon"><use href="/static/icons.svg#icon-magnifying-glass"/></svg>
+                        <input type="text" placeholder="Search..." id="projectsSearch">
+                    </div>
+                </div>
+                <div class="toolbar-right">
+                </div>
+            </div>
+        </div>
+
+        <!-- Left Sidebar - Projects (all views) -->
+        <aside class="sidebar-left">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Projects</span>
+                <div class="sidebar-header-actions">
+                    <button class="btn-icon" id="expandProjectsBtn" title="Expand view"><svg class="icon"><use href="/static/icons.svg#icon-grid-four"/></svg></button>
+                </div>
+            </div>
+            <div class="projects-list" id="projectsList">
+                <!-- Projects will be rendered here -->
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main">
+            <!-- Review View -->
+            <div class="view-review" id="viewReview">
+                <div class="player-container" id="playerContainer">
+                    <div class="video-wrapper" id="videoWrapper">
+                        <!-- Main video/image (left side in compare) -->
+                        <video id="video" preload="auto"></video>
+                        <img id="stillImage" class="still-image" alt="Still image" style="display: none;">
+
+                        <!-- Compare video/image (right side, clipped) -->
+                        <video id="videoCompare" class="video-compare" preload="auto" style="display: none;"></video>
+                        <img id="stillImageCompare" class="still-image-compare" alt="Compare image" style="display: none;">
+
+                        <!-- Wipe slider overlay -->
+                        <div class="wipe-overlay" id="wipeOverlay" style="display: none;">
+                            <div class="wipe-slider" id="wipeSlider">
+                                <div class="wipe-handle">
+                                    <div class="wipe-handle-line"></div>
+                                    <div class="wipe-handle-grip"></div>
+                                    <div class="wipe-handle-line"></div>
+                                </div>
+                            </div>
+                            <div class="wipe-labels">
+                                <span class="wipe-label-left" id="wipeLabelLeft">v1</span>
+                                <span class="wipe-label-right" id="wipeLabelRight">v2</span>
+                            </div>
+                        </div>
+
+                        <canvas class="canvas-overlay" id="canvas"></canvas>
+                        <svg class="svg-overlay" id="svgOverlay"></svg>
+                    </div>
+                </div>
+
+            <div class="player-controls">
+                <div class="timeline-container">
+                    <div class="timeline-markers" id="timelineMarkers"></div>
+                    <div class="timeline-track" id="timelineTrack">
+                        <div class="timeline-cache" id="timelineCache"></div>
+                        <div class="timeline-progress" id="timelineProgress"></div>
+                        <div class="timeline-handle" id="timelineHandle"></div>
+                    </div>
+                </div>
+
+                <!-- Primary controls row: Transport + Timecode + In/Out -->
+                <div class="controls-row controls-row-primary">
+                    <div class="transport-controls">
+                        <button class="btn-transport loop-btn" id="loopBtn" onclick="toggleLoop()" title="Toggle loop (L)"><svg class="icon"><use href="/static/icons.svg#icon-repeat"/></svg></button>
+                        <button class="btn-transport" id="skipBackBtn" title="Skip -10s"><svg class="icon"><use href="/static/icons.svg#icon-skip-back"/></svg></button>
+                        <button class="btn-transport" id="prevFrameBtn" title="Previous frame"><svg class="icon"><use href="/static/icons.svg#icon-caret-left"/></svg></button>
+                        <button class="btn-transport play-btn" id="playBtn" title="Play/Pause"><svg class="icon"><use href="/static/icons.svg#icon-play"/></svg></button>
+                        <button class="btn-transport" id="nextFrameBtn" title="Next frame"><svg class="icon"><use href="/static/icons.svg#icon-caret-right"/></svg></button>
+                        <button class="btn-transport" id="skipForwardBtn" title="Skip +10s"><svg class="icon"><use href="/static/icons.svg#icon-skip-forward"/></svg></button>
+                    </div>
+
+                    <div class="timecode" id="timecode" onclick="toggleTimecodeDisplay()" title="Click to toggle Frame/Timecode">
+                        <span>0</span> / 0
+                    </div>
+
+                    <div class="in-out-display" id="inOutDisplay">
+                        <button class="in-out-btn in-btn" onclick="setInPoint()" title="Set In point (I)">
+                            <span class="in-out-label">IN</span>
+                            <span class="in-out-value" id="inPointValue">--</span>
+                        </button>
+                        <button class="in-out-btn out-btn" onclick="setOutPoint()" title="Set Out point (O)">
+                            <span class="in-out-label">OUT</span>
+                            <span class="in-out-value" id="outPointValue">--</span>
+                        </button>
+                        <button class="btn-transport" id="clearInOutBtn" onclick="clearInOut()" title="Clear In/Out"><svg class="icon"><use href="/static/icons.svg#icon-x"/></svg></button>
+                    </div>
+                </div>
+
+                <!-- Secondary controls row: Compare, Version, Status, Loop, Quality, Speed -->
+                <div class="controls-row controls-row-secondary">
+                    <div class="compare-control" id="compareControl">
+                        <div class="player-dropdown-trigger compare-version-trigger" id="compareVersionTrigger" title="Compare version (left side)">
+                            <span class="player-dropdown-value">v1</span>
+                            <svg class="icon icon-xs"><use href="/static/icons.svg#icon-caret-down"/></svg>
+                        </div>
+                        <button class="compare-btn" id="compareBtn" title="Compare versions" onclick="toggleCompareMode()">
+                            <svg class="icon"><use href="/static/icons.svg#icon-columns"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="version-control flash-container" id="versionControl">
+                        <div class="player-dropdown-trigger" id="versionDropdownTrigger" title="Clip version">
+                            <span class="player-dropdown-value">v1</span>
+                            <svg class="icon icon-xs"><use href="/static/icons.svg#icon-caret-down"/></svg>
+                        </div>
+                    </div>
+
+                    <div class="status-control" id="statusControl">
+                        <div class="player-dropdown-trigger status-trigger" id="statusDropdownTrigger" title="Clip status">
+                            <span class="player-dropdown-value">No status</span>
+                            <svg class="icon icon-xs"><use href="/static/icons.svg#icon-caret-down"/></svg>
+                        </div>
+                    </div>
+
+                    <div class="quality-control flash-container" id="qualityControl">
+                        <div class="player-dropdown-trigger" id="qualityDropdownTrigger" title="Video quality">
+                            <span class="player-dropdown-value">1080p</span>
+                            <svg class="icon icon-xs"><use href="/static/icons.svg#icon-caret-down"/></svg>
+                        </div>
+                    </div>
+
+                    <div class="speed-control flash-container" id="speedControl">
+                        <div class="player-dropdown-trigger" id="speedDropdownTrigger" title="Playback speed">
+                            <span class="player-dropdown-value">1x</span>
+                            <svg class="icon icon-xs"><use href="/static/icons.svg#icon-caret-down"/></svg>
+                        </div>
+                    </div>
+
+                    <div class="zoom-control" id="zoomControl">
+                        <div class="player-dropdown-trigger" id="zoomDropdownTrigger" title="Video zoom">
+                            <span class="player-dropdown-value">Fit</span>
+                            <svg class="icon icon-xs"><use href="/static/icons.svg#icon-caret-down"/></svg>
+                        </div>
+                    </div>
+
+                    <div class="volume-control" id="volumeControl">
+                        <button class="volume-btn" id="volumeBtn" title="Toggle mute (M)">
+                            <svg class="icon icon-volume-high"><use href="/static/icons.svg#icon-speaker-high"/></svg>
+                            <svg class="icon icon-volume-low"><use href="/static/icons.svg#icon-speaker-low"/></svg>
+                            <svg class="icon icon-volume-muted"><use href="/static/icons.svg#icon-speaker-x"/></svg>
+                        </button>
+                        <div class="volume-slider-wrapper">
+                            <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.01" value="1">
+                        </div>
+                    </div>
+
+                    <button class="btn-transport fullscreen-btn" id="fullscreenBtn" title="Focus mode (F)">
+                        <svg class="icon icon-fullscreen-enter"><use href="/static/icons.svg#icon-arrows-out"/></svg>
+                        <svg class="icon icon-fullscreen-exit"><use href="/static/icons.svg#icon-arrows-in"/></svg>
+                    </button>
+                </div>
+            </div>
+            </div><!-- /view-review -->
+
+            <!-- Projects View (Task Management) -->
+            <div class="view-projects hidden" id="viewProjects">
+                <div class="projects-layout">
+                    <!-- Projects Sidebar -->
+                    <aside class="projects-sidebar">
+                        <div class="projects-sidebar-header">
+                            <span class="projects-sidebar-title">Projects</span>
+                            <button class="btn-icon" onclick="showCreateProject()" title="New project">
+                                <svg class="icon"><use href="/static/icons.svg#icon-plus"/></svg>
+                            </button>
+                        </div>
+                        <div class="projects-sidebar-list" id="projectsSidebarList">
+                            <!-- Project items rendered by JS -->
+                        </div>
+                    </aside>
+
+                    <!-- Projects Main Content -->
+                    <div class="projects-main">
+                        <!-- Projects Grid (shown first) -->
+                        <div class="projects-grid" id="projectsGrid">
+                            <!-- Project cards will be rendered here -->
+                        </div>
+
+                        <!-- Tasks Table (shown when project selected) -->
+                        <div class="tasks-table-container hidden" id="tasksTableContainer">
+                            <table class="task-list-table" id="projectsTable">
+                                <thead>
+                                    <tr id="projectsTableHeader">
+                                        <th class="col-name">Name</th>
+                                        <th class="col-status">Status</th>
+                                        <th class="col-assignee">Assignee</th>
+                                        <th class="col-date">Due Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="projectsTableBody">
+                                    <!-- Tasks will be rendered here -->
+                                </tbody>
+                            </table>
+                            <div class="projects-empty" id="projectsEmpty">
+                                <div class="projects-empty-icon"><svg class="icon icon-xl"><use href="/static/icons.svg#icon-list"/></svg></div>
+                                <p class="projects-empty-text">No tasks yet</p>
+                                <button class="btn btn-primary" onclick="showCreateTask()"><svg class="icon"><use href="/static/icons.svg#icon-plus"/></svg> Create Task</button>
+                            </div>
+                        </div>
+
+                        <!-- Untagged Assets Section - Separate container -->
+                        <div class="untagged-assets-container hidden" id="untaggedAssetsSection">
+                            <div class="untagged-header" onclick="toggleUntaggedAssets()">
+                                <svg class="icon untagged-chevron" id="untaggedChevron"><use href="/static/icons.svg#icon-caret-right"/></svg>
+                                <span>Untagged Assets</span>
+                                <span class="untagged-count" id="untaggedCount">0</span>
+                            </div>
+                            <div class="untagged-assets-list hidden" id="untaggedAssetsList">
+                                <!-- Untagged clips will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Docs View -->
+            <div class="view-docs hidden" id="viewDocs">
+                <!-- DocsModule renders content here -->
+            </div>
+
+            <!-- Lounge View (Team Chat) -->
+            <div class="view-lounge hidden" id="viewLounge">
+                <!-- LoungeModule renders content here -->
+            </div>
+        </main>
+
+        <!-- Right Sidebar - Comments/Tasks -->
+        <aside class="sidebar-right">
+            <div class="sidebar-right-tabs">
+                <button class="sidebar-tab active" data-tab="comments" onclick="switchSidebarTab('comments')">Comments</button>
+                <button class="sidebar-tab" data-tab="tasks" onclick="switchSidebarTab('tasks')">Tasks</button>
+            </div>
+
+            <!-- Comments Tab Panel -->
+            <div class="sidebar-tab-panel active" id="commentsTabPanel">
+                <div class="comments-list" id="commentsList"></div>
+            </div>
+
+            <!-- Tasks Tab Panel -->
+            <div class="sidebar-tab-panel" id="tasksTabPanel">
+                <div class="clip-tasks-section">
+                    <div class="clip-tasks-list" id="clipTasksList">
+                        <div class="clip-tasks-empty">Select a clip to see linked tasks</div>
+                    </div>
+                    <button class="btn btn-ghost btn-sm clip-tasks-add" onclick="createTaskFromClip()">
+                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
+                        Create Task for Clip
+                    </button>
+                </div>
+            </div>
+
+            <div class="comment-input-area">
+                <div class="comment-drawing-active" id="commentDrawingArea">
+                    <span class="comment-drawing-hint"><svg class="icon icon-sm"><use href="/static/icons.svg#icon-pencil"/></svg> Drawing attached to this comment</span>
+                </div>
+
+                <!-- Inline drawing tools (visible when drawing mode is active) -->
+                <div class="draw-palette-area" id="drawPaletteArea">
+                    <div class="draw-palette-grid" id="colorPalette">
+                        <button class="color-swatch active" data-color="#ff4444" style="background: #ff4444" title="Red"></button>
+                        <button class="color-swatch" data-color="#ff8844" style="background: #ff8844" title="Orange"></button>
+                        <button class="color-swatch" data-color="#ffcc00" style="background: #ffcc00" title="Yellow"></button>
+                        <button class="color-swatch" data-color="#88cc00" style="background: #88cc00" title="Lime"></button>
+                        <button class="color-swatch" data-color="#44bb44" style="background: #44bb44" title="Green"></button>
+                        <button class="color-swatch" data-color="#00ccaa" style="background: #00ccaa" title="Teal"></button>
+                        <button class="color-swatch" data-color="#00aaff" style="background: #00aaff" title="Sky"></button>
+                        <button class="color-swatch" data-color="#4488ff" style="background: #4488ff" title="Blue"></button>
+                        <button class="color-swatch" data-color="#8855ff" style="background: #8855ff" title="Purple"></button>
+                        <button class="color-swatch" data-color="#cc44cc" style="background: #cc44cc" title="Magenta"></button>
+                        <button class="color-swatch" data-color="#ff66aa" style="background: #ff66aa" title="Pink"></button>
+                        <button class="color-swatch" data-color="#ffffff" style="background: #ffffff" title="White"></button>
+                        <button class="color-swatch" data-color="#cccccc" style="background: #cccccc" title="Light Gray"></button>
+                        <button class="color-swatch" data-color="#888888" style="background: #888888" title="Gray"></button>
+                        <button class="color-swatch" data-color="#444444" style="background: #444444" title="Dark Gray"></button>
+                        <button class="color-swatch" data-color="#000000" style="background: #000000" title="Black"></button>
+                    </div>
+                    <div class="draw-options-row">
+                        <div class="draw-option-group">
+                            <span class="draw-option-label">Size</span>
+                            <div class="brush-size-presets" id="brushSizePresets">
+                                <button class="brush-size-btn" data-size="2" title="Fine (2px)"><span class="brush-size-dot" style="width:4px;height:4px"></span></button>
+                                <button class="brush-size-btn" data-size="4" title="Medium (4px)"><span class="brush-size-dot" style="width:6px;height:6px"></span></button>
+                                <button class="brush-size-btn active" data-size="6" title="Broad (6px)"><span class="brush-size-dot" style="width:8px;height:8px"></span></button>
+                                <button class="brush-size-btn" data-size="10" title="Thick (10px)"><span class="brush-size-dot" style="width:12px;height:12px"></span></button>
+                                <button class="brush-size-btn" data-size="16" title="Bold (16px)"><span class="brush-size-dot" style="width:16px;height:16px"></span></button>
+                            </div>
+                        </div>
+                        <div class="draw-option-group">
+                            <span class="draw-option-label">Brush</span>
+                            <div class="brush-type-presets" id="brushTypePresets">
+                                <button class="brush-type-btn active" data-type="pen" title="Pen - Solid stroke">Pen</button>
+                                <button class="brush-type-btn" data-type="dashed" title="Dashed - Dotted line">Dashed</button>
+                                <button class="brush-type-btn" data-type="highlighter" title="Highlighter - Wide & transparent">Highlight</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="reply-indicator" id="replyIndicator"></div>
+                <textarea class="comment-input" id="commentInput" placeholder="Add a comment at current frame..."></textarea>
+                <div class="comment-actions">
+                    <div class="comment-tools">
+                        <button class="btn-comment-tool" id="drawToggleBtn" title="Draw annotation (D)"><svg class="icon"><use href="/static/icons.svg#icon-pencil"/></svg></button>
+                        <button class="btn-comment-tool" id="clearDrawingBtn" title="Clear drawing"><svg class="icon"><use href="/static/icons.svg#icon-trash"/></svg></button>
+                    </div>
+                    <button class="btn btn-primary" id="submitCommentBtn">Post</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Clip Bin -->
+        <div class="clip-bin">
+            <div class="clip-bin-header">
+                <span class="clip-bin-title">Clips</span>
+            </div>
+            <div class="clip-bin-content" id="clipBinContent">
+                <div class="clip-add" id="addClipsBtn" onclick="triggerMultiUpload()">
+                    <div class="clip-add-icon"><svg class="icon icon-lg"><use href="/static/icons.svg#icon-plus"/></svg></div>
+                    <div class="clip-add-text">Add clips</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile bottom sheet overlay (closes sheets when tapped) -->
+        <div class="mobile-sheet-overlay" id="mobileSheetOverlay" onclick="closeMobileSheets()"></div>
+    </div>
+
+    <!-- Hidden file input for multi-upload -->
+    <input type="file" id="fileInput" accept="video/*,image/*" multiple style="display:none">
+
+    <!-- Scripts: Core modules first -->
+    <script src="/static/js/core/state.js?v=2"></script>
+    <script src="/static/js/core/utils.js?v=1"></script>
+    <script src="/static/js/core/api.js?v=3"></script>
+    <!-- Core infrastructure (new) -->
+    <script src="/static/js/core/PropertyRegistry.js?v=9"></script>
+    <script src="/static/js/core/TaskUpdater.js?v=2"></script>
+    <script src="/static/js/core/TaskQuery.js?v=2"></script>
+    <script src="/static/js/core/WebSocketManager.js?v=1"></script>
+    <script src="/static/js/core/CommentManager.js?v=1"></script>
+    <!-- Global components -->
+    <script src="/static/js/components/dropdown.js?v=3"></script>
+    <script src="/static/js/components/datepicker.js?v=1"></script>
+    <script src="/static/js/components/toast.js?v=1"></script>
+    <script src="/static/js/components/confirm.js?v=1"></script>
+    <script src="/static/js/components/modal.js?v=2"></script>
+    <script src="/static/js/components/colorpicker.js?v=1"></script>
+    <script src="/static/js/components/contextmenu.js?v=1"></script>
+    <script src="/static/js/components/avatar.js?v=1"></script>
+    <script src="/static/js/components/badge.js?v=1"></script>
+    <script src="/static/js/components/clipcard.js?v=1"></script>
+    <script src="/static/js/components/taskComments.js?v=8"></script>
+    <script src="/static/js/components/clipTasks.js?v=1"></script>
+    <script src="/static/js/components/index.js?v=2"></script>
+    <script src="/static/js/components/playerDropdowns.js?v=2"></script>
+    <!-- Modules (new architecture) -->
+    <script src="/static/js/modules/core/UserManager.js?v=1"></script>
+    <script src="/static/js/modules/core/SettingsManager.js?v=1"></script>
+    <script src="/static/js/modules/core/PresetManager.js?v=2"></script>
+    <script src="/static/js/modules/projects/TaskManager.js?v=2"></script>
+    <!-- Review Module -->
+    <script src="/static/js/modules/review/ReviewSync.js?v=1"></script>
+    <script src="/static/js/modules/review/ReviewModule.js?v=1"></script>
+    <!-- Projects Module (includes Tasks) -->
+    <script src="/static/js/modules/projects/tasksIndex.js?v=1"></script>
+    <script src="/static/js/modules/projects/taskFilters.js"></script>
+    <script src="/static/js/modules/projects/taskLive.js"></script>
+    <script src="/static/js/modules/projects/TaskListView.js?v=1"></script>
+    <script src="/static/js/modules/projects/taskDetail.js?v=1"></script>
+    <script src="/static/js/modules/projects/taskCreate.js?v=1"></script>
+    <!-- Docs Module -->
+    <script src="/static/js/vendor/purify.min.js"></script>
+    <script src="/static/js/modules/docs/DocsModule.js?v=11"></script>
+    <!-- Lounge Module -->
+    <script src="/static/js/modules/lounge/LoungeModule.js?v=6"></script>
+    <!-- Feature modules -->
+    <script src="/static/js/features/settingsUI.js?v=2"></script>
+    <script src="/static/js/features/navigation.js?v=17"></script>
+    <!-- Main application -->
+    <script src="/static/js/app.js?v=76"></script>
+    <script src="/static/js/video-player.js?v=30"></script>
+    <script src="/static/js/websocket.js?v=22"></script>
+    <script src="/static/js/comments.js?v=32"></script>
+    <script src="/static/js/clips.js?v=37"></script>
+</body>
+</html>

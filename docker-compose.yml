@@ -1,0 +1,38 @@
+# Self-hosting: Cutline behind Caddy (automatic HTTPS).
+#   cp .env.example .env   # fill in DOMAIN and JWT_SECRET
+#   docker compose up -d
+services:
+  cutline:
+    image: ghcr.io/krth8/cutline:latest
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CORS_ORIGINS: https://${DOMAIN}
+      # Only Caddy can reach the app, so trust its X-Forwarded-For (real client IPs)
+      FORWARDED_ALLOW_IPS: "*"
+    volumes:
+      - cutline-data:/data
+    expose:
+      - "8099"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - cutline
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  cutline-data:
+  caddy-data:
+  caddy-config:
