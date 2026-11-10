@@ -1698,7 +1698,7 @@ async def get_all_transcode_status(job_ids: str = Query(...)):
 # ============ HTML Review Pages ============
 
 HTML_TOKEN_HOURS = 4
-HTML_BRIDGE_TAG = b'<script src="/static/js/html-review-bridge.js?v=1"></script>'
+HTML_BRIDGE_TAG = b'<script src="/static/js/html-review-bridge.js?v=2"></script>'
 
 
 def _find_clip_version(project_id: str, base_name: str, version: int) -> Optional[dict]:
@@ -1872,6 +1872,7 @@ def clean_comment_anchor(anchor) -> Optional[dict]:
     cleaned = {
         "selector": text("selector", 1000),
         "hash": text("hash", 200),
+        "state": text("state", 2000),  # page-provided view state (JSON string)
         "tag": text("tag", 40),
         "label": text("label", 120),
         "ox": num("ox"),

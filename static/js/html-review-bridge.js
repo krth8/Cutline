@@ -114,12 +114,46 @@
         return text.replace(/\s+/g, ' ').trim().slice(0, 80);
     }
 
+    // ---------- Page state (optional page API) ----------
+    // Pages can expose `window.cutlineReview = { getState(), setState(state) }` to make
+    // comments restore exact view state (e.g. slide + build step). reveal.js works out of the box.
+
+    function pageApi() {
+        if (window.cutlineReview && typeof window.cutlineReview.getState === 'function') return window.cutlineReview;
+        if (window.Reveal && typeof window.Reveal.getState === 'function') return window.Reveal;
+        return null;
+    }
+
+    function getPageState() {
+        const api = pageApi();
+        if (!api) return null;
+        try {
+            const json = JSON.stringify(api.getState());
+            return json && json.length <= 2000 ? json : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function setPageState(json) {
+        const api = pageApi();
+        if (!api || typeof api.setState !== 'function' || !json) return false;
+        try {
+            api.setState(JSON.parse(json));
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
     function buildAnchor(el, x, y) {
         const r = el.getBoundingClientRect();
         const frac = (v, size) => (size > 0 ? Math.round((v / size) * 1000) / 1000 : 0.5);
+        const state = getPageState();
         return {
             selector: cssPath(el),
             hash: currentHash(),
+            state: state || undefined,
             tag: el.localName,
             label: labelFor(el),
             ox: frac(x - r.left, r.width),
@@ -138,16 +172,35 @@
         }
     }
 
+    // Visible on screen right now? Checks ancestors too: decks usually hide inactive
+    // slides with opacity/visibility on the slide container, not on the element itself.
     function isShown(el) {
-        if (!el) return false;
+        if (!el || !el.isConnected) return false;
         const r = el.getBoundingClientRect();
         if (r.width === 0 && r.height === 0) return false;
         if (r.bottom < 0 || r.right < 0 || r.top > window.innerHeight || r.left > window.innerWidth) return false;
-        if (typeof el.checkVisibility === 'function') {
-            return el.checkVisibility({ opacityProperty: true, visibilityProperty: true });
+        if (getComputedStyle(el).visibility === 'hidden') return false;
+        for (let node = el; node && node.nodeType === 1; node = node.parentElement) {
+            const cs = getComputedStyle(node);
+            if (cs.display === 'none' || parseFloat(cs.opacity) < 0.05) return false;
         }
         return true;
     }
+
+    // Poll until the element shows up (slide transitions take a moment).
+    function waitShown(el, timeout) {
+        return new Promise(resolve => {
+            const start = performance.now();
+            const check = () => {
+                if (isShown(el)) return resolve(true);
+                if (performance.now() - start > timeout) return resolve(false);
+                setTimeout(check, 100);
+            };
+            check();
+        });
+    }
+
+    const wait = ms => new Promise(r => setTimeout(r, ms));
 
     function anchorPoint(anchor) {
         const el = findElement(anchor);
@@ -299,7 +352,9 @@
         pins.forEach(p => {
             const el = pinEls.get(p.id);
             if (!el) return;
-            const pt = onThisView(p.anchor) ? anchorPoint(p.anchor) : null;
+            let pt = onThisView(p.anchor) ? anchorPoint(p.anchor) : null;
+            // Element exists but is on another slide / not built yet: hide its pin
+            if (pt && pt.el && !isShown(pt.el)) pt = null;
             if (!pt) {
                 el.classList.add('hidden');
                 return;
@@ -312,11 +367,16 @@
     }
 
     // Follow layout changes (scaling stage, scrolling, animations) while there is something to draw.
+    // Throttled to ~15 fps so we don't force style/layout work on every frame of the page's own rendering.
+    let lastPlaced = 0;
     function tick() {
         if (rafId) return;
-        const loop = () => {
+        const loop = now => {
             rafId = null;
-            placePins();
+            if (now - lastPlaced > 66) {
+                lastPlaced = now;
+                placePins();
+            }
             if (pins.length || picking) rafId = requestAnimationFrame(loop);
         };
         rafId = requestAnimationFrame(loop);
@@ -337,25 +397,39 @@
         setTimeout(() => box.remove(), 2600);
     }
 
-    function focusAnchor(id, anchor, retried) {
+    /**
+     * Bring the commented element into view. Works for any kind of page, cheapest first:
+     *  1. already visible                  -> just highlight
+     *  2. page API state (slide + step)    -> setState
+     *  3. different URL hash               -> set hash; if the page ignores hashchange
+     *                                         (common for decks), Cutline reloads at that hash
+     *  4. one-pagers / scroll containers   -> scrollIntoView
+     */
+    async function focusAnchor(id, anchor, retried) {
+        const el = findElement(anchor);
+        if (el && isShown(el)) return flash(el);
+
+        if (anchor.state && setPageState(anchor.state)) {
+            if (el && await waitShown(el, 1500)) return flash(el);
+        }
+
         if (anchor.hash && anchor.hash !== currentHash()) {
             location.hash = anchor.hash;
-        }
-        // Give the page a moment to react to the hash change (slide transitions etc.)
-        setTimeout(() => {
-            const el = findElement(anchor);
-            if (el && !isShown(el)) {
-                try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+            if (el && await waitShown(el, 1200)) return flash(el);
+            if (!retried) {
+                send('needsReload', { hash: anchor.hash, id: id });
+                return;
             }
-            setTimeout(() => {
-                if (el && isShown(el)) {
-                    flash(el);
-                } else if (!retried && anchor.hash) {
-                    // Page doesn't listen to hashchange: ask Cutline to reload at that hash.
-                    send('needsReload', { hash: anchor.hash, id: id });
-                }
-            }, 350);
-        }, anchor.hash ? 500 : 0);
+        } else if (retried && el) {
+            // Just reloaded at this hash: give the page's intro transition time to finish.
+            if (await waitShown(el, 2500)) return flash(el);
+        }
+
+        if (el) {
+            try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+            await waitShown(el, 800);
+            flash(el);
+        }
     }
 
     // ---------- Messages from Cutline ----------
@@ -383,6 +457,15 @@
     function ready() {
         ensureOverlay();
         send('ready', { hash: currentHash() });
+
+        // Diagnostics: which GPU path the page gets inside the sandbox.
+        if (navigator.gpu && typeof navigator.gpu.requestAdapter === 'function') {
+            navigator.gpu.requestAdapter()
+                .then(a => send('diag', { webgpu: !!a }))
+                .catch(() => send('diag', { webgpu: false }));
+        } else {
+            send('diag', { webgpu: false });
+        }
     }
 
     if (document.readyState === 'loading') {

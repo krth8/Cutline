@@ -91,7 +91,12 @@ const HtmlReview = (() => {
         const f = getFrame();
         if (!f || !baseUrl) return;
         ready = false;
-        f.src = baseUrl + (hash || '');
+        // A changed query forces a real reload; only changing the hash would not.
+        f.src = `${baseUrl}&reload=${Date.now()}${hash || ''}`;
+    }
+
+    function openInNewTab() {
+        if (baseUrl) window.open(baseUrl, '_blank', 'noopener');
     }
 
     // ---------- Pick mode & pending anchor ----------
@@ -201,6 +206,9 @@ const HtmlReview = (() => {
                 picking = false;
                 document.getElementById('htmlPickBtn')?.classList.remove('active');
                 break;
+            case 'diag':
+                console.info(`[HTML review] WebGPU in sandboxed page: ${msg.webgpu ? 'available' : 'NOT available (three.js falls back to WebGL)'}`);
+                break;
             case 'pinClick':
                 if (typeof msg.id === 'string') highlightComment(msg.id);
                 break;
@@ -229,6 +237,7 @@ const HtmlReview = (() => {
         load,
         unload,
         togglePick,
+        openInNewTab,
         setPicking,
         clearPendingAnchor,
         pinNumbers,
