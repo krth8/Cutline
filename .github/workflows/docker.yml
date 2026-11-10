@@ -57,3 +57,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Provenance attestations embed the full GitHub event (incl. the pusher's
+          # email) in the public image, so keep them off.
+          provenance: false
+          sbom: false
