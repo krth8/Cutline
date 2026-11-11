@@ -89,7 +89,10 @@ async function submitComment() {
         userName: AppState.userName || AppState.userId,
         userProfileImage: AppState.adminUser?.profileImage || null,
         text: text,
-        drawing: hasDrawing ? { ...AppState.pendingDrawing, frame: currentFrame } : null,  // Override frame with current
+        // Override frame with current; HTML drawings also remember the page view they were drawn on
+        drawing: hasDrawing
+            ? { ...AppState.pendingDrawing, frame: currentFrame, ...(isHtml ? { view: HtmlReview.drawingView() } : {}) }
+            : null,
         clipBaseName: AppState.currentClip?.baseName || null,
         clipVersion: AppState.currentClip?.version || null,
         parentId: replyingToCommentId || null  // Include parent if replying
@@ -117,8 +120,8 @@ async function submitComment() {
         HtmlReview.clearPendingAnchor();
     }
 
-    // Notify others to clear the remote drawing preview
-    if (hasDrawing && AppState.sessionId && typeof sendDrawComplete === 'function') {
+    // Notify others to clear the remote drawing preview (no live drawing sync for HTML pages)
+    if (hasDrawing && !isHtml && AppState.sessionId && typeof sendDrawComplete === 'function') {
         sendDrawComplete(comment.frame, comment.drawing?.strokes || []);
     }
 
@@ -128,7 +131,11 @@ async function submitComment() {
     cancelReply();  // Clear reply state
 
     // Re-show drawings for current frame (so the just-posted drawing stays visible)
-    if (hasDrawing) {
+    if (hasDrawing && isHtml) {
+        // Leave draw mode so the page takes clicks again, then keep the drawing up on its view
+        if (AppState.drawMode) toggleDrawMode();
+        if (response.ok) HtmlReview.showDrawing(comment.drawing);
+    } else if (hasDrawing) {
         // Small delay to ensure comment is added to AppState.comments (for session mode)
         setTimeout(() => {
             if (typeof showFrameDrawings === 'function') {
@@ -436,12 +443,9 @@ function renderComments() {
 
 function handleCommentClick(frame, commentId) {
     if (typeof HtmlReview !== 'undefined' && HtmlReview.isActive()) {
-        // HTML page: jump to the element instead of a frame (replies use their parent's anchor)
-        let comment = AppState.comments.find(c => c.id === commentId);
-        if (comment && !comment.anchor && comment.parentId) {
-            comment = AppState.comments.find(c => c.id === comment.parentId) || comment;
-        }
-        if (comment?.anchor) HtmlReview.focusComment(comment);
+        // HTML page: jump to the element / drawn-on view instead of a frame
+        const comment = AppState.comments.find(c => c.id === commentId);
+        if (comment) HtmlReview.focusComment(comment);
         const commentEl = document.querySelector(`[data-comment-id="${commentId}"]`);
         if (commentEl) {
             commentEl.classList.add('highlighted');
@@ -625,7 +629,7 @@ async function bulkDeleteComments() {
     }
 }
 
-function showCommentDrawing(drawing, append = false) {
+function showCommentDrawing(drawing, append = false, target = elements.svgOverlay) {
     // Clear existing highlight drawings unless appending
     if (!append) {
         elements.svgOverlay.querySelectorAll('.highlight-stroke').forEach(el => el.remove());
@@ -678,7 +682,7 @@ function showCommentDrawing(drawing, append = false) {
             }
             path.setAttribute('d', d);
             path.classList.add('highlight-stroke');
-            elements.svgOverlay.appendChild(path);
+            target.appendChild(path);
         }
     } else {
         // Fallback: single stroke from flat array (legacy format)
@@ -705,7 +709,7 @@ function showCommentDrawing(drawing, append = false) {
         }
         path.setAttribute('d', d);
         path.classList.add('highlight-stroke');
-        elements.svgOverlay.appendChild(path);
+        target.appendChild(path);
     }
 }
 
@@ -958,6 +962,10 @@ function toggleDrawMode() {
         if (typeof resetCompareMode === 'function') {
             resetCompareMode();
         }
+        // HTML page: size the overlay to the page and remember which view we draw on
+        if (typeof HtmlReview !== 'undefined' && HtmlReview.isActive()) {
+            HtmlReview.onDrawMode();
+        }
     } else {
         // Turning OFF draw mode - clear any pending drawing that wasn't submitted
         clearPendingDrawing();
@@ -1013,6 +1021,15 @@ function handleDrawStart(e) {
 
 function handleDrawMove(e) {
     const pos = getSvgPos(e);
+
+    // HTML pages: no live cursor/stroke sync (overlay coordinates depend on each viewer's page size)
+    if (AppState.currentMediaType === 'html') {
+        if (AppState.isDrawing && currentSvgPath) {
+            AppState.currentStroke.push(pos);
+            currentSvgPath.setAttribute('d', currentSvgPath.getAttribute('d') + ` L ${pos.x} ${pos.y}`);
+        }
+        return;
+    }
 
     // Send cursor position (use percentage of untransformed dimensions for sync)
     const rect = elements.svgOverlay.getBoundingClientRect();

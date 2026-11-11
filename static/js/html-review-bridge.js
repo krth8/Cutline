@@ -6,15 +6,24 @@
  *
  *   parent -> page   { source: 'cutline', type: 'pick',  on }
  *                    { source: 'cutline', type: 'pins',  pins: [{ id, n, anchor, resolved }] }
- *                    { source: 'cutline', type: 'focus', id, anchor }
+ *                    { source: 'cutline', type: 'focus', id, anchor, quiet, scroll, retried }
+ *                    { source: 'cutline', type: 'snapshot', reqId }
+ *                    { source: 'cutline', type: 'watchView' }
  *   page -> parent   { source: 'cutline-page', type: 'ready' | 'location', hash }
  *                    { source: 'cutline-page', type: 'picked', anchor }
  *                    { source: 'cutline-page', type: 'pickCancel' }
  *                    { source: 'cutline-page', type: 'pinClick', id }
  *                    { source: 'cutline-page', type: 'needsReload', hash, id }
+ *                    { source: 'cutline-page', type: 'focused', id }
+ *                    { source: 'cutline-page', type: 'snapshot', reqId, view }
+ *                    { source: 'cutline-page', type: 'viewChanged' }
  *
  * An anchor is { selector, hash, tag, label, ox, oy, vx, vy }:
  * ox/oy = click point inside the element (0..1), vx/vy = click point in the viewport (fallback).
+ *
+ * A view (stored with drawings) is { hash, state, sx, sy, sel, ox, oy }: where the page was when
+ * the drawing was made. sx/sy = scroll position (0..1), sel = element at the viewport center, used
+ * as a landmark to tell whether the page shows the same slide.
  */
 (function () {
     'use strict';
@@ -403,33 +412,134 @@
      *  2. page API state (slide + step)    -> setState
      *  3. different URL hash               -> set hash; if the page ignores hashchange
      *                                         (common for decks), Cutline reloads at that hash
-     *  4. one-pagers / scroll containers   -> scrollIntoView
+     *  4. one-pagers / scroll containers   -> scrollIntoView (or the exact scroll of a drawing view)
+     * Returns 'reload' when Cutline has to reload the page first, otherwise true.
+     * opts.quiet: no highlight (drawing views use the element only as a landmark).
      */
-    async function focusAnchor(id, anchor, retried) {
+    async function focusAnchor(id, anchor, retried, opts) {
+        opts = opts || {};
+        const done = el => {
+            if (el && !opts.quiet) flash(el);
+            return true;
+        };
         const el = findElement(anchor);
-        if (el && isShown(el)) return flash(el);
+        if (el && isShown(el)) return done(el);
 
         if (anchor.state && setPageState(anchor.state)) {
-            if (el && await waitShown(el, 1500)) return flash(el);
+            if (el && await waitShown(el, 1500)) return done(el);
         }
 
         if (anchor.hash && anchor.hash !== currentHash()) {
             location.hash = anchor.hash;
-            if (el && await waitShown(el, 1200)) return flash(el);
+            if (el && await waitShown(el, 1200)) return done(el);
             if (!retried) {
                 send('needsReload', { hash: anchor.hash, id: id });
-                return;
+                return 'reload';
             }
         } else if (retried && el) {
             // Just reloaded at this hash: give the page's intro transition time to finish.
-            if (await waitShown(el, 2500)) return flash(el);
+            if (await waitShown(el, 2500)) return done(el);
         }
+
+        if (opts.scroll) return true;  // caller restores the exact scroll position
 
         if (el) {
             try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
             await waitShown(el, 800);
-            flash(el);
+            return done(el);
         }
+        return true;
+    }
+
+    // ---------- Views (for drawings) ----------
+
+    function scrollRange() {
+        const se = document.scrollingElement || document.documentElement;
+        return {
+            x: Math.max(0, se.scrollWidth - window.innerWidth),
+            y: Math.max(0, se.scrollHeight - window.innerHeight)
+        };
+    }
+
+    function viewSnapshot() {
+        const range = scrollRange();
+        const frac = (v, max) => (max > 0 ? Math.round((v / max) * 10000) / 10000 : 0);
+        const view = { hash: currentHash(), sx: frac(window.scrollX, range.x), sy: frac(window.scrollY, range.y) };
+        const state = getPageState();
+        if (state) view.state = state;
+
+        // Landmark: the element in the middle of the screen tells us later if the same slide is up.
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+        const el = targetAt(cx, cy);
+        if (el && el !== document.body) {
+            const a = buildAnchor(el, cx, cy);
+            view.sel = a.selector;
+            view.ox = a.ox;
+            view.oy = a.oy;
+        }
+        return view;
+    }
+
+    function restoreScroll(s) {
+        const range = scrollRange();
+        window.scrollTo({ left: (s.sx || 0) * range.x, top: (s.sy || 0) * range.y, behavior: 'auto' });
+    }
+
+    // Tell Cutline once the view moves away (navigation, slide change, scroll), so it can hide
+    // a drawing that belongs to the previous view. Polls: decks often change the hash with
+    // history.replaceState, which fires no event.
+    // Any input in the page also counts: build steps inside a slide often change nothing we can see
+    // (same hash, no page API), but they are always triggered by a key, click or scroll.
+    let watchTimer = null;
+    let watching = false;
+
+    function viewKey() {
+        return currentHash() + '|' + (getPageState() || '') + '|' +
+            Math.round(window.scrollX / 40) + ',' + Math.round(window.scrollY / 40);
+    }
+
+    function stopWatch() {
+        watching = false;
+        clearTimeout(watchTimer);
+        clearInterval(watchTimer);
+        watchTimer = null;
+    }
+
+    function onUserInput() {
+        if (!watching || picking) return;
+        stopWatch();
+        send('viewChanged');
+    }
+
+    ['keydown', 'pointerdown', 'wheel', 'touchstart'].forEach(type => {
+        window.addEventListener(type, onUserInput, { capture: true, passive: true });
+    });
+
+    function startWatch() {
+        stopWatch();
+        watching = true;
+        // Let transitions and scrolling settle before taking the baseline.
+        watchTimer = setTimeout(() => {
+            const base = viewKey();
+            watchTimer = setInterval(() => {
+                if (viewKey() !== base) {
+                    stopWatch();
+                    send('viewChanged');
+                }
+            }, 300);
+        }, 600);
+    }
+
+    async function handleFocus(msg) {
+        stopWatch();
+        const result = await focusAnchor(msg.id, msg.anchor, !!msg.retried, { quiet: !!msg.quiet, scroll: msg.scroll });
+        if (result === 'reload') return;
+        if (msg.scroll) {
+            restoreScroll(msg.scroll);
+            await wait(150);
+        }
+        send('focused', { id: msg.id });
     }
 
     // ---------- Messages from Cutline ----------
@@ -445,7 +555,11 @@
             pins = Array.isArray(msg.pins) ? msg.pins.filter(p => p && p.anchor) : [];
             renderPins();
         } else if (msg.type === 'focus' && msg.anchor) {
-            focusAnchor(msg.id, msg.anchor, !!msg.retried);
+            handleFocus(msg);
+        } else if (msg.type === 'snapshot') {
+            send('snapshot', { reqId: msg.reqId, view: viewSnapshot() });
+        } else if (msg.type === 'watchView') {
+            startWatch();
         }
     });
 

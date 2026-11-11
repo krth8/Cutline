@@ -6,19 +6,34 @@
  * - "Comment on element" puts the page in pick mode; the picked element's anchor is
  *   attached to the next comment (AppState.pendingAnchor).
  * - Comments with anchors on the current version are shown as numbered pins in the page.
- * - Clicking a comment navigates the page to the element; clicking a pin highlights the comment.
+ * - Drawings use the normal SVG overlay on top of the page. Each drawing stores the page
+ *   view it was made on (drawing.view: hash, page state, scroll, landmark, overlay size).
+ * - Clicking a comment navigates the page to the element or drawn-on view, then shows its
+ *   drawing until the page view changes. Clicking a pin highlights the comment.
  */
 const HtmlReview = (() => {
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+
     let frame = null;
     let baseUrl = null;          // tokened page URL without hash
     let loadedKey = null;        // `${baseName}:${version}` currently in the frame
     let ready = false;
-    let pendingFocus = null;     // comment to focus once the page is ready
     let picking = false;
+    let lastFocus = null;        // { msg, drawing } of the last focused comment
+    let pendingFocusMsg = null;  // focus message to send once the page is ready
+    let shownDrawing = null;     // drawing currently shown on the overlay
+    let drawView = null;         // page view captured when draw mode was turned on
+    let resizeObserver = null;
+    let snapSeq = 0;
+    const snapWaiters = new Map();
 
     function getFrame() {
         if (!frame) frame = document.getElementById('htmlFrame');
         return frame;
+    }
+
+    function overlay() {
+        return document.getElementById('svgOverlay');
     }
 
     function post(msg) {
@@ -31,6 +46,10 @@ const HtmlReview = (() => {
 
     function isActive() {
         return AppState.currentMediaType === 'html';
+    }
+
+    function hasStrokes(drawing) {
+        return !!(drawing && Array.isArray(drawing.strokes) && drawing.strokes.length > 0);
     }
 
     // ---------- Loading ----------
@@ -48,6 +67,8 @@ const HtmlReview = (() => {
         if (stillImage) stillImage.style.display = 'none';
         f.style.display = 'block';
         AppState.currentFrame = 0;
+        watchResize();
+        requestAnimationFrame(syncOverlay);
 
         const key = `${baseName}:${clip.version}`;
         if (key === loadedKey && ready) {
@@ -57,6 +78,10 @@ const HtmlReview = (() => {
 
         loadedKey = key;
         ready = false;
+        lastFocus = null;
+        pendingFocusMsg = null;
+        drawView = null;
+        hideDrawing();
         setPicking(false);
         clearPendingAnchor();
 
@@ -83,6 +108,10 @@ const HtmlReview = (() => {
             baseUrl = null;
             ready = false;
         }
+        lastFocus = null;
+        pendingFocusMsg = null;
+        drawView = null;
+        hideDrawing();
         setPicking(false);
         clearPendingAnchor();
     }
@@ -110,6 +139,9 @@ const HtmlReview = (() => {
 
     function togglePick() {
         if (!isActive()) return;
+        // Picking needs the page to get clicks: step out of draw mode but keep what's drawn,
+        // so one comment can have both an element and a drawing.
+        if (!picking && AppState.drawMode) leaveDrawMode();
         setPicking(!picking);
     }
 
@@ -129,6 +161,110 @@ const HtmlReview = (() => {
     function clearPendingAnchor() {
         AppState.pendingAnchor = null;
         document.getElementById('commentAnchorArea')?.classList.remove('visible');
+    }
+
+    // ---------- Drawing overlay ----------
+
+    function overlaySize() {
+        const r = overlay()?.getBoundingClientRect();
+        return { w: Math.round(r?.width || 0), h: Math.round(r?.height || 0) };
+    }
+
+    /** In HTML mode one overlay unit = one CSS pixel of the page area. */
+    function syncOverlay() {
+        const svg = overlay();
+        if (!svg || !isActive()) return;
+        const { w, h } = overlaySize();
+        if (!w || !h) return;
+        svg.style.transform = '';
+        svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        svg.setAttribute('preserveAspectRatio', 'none');
+        if (shownDrawing) renderDrawing(shownDrawing);
+    }
+
+    function watchResize() {
+        if (resizeObserver || typeof ResizeObserver === 'undefined') return;
+        const wrapper = document.getElementById('videoWrapper');
+        if (!wrapper) return;
+        resizeObserver = new ResizeObserver(() => {
+            if (isActive()) syncOverlay();
+        });
+        resizeObserver.observe(wrapper);
+    }
+
+    function requestSnapshot() {
+        return new Promise(resolve => {
+            if (!ready) return resolve(null);
+            const reqId = ++snapSeq;
+            snapWaiters.set(reqId, resolve);
+            post({ type: 'snapshot', reqId });
+            setTimeout(() => {
+                if (snapWaiters.delete(reqId)) resolve(null);
+            }, 800);
+        });
+    }
+
+    /** Called when draw mode turns on: size the overlay and remember the page view. */
+    function onDrawMode() {
+        if (picking) setPicking(false);
+        hideDrawing();
+        syncOverlay();
+        // Back in draw mode with strokes already made (e.g. after picking an element): keep their view
+        if (drawView && hasStrokes(AppState.pendingDrawing)) return;
+        const size = overlaySize();
+        const captured = { ...size };
+        drawView = captured;
+        requestSnapshot().then(view => {
+            if (view && drawView === captured) drawView = { ...view, w: size.w, h: size.h };
+        });
+    }
+
+    function leaveDrawMode() {
+        AppState.drawMode = false;
+        overlay()?.classList.remove('drawing');
+        document.getElementById('drawToggleBtn')?.classList.remove('active');
+        document.getElementById('drawPaletteArea')?.classList.remove('visible');
+    }
+
+    /** View stored with a new drawing: { hash, state, sx, sy, sel, ox, oy, w, h }. */
+    function drawingView() {
+        const view = drawView ? { ...drawView } : { ...overlaySize() };
+        drawView = null;
+        return view;
+    }
+
+    /** Draw a saved drawing, scaled from the size it was drawn at to the current page area. */
+    function renderDrawing(drawing) {
+        const svg = overlay();
+        if (!svg || typeof showCommentDrawing !== 'function') return;
+        svg.querySelectorAll('.html-drawing').forEach(g => g.remove());
+
+        const { w, h } = overlaySize();
+        const v = drawing.view || {};
+        const vw = v.w || w;
+        const vh = v.h || h;
+        if (!w || !h || !vw || !vh) return;
+        // Uniform scale, centered: matches decks that letterbox a fixed-size stage
+        const s = Math.min(w / vw, h / vh);
+        const g = document.createElementNS(SVG_NS, 'g');
+        g.setAttribute('class', 'html-drawing');
+        g.setAttribute('transform', `translate(${(w - vw * s) / 2} ${(h - vh * s) / 2}) scale(${s})`);
+        svg.appendChild(g);
+        showCommentDrawing(drawing, true, g);
+        shownDrawing = drawing;
+    }
+
+    function hideDrawing() {
+        shownDrawing = null;
+        overlay()?.querySelectorAll('.html-drawing').forEach(g => g.remove());
+    }
+
+    /** Show a drawing on the current view; it hides again once the page view changes. */
+    function showDrawing(drawing) {
+        if (!hasStrokes(drawing)) return;
+        syncOverlay();
+        renderDrawing(drawing);
+        post({ type: 'watchView' });
     }
 
     // ---------- Pins ----------
@@ -161,13 +297,45 @@ const HtmlReview = (() => {
         post({ type: 'pins', pins });
     }
 
+    // ---------- Focusing a comment ----------
+
+    /**
+     * Navigate the page to a comment: its element anchor, or the view its drawing was made on,
+     * then show the drawing. Replies without their own anchor or drawing use their parent's.
+     */
     function focusComment(comment) {
-        if (!comment?.anchor) return;
-        if (!ready) {
-            pendingFocus = comment;
+        if (!comment) return;
+        let target = comment;
+        if (!target.anchor && !hasStrokes(target.drawing) && target.parentId) {
+            target = (AppState.comments || []).find(c => c.id === target.parentId) || target;
+        }
+
+        const drawing = hasStrokes(target.drawing) ? target.drawing : null;
+        const view = drawing?.view || null;
+        let anchor = target.anchor || null;
+        if (!anchor && view && (view.sel || view.hash || view.state)) {
+            anchor = { selector: view.sel, hash: view.hash, state: view.state, ox: view.ox, oy: view.oy };
+        }
+
+        hideDrawing();
+        if (!anchor) {
+            if (drawing) showDrawing(drawing);
             return;
         }
-        post({ type: 'focus', id: comment.id, anchor: comment.anchor });
+
+        const msg = {
+            type: 'focus',
+            id: target.id,
+            anchor,
+            quiet: !target.anchor,  // a drawing's landmark element isn't what the comment is about
+            scroll: view && view.sy != null ? { sx: view.sx || 0, sy: view.sy } : null
+        };
+        lastFocus = { msg, drawing };
+        if (!ready) {
+            pendingFocusMsg = msg;
+            return;
+        }
+        post(msg);
     }
 
     function highlightComment(commentId) {
@@ -191,10 +359,10 @@ const HtmlReview = (() => {
                 ready = true;
                 sendPins();
                 if (picking) post({ type: 'pick', on: true });
-                if (pendingFocus) {
-                    const c = pendingFocus;
-                    pendingFocus = null;
-                    post({ type: 'focus', id: c.id, anchor: c.anchor, retried: true });
+                if (pendingFocusMsg) {
+                    const m = pendingFocusMsg;
+                    pendingFocusMsg = null;
+                    post({ ...m, retried: true });
                 }
                 break;
             case 'picked':
@@ -212,11 +380,25 @@ const HtmlReview = (() => {
             case 'pinClick':
                 if (typeof msg.id === 'string') highlightComment(msg.id);
                 break;
-            case 'needsReload': {
-                const comment = (AppState.comments || []).find(c => c.id === msg.id);
-                if (comment && typeof msg.hash === 'string' && msg.hash.startsWith('#')) {
-                    pendingFocus = comment;
+            case 'needsReload':
+                if (lastFocus && msg.id === lastFocus.msg.id && typeof msg.hash === 'string' && msg.hash.startsWith('#')) {
+                    pendingFocusMsg = lastFocus.msg;
                     reloadAtHash(msg.hash);
+                }
+                break;
+            case 'focused':
+                if (lastFocus && msg.id === lastFocus.msg.id && lastFocus.drawing) {
+                    showDrawing(lastFocus.drawing);
+                }
+                break;
+            case 'viewChanged':
+                hideDrawing();
+                break;
+            case 'snapshot': {
+                const resolve = snapWaiters.get(msg.reqId);
+                if (resolve) {
+                    snapWaiters.delete(msg.reqId);
+                    resolve(msg.view && typeof msg.view === 'object' ? msg.view : null);
                 }
                 break;
             }
@@ -243,6 +425,9 @@ const HtmlReview = (() => {
         pinNumbers,
         sendPins,
         focusComment,
+        onDrawMode,
+        drawingView,
+        showDrawing,
         isActive
     };
 })();

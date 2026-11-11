@@ -8286,7 +8286,7 @@ video,
     line-height: normal;
 }
 
-/* No timeline, transport, quality, compare or drawing for HTML pages */
+/* No timeline, transport, quality or compare for HTML pages (drawing uses the SVG overlay) */
 .app.html-mode .timeline-container,
 .app.html-mode .controls-row-primary,
 .app.html-mode .quality-control,
@@ -8297,10 +8297,7 @@ video,
 .app.html-mode #volumeControl,
 .app.html-mode .compare-control,
 .app.html-mode .comment-frame-badge,
-.app.html-mode #drawToggleBtn,
-.app.html-mode #clearDrawingBtn,
-.app.html-mode .canvas-overlay,
-.app.html-mode .svg-overlay {
+.app.html-mode .canvas-overlay {
     display: none !important;
 }
 

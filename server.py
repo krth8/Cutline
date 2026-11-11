@@ -1698,7 +1698,7 @@ async def get_all_transcode_status(job_ids: str = Query(...)):
 # ============ HTML Review Pages ============
 
 HTML_TOKEN_HOURS = 4
-HTML_BRIDGE_TAG = b'<script src="/static/js/html-review-bridge.js?v=2"></script>'
+HTML_BRIDGE_TAG = b'<script src="/static/js/html-review-bridge.js?v=3"></script>'
 
 
 def _find_clip_version(project_id: str, base_name: str, version: int) -> Optional[dict]:

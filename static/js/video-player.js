@@ -127,6 +127,7 @@ function setupVideoEvents() {
 
 // Update SVG and canvas overlay dimensions to match video
 function updateOverlayDimensions() {
+    if (AppState.currentMediaType === 'html') return; // HtmlReview sizes the overlay to the page
     const video = elements.video;
     const svg = elements.svgOverlay;
     const canvas = elements.canvas;
@@ -499,6 +500,7 @@ function setPlaybackSpeed(speed) {
 function redrawCanvas() {
     // Clear saved annotation paths (keep pending strokes)
     elements.svgOverlay.querySelectorAll('.annotation-stroke').forEach(el => el.remove());
+    if (AppState.currentMediaType === 'html') return; // frame annotations don't apply to pages
 
     const frame = getCurrentFrame();
     const frameAnnotations = AppState.annotations[frame] || [];
@@ -672,6 +674,7 @@ function setupVideoZoom() {
 }
 
 function handleZoomWheel(e) {
+    if (AppState.currentMediaType === 'html') return; // pages scroll themselves
     e.preventDefault();
 
     const wrapper = document.getElementById('videoWrapper');
@@ -708,6 +711,7 @@ function handleZoomWheel(e) {
 }
 
 function handlePanStart(e) {
+    if (AppState.currentMediaType === 'html') return;
     // Middle mouse button (button 1) or left button when zoomed
     if (e.button === 1 || (e.button === 0 && zoomState.scale > 1 && !AppState.drawMode)) {
         if (e.button === 1) e.preventDefault();
@@ -752,6 +756,7 @@ let touchState = {
 };
 
 function handleTouchPanStart(e) {
+    if (AppState.currentMediaType === 'html') return;
     // Don't interfere with drawing mode
     if (AppState.drawMode) return;
 
@@ -887,7 +892,8 @@ function applyZoom() {
     const transform = `scale(${zoomState.scale}) translate(${zoomState.panX / zoomState.scale}px, ${zoomState.panY / zoomState.scale}px)`;
     if (video) video.style.transform = transform;
     if (canvas) canvas.style.transform = transform;
-    if (svgOverlay) svgOverlay.style.transform = transform;
+    // HTML pages aren't zoomable: keep the drawing overlay aligned with the page
+    if (svgOverlay) svgOverlay.style.transform = AppState.currentMediaType === 'html' ? '' : transform;
     if (stillImage) stillImage.style.transform = transform;
     // Apply same transform to compare elements for wipe mode sync
     if (compareVideo) compareVideo.style.transform = transform;
@@ -939,7 +945,8 @@ function applyZoomFromSync(scale, panX, panY) {
     const transform = `scale(${scale}) translate(${panX / scale}px, ${panY / scale}px)`;
     if (video) video.style.transform = transform;
     if (canvas) canvas.style.transform = transform;
-    if (svgOverlay) svgOverlay.style.transform = transform;
+    // HTML pages aren't zoomable: keep the drawing overlay aligned with the page
+    if (svgOverlay) svgOverlay.style.transform = AppState.currentMediaType === 'html' ? '' : transform;
     if (stillImage) stillImage.style.transform = transform;
     // Apply same transform to compare elements for wipe mode sync
     if (compareVideo) compareVideo.style.transform = transform;

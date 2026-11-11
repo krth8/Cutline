@@ -228,7 +228,7 @@ function updateMediaTypeUI(mediaType) {
     const input = document.getElementById('commentInput');
     if (input) {
         input.placeholder = mediaType === 'html'
-            ? 'Add a comment… (press E to pin it to an element)'
+            ? 'Add a comment… (E: pin to an element, D: draw)'
             : 'Add a comment at current frame...';
     }
 }
