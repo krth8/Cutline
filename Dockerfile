@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
 
 # ffmpeg/ffprobe for transcoding and thumbnails
 RUN apt-get update \
@@ -14,12 +14,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     THUMBNAIL_DIR=/data/thumbnails \
     COVERS_DIR=/data/covers \
     PROFILES_DIR=/data/profiles \
-    CHAT_UPLOADS_DIR=/data/chat_uploads
+    CHAT_UPLOADS_DIR=/data/chat_uploads \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Headless Chromium for HTML clip previews (set HTML_PREVIEWS=0 to turn them off)
+RUN playwright install --with-deps --only-shell chromium \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY . .
 

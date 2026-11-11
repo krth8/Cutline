@@ -54,6 +54,8 @@ from database import (
 
 # Cache manager for write-back persistence
 from cache import cache_manager
+import html_preview
+from html_preview import render_html_preview
 
 # Shared modules
 from api.auth import (
@@ -138,6 +140,28 @@ async def startup_event():
     print(f"Upload cleanup worker started (interval: {UPLOAD_CLEANUP_INTERVAL_HOURS}h, max age: {UPLOAD_FILE_MAX_AGE_HOURS}h)")
     cache_manager.start()
     print("Cache manager started (write-back persistence enabled)")
+    asyncio.create_task(backfill_html_previews())
+
+
+async def backfill_html_previews():
+    """Give HTML clips uploaded before previews existed a thumbnail."""
+    await asyncio.sleep(5)
+    for project_id, project in list(projects.items()):
+        for base_name, clip in list(project.get('clips', {}).items()):
+            for version in clip.get('versions', []):
+                if version.get('mediaType') != 'html' or version.get('thumbnail'):
+                    continue
+                html_path = os.path.join(TRANSCODED_DIR, version.get('filename', ''))
+                if not os.path.isfile(html_path):
+                    continue
+                thumbnail = f"{Path(version['filename']).stem}.jpg"
+                if not await render_html_preview(html_path, os.path.join(THUMBNAILS_DIR, thumbnail)):
+                    if html_preview.ENABLED and not html_preview._unavailable:
+                        continue
+                    return
+                version['thumbnail'] = thumbnail
+                cache_manager.mark_clip_dirty(project_id, base_name)
+                print(f"HTML preview made for {base_name} v{version.get('version')}")
 
 
 @app.on_event("shutdown")
@@ -758,12 +782,19 @@ async def process_html_upload(job_id: str, original_path: str, project_id: str, 
         stored_filename = f"{project_id[:8]}_{original_stem}_{job_id}.html"
         shutil.move(original_path, os.path.join(TRANSCODED_DIR, stored_filename))
 
-        transcode_jobs[job_id]['progress'] = 80
+        transcode_jobs[job_id]['status'] = 'generating_thumbnail'
+        transcode_jobs[job_id]['progress'] = 50
+        thumbnail = f"{job_id}.jpg"
+        if not await render_html_preview(os.path.join(TRANSCODED_DIR, stored_filename),
+                                         os.path.join(THUMBNAILS_DIR, thumbnail)):
+            thumbnail = None
+
+        transcode_jobs[job_id]['progress'] = 90
 
         await add_clip_to_project(
             project_id,
             logical_filename,
-            thumbnail=None,
+            thumbnail=thumbnail,
             media_type='html',
             stored_filename=stored_filename,
         )
@@ -772,6 +803,7 @@ async def process_html_upload(job_id: str, original_path: str, project_id: str, 
         transcode_jobs[job_id]['progress'] = 100
         transcode_jobs[job_id]['final_filename'] = stored_filename
         transcode_jobs[job_id]['media_type'] = 'html'
+        transcode_jobs[job_id]['thumbnail'] = thumbnail
 
     except Exception as e:
         print(f"HTML processing error: {e}")
