@@ -22,6 +22,7 @@
 - [ ] Version history
 
 ## Tech debt
+- [ ] HTML previews: move Chromium out of the Cutline image into a separate Playwright container (`mcr.microsoft.com/playwright`, `playwright run-server`) that `html_preview.py` connects to; then drop the bookworm pin in the Dockerfile
 - [ ] `core/TaskQuery.js` is unused (reads wrong fields); remove or merge into `taskFilters.js`
 - [ ] App layout is not usable on phones (sidebar takes most of the width)
 - [ ] Media (`/video`, `/thumbnail`) is served without auth; use signed URLs
