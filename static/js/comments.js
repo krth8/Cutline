@@ -299,6 +299,23 @@ async function toggleCommentResolved(commentId) {
 }
 
 // ============ Comments Rendering ============
+/**
+ * Comments that belong to the clip version chosen in the version dropdown.
+ * Replies follow their parent, so a thread is never split across versions.
+ * Comments saved without a clip or version (old data) stay visible.
+ */
+function commentsForCurrentClip() {
+    const clip = AppState.currentClip;
+    const all = AppState.comments || [];
+    if (!clip) return [];
+    const byId = new Map(all.map(c => [c.id, c]));
+    return all.filter(c => {
+        const root = (c.parentId && byId.get(c.parentId)) || c;
+        if (root.clipBaseName && root.clipBaseName !== clip.baseName) return false;
+        return root.clipVersion == null || Number(root.clipVersion) === Number(clip.version);
+    });
+}
+
 function renderComments() {
     const container = document.getElementById('commentsList');
     if (!container) return;
@@ -315,15 +332,11 @@ function renderComments() {
         return;
     }
 
-    // Filter comments for current clip only
-    const currentBaseName = AppState.currentClip?.baseName;
-    const filteredComments = AppState.comments.filter(c => {
-        // Show comments that match current clip, or legacy comments without clipBaseName
-        return c.clipBaseName === currentBaseName || !c.clipBaseName;
-    });
+    // Only the comments on the selected clip version
+    const filteredComments = commentsForCurrentClip();
 
     if (filteredComments.length === 0) {
-        container.innerHTML = '<div class="comments-empty">No comments for this clip</div>';
+        container.innerHTML = '<div class="comments-empty">No comments on this version</div>';
         renderTimelineMarkers();
         updateCommentBulkActionBar([]);
         return;
@@ -489,18 +502,12 @@ function toggleCommentSelection(commentId, selected) {
     }
 
     // Get current filtered comments for bulk action bar
-    const currentBaseName = AppState.currentClip?.baseName;
-    const filteredComments = AppState.comments.filter(c =>
-        c.clipBaseName === currentBaseName || !c.clipBaseName
-    );
+    const filteredComments = commentsForCurrentClip();
     updateCommentBulkActionBar(filteredComments);
 }
 
 function selectAllComments() {
-    const currentBaseName = AppState.currentClip?.baseName;
-    const filteredComments = AppState.comments.filter(c =>
-        c.clipBaseName === currentBaseName || !c.clipBaseName
-    );
+    const filteredComments = commentsForCurrentClip();
 
     // Only select comments user can delete
     filteredComments.forEach(c => {

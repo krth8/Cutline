@@ -283,8 +283,7 @@ const HtmlReview = (() => {
     }
 
     function currentComments() {
-        const baseName = AppState.currentClip?.baseName;
-        return (AppState.comments || []).filter(c => c.clipBaseName === baseName);
+        return commentsForCurrentClip();
     }
 
     function sendPins() {

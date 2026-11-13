@@ -280,9 +280,7 @@ function renderTimelineMarkers() {
 
     // Comment markers - filter by current clip (include legacy comments without clipBaseName)
     // Skip comments that have drawings - they'll show as annotation markers instead
-    const currentBaseName = AppState.currentClip?.baseName;
-    AppState.comments
-        .filter(c => !currentBaseName || c.clipBaseName === currentBaseName || !c.clipBaseName)
+    (AppState.currentClip ? commentsForCurrentClip() : AppState.comments)
         .filter(c => !(c.drawing && c.drawing.strokes && c.drawing.strokes.length > 0)) // Skip comments with drawings
         .forEach(c => {
             const marker = document.createElement('div');
