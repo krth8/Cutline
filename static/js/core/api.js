@@ -8,16 +8,19 @@
  */
 function getAuthToken() {
     if (typeof AppState !== 'undefined' && AppState.authToken) return AppState.authToken;
-    try {
-        const stored = localStorage.getItem('authData');
-        if (stored) {
-            const token = JSON.parse(stored).token;
-            if (token) return token;
-        }
-    } catch (e) {}
     if (typeof AppState !== 'undefined' && AppState.guestToken) return AppState.guestToken;
     try {
         return sessionStorage.getItem('guestToken');
+    } catch (e) {
+        return null;
+    }
+}
+
+/** The `sub` claim of a token (who it belongs to), or null. */
+function tokenSubject(token) {
+    try {
+        const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(atob(payload)).sub || null;
     } catch (e) {
         return null;
     }
@@ -27,7 +30,12 @@ function getAuthToken() {
  * Store the project-scoped token handed out when a share link is opened.
  */
 function setGuestToken(token) {
-    if (typeof AppState !== 'undefined') AppState.guestToken = token || null;
+    if (typeof AppState !== 'undefined') {
+        AppState.guestToken = token || null;
+        // Guests are known to the server by their token's id; use the same one here
+        const sub = tokenSubject(token);
+        if (sub && !AppState.authToken) AppState.userId = sub;
+    }
     try {
         if (token) sessionStorage.setItem('guestToken', token);
         else sessionStorage.removeItem('guestToken');
@@ -50,25 +58,51 @@ function withAuthToken(url) {
 const CLIENT_ID = 'c' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
 window.CLIENT_ID = CLIENT_ID;
 
-// Attach the auth token (and tab id) to every same-origin API request.
+// Every same-origin API request goes through here: it gets the auth token, the
+// tab id and how long the user has been idle, and a 401 ends the login.
 (function () {
     const originalFetch = window.fetch.bind(window);
+    // Endpoints where a 401 does not mean "your login is over"
+    const NOT_A_SESSION_CHECK = ['/api/auth/login', '/api/auth/logout'];
+    let guestNoticeShown = false;
+
     window.fetch = function (input, init = {}) {
+        let sentToken = null;
+        let path = null;
         try {
             const url = typeof input === 'string' ? input : input.url;
             const sameOrigin = url.startsWith('/') || url.startsWith(window.location.origin);
             if (sameOrigin) {
+                path = new URL(url, window.location.origin).pathname;
                 const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined));
-                const current = headers.get('Authorization');
                 const token = getAuthToken();
-                if (token && (!current || current === 'Bearer null' || current === 'Bearer undefined')) {
-                    headers.set('Authorization', `Bearer ${token}`);
-                }
+                if (token) headers.set('Authorization', `Bearer ${token}`);
+                else headers.delete('Authorization');
+                sentToken = token;
                 headers.set('X-Client-Id', CLIENT_ID);
+                if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+                    const idle = Auth.idleSeconds();
+                    headers.set('X-Idle-Seconds', String(idle));
+                    Auth.noteReported(idle);
+                }
                 init = { ...init, headers };
             }
         } catch (e) {}
-        return originalFetch(input, init);
+
+        const request = originalFetch(input, init);
+        if (!sentToken || !path || NOT_A_SESSION_CHECK.includes(path)) return request;
+
+        return request.then((response) => {
+            if (response.status === 401 && sentToken === getAuthToken()) {
+                if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+                    Auth.end('expired');
+                } else if (!guestNoticeShown && typeof Toast !== 'undefined') {
+                    guestNoticeShown = true;
+                    Toast.error('Your access to this project has ended. Open the share link again to continue.');
+                }
+            }
+            return response;
+        });
     };
 })();
 
@@ -106,12 +140,8 @@ const API = {
         try {
             const response = await fetch(url, config);
 
-            // Handle 401 Unauthorized
+            // A 401 ends the login (handled by the fetch wrapper above)
             if (response.status === 401) {
-                localStorage.removeItem('token');
-                AppState.set('currentUser', null);
-                AppState.set('isAdmin', false);
-                // Optionally redirect to login
                 return { error: 'Unauthorized', status: 401 };
             }
 

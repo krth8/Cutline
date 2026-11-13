@@ -150,15 +150,6 @@ const UserManager = (function() {
             return currentProjectAccess;
         },
 
-        /**
-         * Clear current session
-         */
-        logout() {
-            localStorage.removeItem('authData');
-            currentProjectAccess = null;
-            AppState.reset();
-        },
-
         // ============ Preferences ============
         /**
          * Get user preference from localStorage

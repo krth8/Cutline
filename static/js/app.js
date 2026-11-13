@@ -26,63 +26,15 @@ function getAuthHeaders() {
     return headers;
 }
 
+// Kept for the many callers: fetch() itself adds the token and handles a
+// login that has ended (see core/api.js and core/auth.js).
 async function authFetch(url, options = {}) {
     const headers = { ...getAuthHeaders(), ...options.headers };
-    const response = await fetch(url, { ...options, headers });
-
-    // Handle 401 - token expired or invalid
-    if (response.status === 401) {
-        // Try to refresh token
-        const refreshed = await refreshAuthToken();
-        if (refreshed) {
-            // Retry with new token
-            headers['Authorization'] = `Bearer ${AppState.authToken}`;
-            return fetch(url, { ...options, headers });
-        } else {
-            // Logout user - clear state directly to avoid circular dependency
-            AppState.isAdmin = false;
-            AppState.adminUser = null;
-            AppState.authToken = null;
-            AppState.permissions = [];
-            localStorage.removeItem('authData');
-        }
-    }
-
-    return response;
-}
-
-async function refreshAuthToken() {
-    if (!AppState.authToken) return false;
-
-    try {
-        const res = await fetch('/api/auth/refresh', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${AppState.authToken}` }
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            AppState.authToken = data.token;
-            saveAuthToStorage();
-            return true;
-        }
-    } catch (e) {
-        console.error('Token refresh failed:', e);
-    }
-
-    return false;
+    return fetch(url, { ...options, headers });
 }
 
 function saveAuthToStorage() {
-    if (AppState.authToken && AppState.adminUser) {
-        localStorage.setItem('authData', JSON.stringify({
-            token: AppState.authToken,
-            user: AppState.adminUser,
-            permissions: AppState.permissions
-        }));
-    } else {
-        localStorage.removeItem('authData');
-    }
+    Auth.save();
 }
 
 // Permission helper - checks if current user has a specific permission
@@ -220,9 +172,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (setupRequired) {
         // Clear any stale auth data from previous installs
         localStorage.removeItem('authData');
-        AppState.authToken = null;
-        AppState.adminUser = null;
-        AppState.isAdmin = false;
 
         document.getElementById('setupOverlay').classList.remove('hidden');
         document.getElementById('loginOverlay').classList.add('hidden');
@@ -230,11 +179,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;  // Don't proceed until setup is complete
     }
 
-    // Check stored auth session
-    await checkStoredAdminSession();
+    // Pick up a stored login (checked with the server in the background)
+    Auth.restore();
 
     // If not authenticated, show login overlay
     if (!AppState.authToken) {
+        // A share-link guest who reloaded the page goes back through their link
+        const guestLink = sessionStorage.getItem('shareLinkId');
+        if (guestLink) {
+            window.location.replace(`/s/${encodeURIComponent(guestLink)}`);
+            return;
+        }
+        const message = Auth.logoutMessage();
+        if (message) {
+            const notice = document.getElementById('loginError');
+            notice.textContent = message;
+            notice.classList.remove('hidden');
+        }
         document.getElementById('loginOverlay').classList.remove('hidden');
         document.getElementById('uploadOverlay').classList.add('hidden');
         return;  // Don't proceed until authenticated
@@ -2473,8 +2434,11 @@ window.initColorPalette = initColorPalette;
 // ============ Share Link System ============
 
 async function handleShareLinkAccess(linkId) {
-    // Store link ID
+    // Store link ID (sessionStorage: a reload sends the guest back through the link)
     AppState.currentShareLinkId = linkId;
+    try {
+        sessionStorage.setItem('shareLinkId', linkId);
+    } catch (e) {}
 
     // Fetch link info
     try {
@@ -3215,171 +3179,6 @@ function initTheme() {
     if (textPicker) textPicker.value = customColors.text || '#f0ebd8';
 }
 
-async function adminLogin() {
-    const username = document.getElementById('adminUsername').value.trim();
-    const password = document.getElementById('adminPassword').value;
-
-    if (!username || !password) {
-        alert('Please enter username and password');
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-        const data = await res.json();
-
-        if (data.valid) {
-            AppState.isAdmin = data.user.isAdmin;
-            AppState.adminUser = data.user;
-            AppState.authToken = data.token;
-            AppState.userName = data.user.username || 'Anonymous';
-
-            // Fetch permissions
-            try {
-                const meRes = await authFetch('/api/auth/me');
-                const meData = await meRes.json();
-                AppState.permissions = meData.permissions || [];
-            } catch (e) {
-                console.error('Failed to fetch permissions:', e);
-            }
-
-            // Store in localStorage for persistence
-            saveAuthToStorage();
-
-            // Update UI (if function exists)
-            if (typeof updateSettingsAuthUI === 'function') {
-                updateSettingsAuthUI();
-            }
-
-            // Render own avatar in header
-            if (typeof renderCurrentUserAvatar === 'function') {
-                renderCurrentUserAvatar();
-            }
-
-            // Clear form
-            document.getElementById('adminUsername').value = '';
-            document.getElementById('adminPassword').value = '';
-
-            // Reload projects to show all
-            loadProjects();
-        } else {
-            alert(data.error || 'Invalid credentials');
-        }
-    } catch (e) {
-        console.error('Login failed:', e);
-        alert('Login failed');
-    }
-}
-
-function adminLogout() {
-    console.log('adminLogout called');
-
-    // Clear auth state
-    AppState.isAdmin = false;
-    AppState.adminUser = null;
-    AppState.authToken = null;
-    AppState.permissions = [];
-    AppState.userName = null;
-
-    // Clear project/session state
-    AppState.projectId = null;
-    AppState.sessionId = null;
-    AppState.clips = {};
-    AppState.currentClip = null;
-    if (typeof HtmlReview !== 'undefined') HtmlReview.unload();
-
-    // Clear storage
-    localStorage.removeItem('authData');
-    localStorage.removeItem('adminUser');
-
-    // Close WebSocket if open
-    if (AppState.ws) {
-        AppState.ws.close();
-        AppState.ws = null;
-    }
-
-    // Clear avatars
-    const usersOnline = document.getElementById('usersOnline');
-    if (usersOnline) usersOnline.innerHTML = '';
-
-    // Hide settings modal
-    hideSettingsPanel();
-
-    // Show login overlay
-    document.getElementById('loginOverlay').classList.remove('hidden');
-
-    // Clear URL params
-    history.replaceState(null, '', '/');
-
-    console.log('Logout complete');
-}
-
-async function checkStoredAdminSession() {
-    // Clear old storage format first
-    const oldStored = localStorage.getItem('adminUser');
-    if (oldStored) {
-        localStorage.removeItem('adminUser');
-    }
-
-    // Check new storage format
-    const stored = localStorage.getItem('authData');
-    if (stored) {
-        try {
-            const authData = JSON.parse(stored);
-            AppState.authToken = authData.token;
-            AppState.adminUser = authData.user;
-            AppState.isAdmin = authData.user?.isAdmin || false;
-            AppState.permissions = authData.permissions || [];
-            AppState.userName = authData.user?.username || 'Anonymous';
-
-            // Trust cached token - validate in background for faster startup!
-            validateTokenInBackground();
-        } catch (e) {
-            console.error('Session restore failed:', e);
-            clearAuthState();
-        }
-    }
-}
-
-// Background token validation (doesn't block app startup)
-function validateTokenInBackground() {
-    fetch('/api/auth/me', {
-        headers: { 'Authorization': `Bearer ${AppState.authToken}` }
-    }).then(async res => {
-        if (!res.ok) {
-            console.log('Token invalid, logging out');
-            clearAuthState();
-            window.location.reload();
-            return;
-        }
-        const data = await res.json();
-        AppState.permissions = data.permissions || [];
-        if (data.user && AppState.adminUser) {
-            AppState.adminUser.profileImage = data.user.profileImage;
-        }
-        saveAuthToStorage();
-        if (typeof updateUserDisplay === 'function') {
-            updateUserDisplay();
-        }
-    }).catch(e => {
-        console.error('Background token validation failed:', e);
-    });
-}
-
-function clearAuthState() {
-    AppState.isAdmin = false;
-    AppState.adminUser = null;
-    AppState.authToken = null;
-    AppState.permissions = [];
-    localStorage.removeItem('authData');
-}
-
-// Note: checkStoredAdminSession is now called in DOMContentLoaded
-
 async function loadSettingsShareLinks() {
     const container = document.getElementById('settingsShareLinks');
 
@@ -3869,22 +3668,8 @@ async function mainLogin() {
         const data = await res.json();
 
         if (data.valid) {
-            AppState.isAdmin = data.user.isAdmin;
-            AppState.adminUser = data.user;
-            AppState.authToken = data.token;
-            AppState.userName = data.user.username;
-
-            // Fetch permissions
-            try {
-                const meRes = await authFetch('/api/auth/me');
-                const meData = await meRes.json();
-                AppState.permissions = meData.permissions || [];
-            } catch (e) {
-                console.error('Failed to fetch permissions:', e);
-            }
-
-            // Store in localStorage
-            saveAuthToStorage();
+            Auth.start(data);
+            await Auth.refresh(); // permissions
 
             // Hide both overlays - admin goes straight to app
             document.getElementById('loginOverlay').classList.add('hidden');
@@ -3922,8 +3707,6 @@ async function mainLogin() {
 window.showSettingsPanel = showSettingsPanel;
 window.hideSettingsPanel = hideSettingsPanel;
 window.switchSettingsTab = switchSettingsTab;
-window.adminLogin = adminLogin;
-window.adminLogout = adminLogout;
 window.mainLogin = mainLogin;
 window.showNamePromptModal = showNamePromptModal;
 window.hideNamePromptModal = hideNamePromptModal;
@@ -4305,13 +4088,7 @@ async function submitRegistration() {
         const data = await res.json();
 
         if (res.ok && data.success) {
-            // Store auth data
-            AppState.isAdmin = data.user.isAdmin;
-            AppState.adminUser = data.user;
-            AppState.authToken = data.token;
-            AppState.userName = data.user.username;
-            AppState.permissions = [];
-            saveAuthToStorage();
+            Auth.start(data);
 
             // Hide modal and redirect
             hideRegisterModal();
@@ -4400,13 +4177,7 @@ async function completeSetup() {
         const data = await res.json();
 
         if (res.ok && data.success) {
-            // Store auth data
-            AppState.isAdmin = true;
-            AppState.adminUser = data.user;
-            AppState.authToken = data.token;
-            AppState.userName = data.user.username;
-            AppState.permissions = [];
-            saveAuthToStorage();
+            Auth.start(data);
 
             // Reload the page to start fresh with the new account
             window.location.reload();

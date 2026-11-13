@@ -32,14 +32,14 @@ from database import (
     db_use_invite_link,
     db_validate_user,
 )
+from api import sessions as auth_sessions
 from api.auth import (
-    JWT_EXPIRATION_HOURS,
     ROLES,
     check_rate_limit,
     clean_email,
     clear_login_attempts,
-    create_jwt_token,
     get_role_permissions,
+    issue_login_token,
     record_login_attempt,
     require_admin,
     require_auth,
@@ -47,12 +47,23 @@ from api.auth import (
 )
 from api.config import PROFILES_DIR, UPLOAD_DIR
 from api.media import process_image, safe_upload_name
-from api.state import close_live_sockets, projects, tasks
+from api.state import close_live_sockets, close_session_sockets, projects, tasks
 
 MIN_PASSWORD_LENGTH = 12
 
 
 router = APIRouter()
+
+
+def login_response(user: dict, **extra) -> dict:
+    """Start a login session and build the body every login-like endpoint returns."""
+    return {
+        **extra,
+        "user": user,
+        "token": issue_login_token(user),
+        "idleTimeout": auth_sessions.IDLE_TIMEOUT,
+        "idleWarning": auth_sessions.IDLE_WARNING,
+    }
 
 
 # ============ Setup API ============
@@ -86,19 +97,7 @@ async def setup_complete(data: dict):
     # Create the first admin user
     new_user = db_create_user(username, password, is_admin=True)
 
-    # Create JWT token for auto-login
-    token = create_jwt_token(
-        user_id=new_user["id"],
-        username=new_user["username"],
-        is_admin=True
-    )
-
-    return {
-        "success": True,
-        "user": new_user,
-        "token": token,
-        "expiresIn": JWT_EXPIRATION_HOURS * 3600
-    }
+    return login_response(new_user, success=True)
 
 
 # ============ Auth API ============
@@ -128,40 +127,25 @@ async def auth_login(data: dict, request: Request):
         # Clear rate limit on successful login
         clear_login_attempts(rate_limit_key)
 
-        # Create JWT token with role
-        token = create_jwt_token(
-            user_id=user["id"],
-            username=user["username"],
-            is_admin=user["isAdmin"],
-            role=user.get("role", "admin" if user["isAdmin"] else "editor")
-        )
-
-        return {
-            "valid": True,
-            "user": user,
-            "token": token,
-            "expiresIn": JWT_EXPIRATION_HOURS * 3600  # seconds
-        }
+        return login_response(user, valid=True)
     else:
         # Record failed attempt
         record_login_attempt(rate_limit_key)
         return {"valid": False, "error": "Invalid credentials"}
 
 
-@router.post("/api/auth/refresh")
-async def auth_refresh(user: dict = Depends(require_auth)):
-    """Refresh JWT token for authenticated user."""
-    token = create_jwt_token(
-        user_id=user["id"],
-        username=user["username"],
-        is_admin=user["is_admin"],
-        role=user.get("role", "admin" if user["is_admin"] else "editor")
-    )
+@router.post("/api/auth/logout")
+async def auth_logout(user: dict = Depends(require_auth)):
+    """End this login session: the token stops working everywhere it is used."""
+    auth_sessions.end(user["sid"])
+    await close_session_sockets([user["sid"]])
+    return {"success": True}
 
-    return {
-        "token": token,
-        "expiresIn": JWT_EXPIRATION_HOURS * 3600
-    }
+
+@router.post("/api/auth/ping")
+async def auth_ping(user: dict = Depends(require_auth)):
+    """Keep-alive while the user is active without making other requests (e.g. watching a clip)."""
+    return {"idleRemaining": auth_sessions.idle_remaining(user["sid"])}
 
 
 @router.get("/api/auth/me")
@@ -172,8 +156,11 @@ async def auth_me(user: dict = Depends(require_auth)):
     if full_user:
         user["profileImage"] = full_user.get("profileImage")
     return {
-        "user": user,
-        "permissions": get_role_permissions(user["role"])
+        "user": {k: v for k, v in user.items() if k != "sid"},
+        "permissions": get_role_permissions(user["role"]),
+        "idleTimeout": auth_sessions.IDLE_TIMEOUT,
+        "idleWarning": auth_sessions.IDLE_WARNING,
+        "idleRemaining": auth_sessions.idle_remaining(user["sid"]),
     }
 
 
@@ -218,7 +205,8 @@ async def admin_delete_user(user_id: str, user: dict = Depends(require_admin)):
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Their token stops working because the account is gone; also end live review sessions
+    # Their tokens stop working because the account is gone; also end their live connections
+    auth_sessions.end_for_user(user_id)
     await close_live_sockets(user_id)
 
     return {"success": True}
@@ -273,6 +261,9 @@ async def admin_update_user(user_id: str, data: dict, user: dict = Depends(requi
         success = db_update_user_password(user_id, data["password"])
         if not success:
             raise HTTPException(status_code=404, detail="User not found")
+        # A new password logs the user out everywhere (an admin changing their own keeps this login)
+        ended = auth_sessions.end_for_user(user_id, keep=user["sid"] if user_id == user["id"] else None)
+        await close_session_sockets(ended)
 
     return {"success": True}
 
@@ -470,20 +461,7 @@ async def register_with_invite(invite_id: str, data: dict):
     # Mark invite as used
     db_use_invite_link(invite_id)
 
-    # Create JWT token for auto-login
-    token = create_jwt_token(
-        user_id=new_user["id"],
-        username=new_user["username"],
-        is_admin=new_user["isAdmin"],
-        role=new_user.get("role", role)
-    )
-
-    return {
-        "success": True,
-        "user": new_user,
-        "token": token,
-        "expiresIn": JWT_EXPIRATION_HOURS * 3600
-    }
+    return login_response(new_user, success=True)
 
 
 # ============ User Profile API ============

@@ -500,10 +500,7 @@ function goHome() {
 // ============ Logout ============
 
 function logout() {
-    // The login is stored under 'authData'; adminLogout clears it and the in-memory state.
-    if (typeof adminLogout === 'function') adminLogout();
-    else localStorage.removeItem('authData');
-    window.location.reload();
+    Auth.logout();
 }
 
 // ============ Initialize ============

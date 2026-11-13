@@ -758,6 +758,18 @@ def init_schema(conn):
         )
     """)
 
+    # Login sessions: one row per login, ended by logout, idle timeout or max age.
+    # Times are unix seconds.
+    execute(conn, """
+        CREATE TABLE IF NOT EXISTS auth_sessions (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            created_at BIGINT NOT NULL,
+            last_activity BIGINT NOT NULL,
+            expires_at BIGINT NOT NULL
+        )
+    """)
+
     # Migrate existing assignee_id to task_assignees table
     if DB_TYPE == DatabaseType.POSTGRESQL:
         execute_optional(conn, """

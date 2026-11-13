@@ -8,7 +8,7 @@ import re
 import secrets
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import timedelta
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from typing import Dict, List, Optional
@@ -19,6 +19,7 @@ from database import (
     db_list_revoked_tokens,
     db_revoke_tokens,
 )
+from api import sessions as auth_sessions
 from api.state import sessions
 
 
@@ -28,6 +29,7 @@ if not JWT_SECRET:
     JWT_SECRET = secrets.token_hex(32)
     print("WARNING: JWT_SECRET is not set - all users will be logged out on every restart. Set JWT_SECRET in production.")
 JWT_ALGORITHM = "HS256"
+# Share-link guest tokens. Login tokens live as long as their session (api/sessions.py).
 JWT_EXPIRATION_HOURS = 24
 
 # Security scheme
@@ -43,14 +45,14 @@ def create_jwt_token(user_id: str, username: str, is_admin: bool, role: str = No
     if role is None:
         role = 'admin' if is_admin else 'editor'
 
-    expire = datetime.utcnow() + expires_delta
+    now = time.time()
     payload = {
         "sub": user_id,
         "username": username,
         "is_admin": is_admin,
         "role": role,
-        "exp": expire.timestamp(),
-        "iat": datetime.utcnow().timestamp()
+        "exp": now + expires_delta.total_seconds(),
+        "iat": now
     }
     if extra_claims:
         payload.update(extra_claims)
@@ -63,6 +65,19 @@ def create_jwt_token(user_id: str, username: str, is_admin: bool, role: str = No
     signature = _create_signature(f"{header_b64}.{payload_b64}")
 
     return f"{header_b64}.{payload_b64}.{signature}"
+
+
+def issue_login_token(user: dict) -> str:
+    """Start a login session for a user (as returned by the database) and return its token."""
+    is_admin = bool(user.get("isAdmin"))
+    return create_jwt_token(
+        user_id=user["id"],
+        username=user["username"],
+        is_admin=is_admin,
+        role=user.get("role") or ("admin" if is_admin else "editor"),
+        expires_delta=timedelta(seconds=auth_sessions.MAX_AGE),
+        extra_claims={"sid": auth_sessions.create(user["id"])},
+    )
 
 
 def _base64url_encode(data: str) -> str:
@@ -106,7 +121,7 @@ def verify_jwt_token(token: str) -> Optional[dict]:
         payload = json.loads(_base64url_decode(payload_b64))
 
         # Check expiration
-        if payload.get("exp", 0) < datetime.utcnow().timestamp():
+        if payload.get("exp", 0) < time.time():
             return None
 
         return payload
@@ -224,11 +239,13 @@ def revoke_token_subs(subs: List[str]) -> None:
 
 # ============ Authentication Dependencies ============
 
-def principal_from_token(token: Optional[str]) -> Optional[dict]:
+def principal_from_token(token: Optional[str], touch: bool = True) -> Optional[dict]:
     """Resolve a JWT into either a user or a share-link guest.
 
     Users are re-read from the database so deleted users and role changes
-    take effect immediately instead of when the token expires.
+    take effect immediately, and their login session must still be alive
+    (not logged out, not idle for too long). With touch=False the request
+    is not counted as user activity.
     """
     if not token:
         return None
@@ -262,6 +279,9 @@ def principal_from_token(token: Optional[str]) -> Optional[dict]:
     db_user = db_get_user_by_id(payload.get("sub"))
     if not db_user:
         return None
+    sid = payload.get("sid")
+    if not auth_sessions.validate(sid, db_user["id"], touch=touch):
+        return None
     role = db_user.get("role") or ("admin" if db_user.get("isAdmin") else "editor")
     return {
         "id": db_user["id"],
@@ -269,6 +289,7 @@ def principal_from_token(token: Optional[str]) -> Optional[dict]:
         "is_admin": bool(db_user.get("isAdmin")) or role == "admin",
         "role": role,
         "is_guest": False,
+        "sid": sid,
     }
 
 

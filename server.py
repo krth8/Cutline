@@ -88,7 +88,19 @@ from api.config import (
 )
 from api.media import process_image, safe_upload_name
 from api.comment_export import FORMATS as EXPORT_FORMATS, export_comments
-from api.state import clip_locks, live_sockets, projects, sessions, tasks, transcode_jobs, user_states
+from api.state import (
+    WS_ACCESS_REMOVED,
+    clip_locks,
+    close_session_sockets,
+    projects,
+    sessions,
+    tasks,
+    track_socket,
+    transcode_jobs,
+    untrack_socket,
+    user_states,
+)
+from api import sessions as auth_sessions
 from api.routes import router as api_router
 from api.assets import AssetMiddleware, index_response
 from api.events import ClientIdMiddleware
@@ -115,6 +127,8 @@ app.add_middleware(
 app.add_middleware(AssetMiddleware)
 # Remembers which browser tab made a request (so live events aren't echoed back)
 app.add_middleware(ClientIdMiddleware)
+# How long ago the user last did something (idle logout)
+app.add_middleware(auth_sessions.IdleHeaderMiddleware)
 
 
 def load_data_from_db():
@@ -143,6 +157,17 @@ async def startup_event():
     cache_manager.start()
     print("Cache manager started (write-back persistence enabled)")
     asyncio.create_task(backfill_html_previews())
+    asyncio.create_task(end_idle_logins())
+
+
+async def end_idle_logins():
+    """Log out sessions that sat idle too long, closing their open connections."""
+    while True:
+        await asyncio.sleep(15)
+        try:
+            await close_session_sockets(auth_sessions.end_expired())
+        except Exception as e:
+            print(f"Idle logout check failed: {e}")
 
 
 async def backfill_html_previews():
@@ -2074,7 +2099,7 @@ async def websocket_endpoint(
 ):
     principal = principal_from_token(token)
     if not can_view_project(principal, resolve_project_id(session_id)):
-        await websocket.close(code=4403)
+        await websocket.close(code=WS_ACCESS_REMOVED)
         return
 
     await manager.connect(websocket, session_id, user_id, name)
@@ -2083,8 +2108,7 @@ async def websocket_endpoint(
     project_id = session_id
     if session_id in sessions:
         project_id = sessions[session_id]["project_id"]
-    live_socket = (websocket, project_id)
-    live_sockets.setdefault(principal["id"], set()).add(live_socket)
+    live_socket = track_socket(principal, websocket, project_id)
 
     # Send current state to new user
     await websocket.send_json({
@@ -2265,7 +2289,7 @@ async def websocket_endpoint(
             "user_id": user_id
         })
     finally:
-        live_sockets.get(principal["id"], set()).discard(live_socket)
+        untrack_socket(principal, live_socket)
 
 
 @app.get("/api/session/{session_id}")
