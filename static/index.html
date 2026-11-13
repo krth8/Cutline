@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EchoPlay</title>
+    <title>Cutline</title>
+    <meta name="application-name" content="Cutline">
+    <meta name="theme-color" content="#181628">
+    <link rel="icon" href="/favicon.ico" sizes="48x48">
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/main.css?v=197">
 </head>
@@ -11,7 +16,7 @@
     <!-- Login Overlay (shown when not authenticated) -->
     <div class="upload-overlay login-overlay" id="loginOverlay">
         <div class="upload-box login-box">
-            <img src="/static/logo.png" alt="Logo" class="login-logo">
+            <img src="/static/logo.png" alt="Cutline" class="login-logo">
             <p>Sign in to continue</p>
 
             <div class="login-form" onclick="event.stopPropagation()">
@@ -32,7 +37,7 @@
             <div class="setup-icon">
                 <svg class="icon icon-2xl"><use href="/static/icons.svg#icon-gear"/></svg>
             </div>
-            <h2>Welcome to EchoPlay</h2>
+            <h2>Welcome to Cutline</h2>
             <p class="setup-subtitle">Create your administrator account to get started</p>
 
             <div class="setup-form" onclick="event.stopPropagation()">
@@ -61,7 +66,7 @@
     <div class="upload-overlay hidden" id="uploadOverlay">
         <div class="upload-box welcome-box">
             <div class="upload-icon"><svg class="icon icon-2xl"><use href="/static/icons.svg#icon-film-strip"/></svg></div>
-            <h2>EchoPlay</h2>
+            <h2>Cutline</h2>
             <p>Collaborative video review</p>
 
             <div class="join-form" onclick="event.stopPropagation()">
@@ -709,7 +714,7 @@
         <!-- Row 1: Global Navigation -->
         <header class="header-global">
             <div class="logo" onclick="goHome()" style="cursor: pointer;" title="Go to Projects">
-                <img src="/static/logo.png" alt="Logo" class="logo-img">
+                <img src="/static/logo.png" alt="Cutline" class="logo-img">
             </div>
 
             <nav class="main-tabs">

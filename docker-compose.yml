@@ -15,6 +15,9 @@ services:
       - cutline-data:/data
     expose:
       - "8099"
+    labels:
+      net.unraid.docker.icon: https://raw.githubusercontent.com/krth8/Cutline/main/static/icon-512.png
+      icon: https://raw.githubusercontent.com/krth8/Cutline/main/static/icon-512.png
 
   caddy:
     image: caddy:2

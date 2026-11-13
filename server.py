@@ -2276,6 +2276,13 @@ async def get_session(session_id: str, principal: Optional[dict] = Depends(get_p
     return _project_payload(project_id)
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Browsers and link previews ask for this path no matter what the page says."""
+    return FileResponse("static/favicon.ico", media_type="image/x-icon",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+
 # Serve icons.svg (caching handled by AssetMiddleware)
 @app.get("/static/icons.svg")
 async def get_icons():
