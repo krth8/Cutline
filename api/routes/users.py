@@ -23,7 +23,9 @@ from database import (
     db_has_users,
     db_list_guests,
     db_list_invite_links,
+    db_list_user_project_access,
     db_list_users,
+    db_update_user_email,
     db_update_user_password,
     db_update_user_profile_image,
     db_update_user_role,
@@ -34,16 +36,20 @@ from api.auth import (
     JWT_EXPIRATION_HOURS,
     ROLES,
     check_rate_limit,
+    clean_email,
     clear_login_attempts,
     create_jwt_token,
     get_role_permissions,
     record_login_attempt,
     require_admin,
     require_auth,
+    revoke_token_subs,
 )
 from api.config import PROFILES_DIR, UPLOAD_DIR
 from api.media import process_image, safe_upload_name
-from api.state import projects, tasks
+from api.state import close_live_sockets, projects, tasks
+
+MIN_PASSWORD_LENGTH = 12
 
 
 router = APIRouter()
@@ -175,8 +181,10 @@ async def auth_me(user: dict = Depends(require_auth)):
 
 @router.get("/api/admin/users")
 async def admin_list_users(user: dict = Depends(require_admin)):
-    """List all users (admin only)."""
+    """List all users with the projects each one can reach (admin only)."""
     users = db_list_users()
+    for u in users:
+        u["access"] = [] if u["role"] == "admin" else db_list_user_project_access(u["id"])
     return {"users": users}
 
 
@@ -210,6 +218,9 @@ async def admin_delete_user(user_id: str, user: dict = Depends(require_admin)):
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Their token stops working because the account is gone; also end live review sessions
+    await close_live_sockets(user_id)
+
     return {"success": True}
 
 
@@ -220,9 +231,23 @@ async def admin_update_user(user_id: str, data: dict, user: dict = Depends(requi
     Body: {
         "role": "admin" | "editor" | "viewer",  // User role
         "isAdmin": true/false,                   // Legacy, synced with role
+        "email": "name@example.com" | "",
         "password": "new_password"
     }
     """
+    if not db_get_user_by_id(user_id):
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Validate everything before changing anything
+    if "role" in data and data["role"] not in ("admin", "editor", "viewer"):
+        raise HTTPException(status_code=400, detail="Role must be admin, editor or viewer")
+    if "password" in data and len(data["password"] or "") < MIN_PASSWORD_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
+    email = clean_email(data["email"]) if "email" in data else None
+
+    if "email" in data:
+        db_update_user_email(user_id, email)
+
     # Handle role update
     if "role" in data:
         new_role = data["role"]
@@ -324,10 +349,16 @@ async def admin_list_guests(user: dict = Depends(require_admin)):
 
 @router.delete("/api/admin/guests/{guest_id}")
 async def admin_delete_guest(guest_id: str, user: dict = Depends(require_admin)):
-    """Delete a guest (admin only)."""
-    success = db_delete_guest(guest_id)
-    if not success:
+    """Kick a guest: drop them from the list and stop the share token they hold (admin only).
+
+    They can come back through the share link for as long as that link is active.
+    """
+    subs = db_delete_guest(guest_id)
+    if subs is None:
         raise HTTPException(status_code=404, detail="Guest not found")
+    revoke_token_subs(subs)
+    for sub in subs:
+        await close_live_sockets(sub)
     return {"success": True}
 
 
@@ -383,6 +414,7 @@ async def register_with_invite(invite_id: str, data: dict):
     """
     username = data.get("username", "").strip()
     password = data.get("password", "")
+    email = clean_email(data.get("email"))
 
     if not username or not password:
         raise HTTPException(status_code=400, detail="Username and password required")
@@ -420,7 +452,8 @@ async def register_with_invite(invite_id: str, data: dict):
         username=username,
         password=password,
         is_admin=invite["isAdmin"],
-        role=role
+        role=role,
+        email=email
     )
 
     # If invite is linked to a project, grant access

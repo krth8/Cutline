@@ -393,10 +393,10 @@ const API = {
 
     // ============ Guest Endpoints ============
 
-    async trackGuest(name, projectId, shareLinkId = null) {
+    async trackGuest(name, projectId, shareLinkId = null, email = null) {
         return this.request('/guests/track', {
             method: 'POST',
-            body: JSON.stringify({ name, projectId, shareLinkId })
+            body: JSON.stringify({ name, projectId, shareLinkId, email })
         });
     },
 

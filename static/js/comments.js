@@ -1358,3 +1358,44 @@ window.bulkDeleteComments = bulkDeleteComments;
 window.frameToTimecode = frameToTimecode;
 window.getFrameDisplay = getFrameDisplay;
 window.toggleTimecodeDisplay = toggleTimecodeDisplay;
+
+// ============ Download comments ============
+
+function showCommentsDownloadMenu(event) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    ContextMenu.show(rect.left, rect.bottom + 4, [
+        { type: 'header', label: 'All comments in this project' },
+        { label: 'Readable list (.md)', icon: 'icon-list', action: () => downloadComments('md') },
+        { label: 'Spreadsheet (.csv)', icon: 'icon-columns', action: () => downloadComments('csv') },
+        { label: 'Full data with drawings (.json)', icon: 'icon-code', action: () => downloadComments('json') },
+    ]);
+}
+
+async function downloadComments(format) {
+    if (!AppState.projectId) {
+        Toast.error('Open a project first');
+        return;
+    }
+    try {
+        const fps = Math.round(AppState.fps || 24);
+        const res = await fetch(`/api/projects/${AppState.projectId}/comments/export?format=${format}&fps=${fps}`, {
+            headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const named = (res.headers.get('Content-Disposition') || '').split("filename*=UTF-8''")[1];
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(await res.blob());
+        link.download = named ? decodeURIComponent(named) : `comments.${format}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    } catch (e) {
+        console.error('Comment download failed:', e);
+        Toast.error('Could not download the comments');
+    }
+}
+
+window.showCommentsDownloadMenu = showCommentsDownloadMenu;
+window.downloadComments = downloadComments;

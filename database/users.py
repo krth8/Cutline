@@ -37,7 +37,7 @@ def _verify_password_legacy(password: str, password_hash: str, password_salt: st
     return hash_obj.hexdigest() == password_hash
 
 
-def db_create_user(username: str, password: str, is_admin: bool = False, role: str = 'editor') -> dict:
+def db_create_user(username: str, password: str, is_admin: bool = False, role: str = 'editor', email: str = None) -> dict:
     """Create a new user."""
     user_id = secrets.token_urlsafe(8)
     created_at = datetime.now().isoformat()
@@ -48,13 +48,14 @@ def db_create_user(username: str, password: str, is_admin: bool = False, role: s
 
     with get_db() as conn:
         execute(conn, """
-            INSERT INTO users (id, username, password_hash, password_salt, is_admin, role, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (user_id, username, password_hash, None, 1 if is_admin else 0, role, created_at))
+            INSERT INTO users (id, username, password_hash, password_salt, is_admin, role, created_at, email)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, username, password_hash, None, 1 if is_admin else 0, role, created_at, email))
 
     return {
         "id": user_id,
         "username": username,
+        "email": email,
         "isAdmin": is_admin,
         "role": role,
         "createdAt": created_at
@@ -76,6 +77,7 @@ def db_get_user(username: str) -> Optional[dict]:
             "isAdmin": bool(row["is_admin"]),
             "role": row.get("role") or ('admin' if row["is_admin"] else 'editor'),
             "profileImage": row["profile_image"],
+            "email": row.get("email"),
             "createdAt": row["created_at"],
             "_passwordHash": row["password_hash"],
             "_passwordSalt": row["password_salt"]
@@ -97,6 +99,7 @@ def db_get_user_by_id(user_id: str) -> Optional[dict]:
             "isAdmin": bool(row["is_admin"]),
             "role": row.get("role") or ('admin' if row["is_admin"] else 'editor'),
             "profileImage": row["profile_image"],
+            "email": row.get("email"),
             "createdAt": row["created_at"]
         }
 
@@ -114,6 +117,7 @@ def db_validate_user(username: str, password: str) -> Optional[dict]:
             "isAdmin": user["isAdmin"],
             "role": user["role"],
             "profileImage": user["profileImage"],
+            "email": user.get("email"),
             "createdAt": user["createdAt"]
         }
 
@@ -130,6 +134,7 @@ def db_validate_user(username: str, password: str) -> Optional[dict]:
             "isAdmin": user["isAdmin"],
             "role": user["role"],
             "profileImage": user["profileImage"],
+            "email": user.get("email"),
             "createdAt": user["createdAt"]
         }
 
@@ -155,11 +160,12 @@ def db_init_admin_user():
 def db_list_users() -> List[dict]:
     """List all users (without password info)."""
     with get_db() as conn:
-        cursor = execute(conn, "SELECT id, username, is_admin, role, profile_image, created_at FROM users ORDER BY created_at DESC")
+        cursor = execute(conn, "SELECT id, username, email, is_admin, role, profile_image, created_at FROM users ORDER BY created_at DESC")
 
         return [{
             "id": row["id"],
             "username": row["username"],
+            "email": row.get("email"),
             "isAdmin": bool(row["is_admin"]),
             "role": row.get("role") or ('admin' if row["is_admin"] else 'editor'),
             "profileImage": row["profile_image"],
@@ -209,6 +215,13 @@ def db_update_user_password(user_id: str, new_password: str) -> bool:
             "UPDATE users SET password_hash = ?, password_salt = NULL WHERE id = ?",
             (password_hash, user_id)
         )
+        return cursor.rowcount > 0
+
+
+def db_update_user_email(user_id: str, email: Optional[str]) -> bool:
+    """Set or clear a user's email address."""
+    with get_db() as conn:
+        cursor = execute(conn, "UPDATE users SET email = ? WHERE id = ?", (email or None, user_id))
         return cursor.rowcount > 0
 
 

@@ -2872,10 +2872,6 @@ window.createShareLink = createShareLink;
 window.copyShareLink = copyShareLink;
 window.copyLinkToClipboard = copyLinkToClipboard;
 window.deleteShareLink = deleteShareLink;
-window.deleteUser = deleteUser;
-window.loadSettingsUsers = loadSettingsUsers;
-window.loadSettingsGuests = loadSettingsGuests;
-window.deleteGuest = deleteGuest;
 
 // ============ Settings Panel ============
 
@@ -2959,167 +2955,7 @@ function loadSettingsTabData(tabName) {
     }
 }
 
-async function loadSettingsUsers() {
-    const container = document.getElementById('settingsUsersList');
-    if (!container) return;
-
-    try {
-        const { data, error } = await API.getUsers();
-
-        if (error) {
-            container.innerHTML = '<div class="users-list-empty">Failed to load users</div>';
-            return;
-        }
-
-        const users = data?.users || [];
-
-        if (users.length === 0) {
-            container.innerHTML = '<div class="users-list-empty">No users</div>';
-            return;
-        }
-
-        container.innerHTML = users.map(user => {
-            const role = user.role || (user.isAdmin ? 'admin' : 'editor');
-            const roleDisplay = role.charAt(0).toUpperCase() + role.slice(1);
-            const roleClass = role === 'admin' ? 'admin' : role === 'editor' ? 'editor' : 'viewer';
-            const avatarColor = role === 'admin' ? '#6366f1' : role === 'editor' ? '#22c55e' : '#4a5568';
-
-            return `
-                <div class="user-item" data-user-id="${user.id}">
-                    <div class="user-item-avatar" style="background: ${avatarColor}">
-                        ${(user.username || 'U').substring(0, 2).toUpperCase()}
-                    </div>
-                    <div class="user-item-info">
-                        <span class="user-item-name">${escapeHtml(user.username)}</span>
-                        <span class="user-item-role ${roleClass}">${roleDisplay}</span>
-                    </div>
-                    <div class="user-item-actions">
-                        ${user.id !== AppState.adminUser?.id ? `
-                            <button class="btn btn-ghost btn-small" onclick="editUserRole('${user.id}', '${role}')" title="Change role">
-                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-settings"/></svg>
-                            </button>
-                            <button class="btn btn-ghost btn-small user-item-delete" onclick="deleteUser('${user.id}')" title="Delete user">
-                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-trash"/></svg>
-                            </button>
-                        ` : '<span class="user-item-you">(you)</span>'}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    } catch (e) {
-        console.error('Failed to load users:', e);
-        container.innerHTML = '<div class="users-list-empty">Failed to load users</div>';
-    }
-}
-
-// Edit user role
-async function editUserRole(userId, currentRole) {
-    const newRole = prompt(`Change role for this user.\nCurrent: ${currentRole}\n\nEnter new role (admin, editor, viewer):`, currentRole);
-    if (!newRole || newRole === currentRole) return;
-
-    const validRoles = ['admin', 'editor', 'viewer'];
-    if (!validRoles.includes(newRole.toLowerCase())) {
-        alert('Invalid role. Choose: admin, editor, or viewer');
-        return;
-    }
-
-    try {
-        const res = await authFetch(`/api/admin/users/${userId}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ role: newRole.toLowerCase() })
-        });
-
-        if (res.ok) {
-            loadSettingsUsers();
-        } else {
-            const error = await res.json();
-            alert(error.detail || 'Failed to update user role');
-        }
-    } catch (e) {
-        console.error('Failed to update user role:', e);
-        alert('Failed to update user role');
-    }
-}
-
-window.editUserRole = editUserRole;
-
-async function deleteUser(userId) {
-    const confirmed = await Confirm.danger('Are you sure you want to delete this user?', 'Delete');
-    if (!confirmed) return;
-
-    try {
-        const { error } = await API.deleteUser(userId);
-        if (error) {
-            Toast.error('Failed to delete user: ' + error);
-            return;
-        }
-        loadSettingsUsers();
-        Toast.success('User deleted');
-    } catch (e) {
-        Toast.error('Failed to delete user');
-    }
-}
-
-async function loadSettingsGuests() {
-    const container = document.getElementById('settingsGuestsList');
-    if (!container) return;
-
-    try {
-        const { data, error } = await API.getGuests();
-
-        if (error) {
-            container.innerHTML = '<div class="users-list-empty">Failed to load guests</div>';
-            return;
-        }
-
-        const guests = data?.guests || [];
-
-        if (guests.length === 0) {
-            container.innerHTML = '<div class="users-list-empty">No guests yet</div>';
-            return;
-        }
-
-        container.innerHTML = guests.map(guest => `
-            <div class="user-item guest-item">
-                <div class="user-item-avatar" style="background: #10b981">
-                    ${(guest.name || 'G').substring(0, 2).toUpperCase()}
-                </div>
-                <div class="user-item-info">
-                    <span class="user-item-name">${escapeHtml(guest.name)}</span>
-                    <span class="user-item-role">Last seen ${formatRelativeTime(guest.lastSeen)}</span>
-                </div>
-                <button class="btn btn-ghost btn-small user-item-delete" onclick="deleteGuest('${guest.id}')" title="Remove guest">
-                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-trash"/></svg>
-                </button>
-            </div>
-        `).join('');
-    } catch (e) {
-        console.error('Failed to load guests:', e);
-        container.innerHTML = '<div class="users-list-empty">Failed to load guests</div>';
-    }
-}
-
-async function deleteGuest(guestId) {
-    const confirmed = await Confirm.show({
-        title: 'Remove Guest',
-        message: 'Remove this guest from the list?',
-        confirmText: 'Remove',
-        type: 'warning'
-    });
-    if (!confirmed) return;
-
-    try {
-        const { error } = await API.deleteGuest(guestId);
-        if (error) {
-            Toast.error('Failed to remove guest: ' + error);
-            return;
-        }
-        loadSettingsGuests();
-        Toast.success('Guest removed');
-    } catch (e) {
-        Toast.error('Failed to remove guest');
-    }
-}
+// Users and guests lists live in features/usersAdmin.js
 
 function formatRelativeTime(dateStr) {
     if (!dateStr) return 'unknown';
@@ -3819,6 +3655,11 @@ function showNamePromptModal(projectName) {
                 <label class="share-section-label">Your name</label>
                 <input type="text" id="shareNameInput" placeholder="Enter your name" class="input-large" autocomplete="off">
             </div>
+            <div class="share-name-section">
+                <label class="share-section-label">Email <span class="label-optional">(optional)</span></label>
+                <input type="email" id="shareEmailInput" placeholder="name@example.com" class="input-large" autocomplete="email">
+            </div>
+            <div class="register-error hidden" id="shareNameError"></div>
             <button class="btn btn-primary btn-large" style="width: 100%; margin-top: 16px;" onclick="submitShareLinkName()">Join</button>
         `,
         size: 'small',
@@ -3830,10 +3671,12 @@ function showNamePromptModal(projectName) {
             setTimeout(() => {
                 const nameInput = document.getElementById('shareNameInput');
                 nameInput?.focus();
-                nameInput?.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        submitShareLinkName();
-                    }
+                [nameInput, document.getElementById('shareEmailInput')].forEach(input => {
+                    input?.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            submitShareLinkName();
+                        }
+                    });
                 });
             }, 50);
         },
@@ -3975,10 +3818,19 @@ function hideNamePromptModal() {
     }
 }
 
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
 // Join project with name from share link
 async function submitShareLinkName() {
     const nameInput = document.getElementById('shareNameInput');
     const name = nameInput.value.trim() || 'Anonymous';
+    const email = (document.getElementById('shareEmailInput')?.value || '').trim();
+    if (email && !EMAIL_PATTERN.test(email)) {
+        const errorEl = document.getElementById('shareNameError');
+        errorEl.textContent = "That doesn't look like an email address";
+        errorEl.classList.remove('hidden');
+        return;
+    }
 
     AppState.userName = name;
     hideNamePromptModal();
@@ -3987,7 +3839,7 @@ async function submitShareLinkName() {
         // Track guest in database
         const projectId = AppState.pendingShareLinkData.projectId;
         const shareLinkId = AppState.currentShareLinkId;
-        API.trackGuest(name, projectId, shareLinkId).catch(e => {
+        API.trackGuest(name, projectId, shareLinkId, email).catch(e => {
             console.error('Failed to track guest:', e);
         });
 
@@ -4346,15 +4198,19 @@ async function showRegistrationModal(inviteId) {
         registerModal = new Modal({
             title: 'Create Account',
             content: `
-                <p class="register-description">You've been invited to join EchoPlay. Create your account to get started.</p>
+                <p class="register-description">You've been invited to join Cutline. Create your account to get started.</p>
                 <div class="register-form">
                     <div class="form-group">
                         <label class="form-label">Username</label>
                         <input type="text" id="registerUsername" placeholder="Choose a username" class="input-large" autocomplete="off">
                     </div>
                     <div class="form-group">
+                        <label class="form-label">Email <span class="label-optional">(optional)</span></label>
+                        <input type="email" id="registerEmail" placeholder="name@example.com" class="input-large" autocomplete="email">
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Password</label>
-                        <input type="password" id="registerPassword" placeholder="Choose a password" class="input-large">
+                        <input type="password" id="registerPassword" placeholder="At least 12 characters" class="input-large">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Confirm Password</label>
@@ -4393,6 +4249,7 @@ function hideRegisterModal() {
 
 async function submitRegistration() {
     const username = document.getElementById('registerUsername').value.trim();
+    const email = document.getElementById('registerEmail').value.trim();
     const password = document.getElementById('registerPassword').value;
     const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
     const errorDiv = document.getElementById('registerError');
@@ -4420,8 +4277,8 @@ async function submitRegistration() {
         return;
     }
 
-    if (password.length < 4) {
-        errorDiv.textContent = 'Password must be at least 4 characters';
+    if (password.length < 12) {
+        errorDiv.textContent = 'Password must be at least 12 characters';
         errorDiv.classList.remove('hidden');
         return;
     }
@@ -4432,11 +4289,17 @@ async function submitRegistration() {
         return;
     }
 
+    if (email && !EMAIL_PATTERN.test(email)) {
+        errorDiv.textContent = "That doesn't look like an email address";
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
     try {
         const res = await fetch(`/api/auth/register/${pendingInviteId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username, password, email })
         });
 
         const data = await res.json();
@@ -4515,8 +4378,8 @@ async function completeSetup() {
         return;
     }
 
-    if (password.length < 4) {
-        errorDiv.textContent = 'Password must be at least 4 characters';
+    if (password.length < 12) {
+        errorDiv.textContent = 'Password must be at least 12 characters';
         errorDiv.classList.remove('hidden');
         return;
     }

@@ -154,7 +154,7 @@ const UserManager = (function() {
          * Clear current session
          */
         logout() {
-            localStorage.removeItem('token');
+            localStorage.removeItem('authData');
             currentProjectAccess = null;
             AppState.reset();
         },

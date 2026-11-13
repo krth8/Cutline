@@ -13,7 +13,7 @@ from database import (
     db_update_project_access,
 )
 from api.auth import require_auth, require_project_access
-from api.state import projects
+from api.state import close_live_sockets, projects
 
 
 router = APIRouter()
@@ -139,6 +139,9 @@ async def revoke_project_access(project_id: str, target_user_id: str, user: dict
     success = db_revoke_project_access(target_user_id, project_id)
     if not success:
         raise HTTPException(status_code=404, detail="Access record not found")
+
+    # End any live review session they have open in this project
+    await close_live_sockets(target_user_id, project_id)
 
     return {"success": True}
 

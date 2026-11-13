@@ -747,6 +747,16 @@ def init_schema(conn):
 
     # Migrations
     add_column_if_not_exists(conn, "clip_versions", "media_type", "TEXT DEFAULT 'video'")
+    add_column_if_not_exists(conn, "users", "email", "TEXT")
+    add_column_if_not_exists(conn, "guests", "email", "TEXT")
+    add_column_if_not_exists(conn, "guests", "token_subs", "TEXT")
+    # Guest tokens that were kicked out before they expired
+    execute(conn, """
+        CREATE TABLE IF NOT EXISTS revoked_tokens (
+            sub TEXT PRIMARY KEY,
+            revoked_at TEXT NOT NULL
+        )
+    """)
 
     # Migrate existing assignee_id to task_assignees table
     if DB_TYPE == DatabaseType.POSTGRESQL:

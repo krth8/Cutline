@@ -2,6 +2,7 @@
 Share links, guests, and invite links database operations
 """
 
+import json
 import secrets
 import hashlib
 import bcrypt
@@ -179,66 +180,94 @@ def db_delete_share_link(link_id: str) -> bool:
 
 # ============ Guest Operations ============
 
-def db_track_guest(name: str, project_id: str, share_link_id: str = None) -> dict:
-    """Track a guest accessing via share link."""
+def _guest_row(row: dict) -> dict:
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "email": row.get("email"),
+        "projectId": row["project_id"],
+        "projectName": row.get("project_name"),
+        "shareLinkId": row["share_link_id"],
+        "firstSeen": row["first_seen"],
+        "lastSeen": row["last_seen"],
+    }
+
+
+def db_track_guest(name: str, project_id: str, share_link_id: str = None,
+                   email: str = None, token_sub: str = None) -> dict:
+    """Track a guest accessing via share link.
+
+    token_sub is the `sub` of the guest's share token; it is remembered so
+    the guest can be kicked out before the token expires.
+    """
     now = datetime.now().isoformat()
-    guest_id = secrets.token_urlsafe(8)
 
     with get_db() as conn:
         cursor = execute(conn,
-            "SELECT id, first_seen FROM guests WHERE name = ? AND project_id = ?",
+            "SELECT * FROM guests WHERE name = ? AND project_id = ?",
             (name, project_id)
         )
         existing = fetchone(cursor)
 
         if existing:
+            subs = json.loads(existing.get("token_subs") or "[]")
+            if token_sub and token_sub not in subs:
+                subs = (subs + [token_sub])[-20:]
             execute(conn,
-                "UPDATE guests SET last_seen = ? WHERE id = ?",
-                (now, existing["id"])
+                "UPDATE guests SET last_seen = ?, token_subs = ?, email = COALESCE(?, email) WHERE id = ?",
+                (now, json.dumps(subs), email or None, existing["id"])
             )
-            return {
-                "id": existing["id"],
-                "name": name,
-                "projectId": project_id,
-                "firstSeen": existing["first_seen"],
-                "lastSeen": now
-            }
-        else:
-            execute(conn, """
-                INSERT INTO guests (id, name, project_id, share_link_id, first_seen, last_seen)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (guest_id, name, project_id, share_link_id, now, now))
+            existing.update(last_seen=now, email=email or existing.get("email"))
+            return _guest_row(existing)
 
-            return {
-                "id": guest_id,
-                "name": name,
-                "projectId": project_id,
-                "firstSeen": now,
-                "lastSeen": now
-            }
+        guest_id = secrets.token_urlsafe(8)
+        execute(conn, """
+            INSERT INTO guests (id, name, project_id, share_link_id, first_seen, last_seen, email, token_subs)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (guest_id, name, project_id, share_link_id, now, now, email or None,
+              json.dumps([token_sub] if token_sub else [])))
+        return _guest_row({
+            "id": guest_id, "name": name, "email": email or None, "project_id": project_id,
+            "share_link_id": share_link_id, "first_seen": now, "last_seen": now,
+        })
 
 
 def db_list_guests() -> List[dict]:
-    """List all guests."""
+    """List all guests, most recently seen first."""
     with get_db() as conn:
-        cursor = execute(conn,
-            "SELECT * FROM guests ORDER BY last_seen DESC"
-        )
-        return [{
-            "id": row["id"],
-            "name": row["name"],
-            "projectId": row["project_id"],
-            "shareLinkId": row["share_link_id"],
-            "firstSeen": row["first_seen"],
-            "lastSeen": row["last_seen"]
-        } for row in fetchall(cursor)]
+        cursor = execute(conn, """
+            SELECT g.*, p.name AS project_name
+            FROM guests g LEFT JOIN projects p ON g.project_id = p.id
+            ORDER BY g.last_seen DESC
+        """)
+        return [_guest_row(row) for row in fetchall(cursor)]
 
 
-def db_delete_guest(guest_id: str) -> bool:
-    """Delete a guest."""
+def db_delete_guest(guest_id: str) -> Optional[List[str]]:
+    """Delete a guest. Returns the token subs they were seen with, or None if not found."""
     with get_db() as conn:
-        cursor = execute(conn, "DELETE FROM guests WHERE id = ?", (guest_id,))
-        return cursor.rowcount > 0
+        row = fetchone(execute(conn, "SELECT token_subs FROM guests WHERE id = ?", (guest_id,)))
+        if row is None:
+            return None
+        execute(conn, "DELETE FROM guests WHERE id = ?", (guest_id,))
+        return json.loads(row.get("token_subs") or "[]")
+
+
+def db_revoke_tokens(subs: List[str]) -> None:
+    """Remember token subs that must no longer be accepted."""
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        for sub in subs:
+            if not fetchone(execute(conn, "SELECT sub FROM revoked_tokens WHERE sub = ?", (sub,))):
+                execute(conn, "INSERT INTO revoked_tokens (sub, revoked_at) VALUES (?, ?)", (sub, now))
+
+
+def db_list_revoked_tokens() -> List[str]:
+    """Revoked token subs. Entries older than the token lifetime are dropped."""
+    cutoff = (datetime.now() - timedelta(days=2)).isoformat()
+    with get_db() as conn:
+        execute(conn, "DELETE FROM revoked_tokens WHERE revoked_at < ?", (cutoff,))
+        return [row["sub"] for row in fetchall(execute(conn, "SELECT sub FROM revoked_tokens"))]
 
 
 # ============ Invite Link Operations ============

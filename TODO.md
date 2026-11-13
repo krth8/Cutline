@@ -2,8 +2,9 @@
 
 ## Features
 - [ ] Object storage (S3 / Hetzner Object Storage) for videos, thumbnails, covers and uploads
-- [ ] Email notifications (comments, mentions, invites, due dates)
-- [ ] Export review comments (PDF, CSV, EDL/markers for Premiere/Resolve)
+- [ ] Email notifications (comments, mentions, invites, due dates); users and guests can now have an email on file
+- [ ] Suspend a user without deleting the account
+- [ ] Export review comments as PDF and EDL/markers for Premiere/Resolve (Markdown, CSV and JSON are done)
 - [ ] Share links: allow/deny download toggle
 
 ## Tasks

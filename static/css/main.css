@@ -7917,15 +7917,189 @@ video,
     font-style: italic;
 }
 
-.user-item-delete,
-.user-item-actions .btn {
-    opacity: 0;
-    transition: opacity 0.15s;
+/* Users tab: expandable account cards */
+.user-card {
+    border-radius: 6px;
+    background: var(--bg-solid);
 }
 
-.user-item:hover .user-item-delete,
-.user-item:hover .user-item-actions .btn {
-    opacity: 1;
+.user-card > .user-item {
+    cursor: pointer;
+    background: transparent;
+}
+
+.user-card > .user-item:hover {
+    background: var(--bg-hover);
+}
+
+.user-card .user-item-you {
+    font-weight: 400;
+    margin-left: 4px;
+}
+
+.user-item-role {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-role-select {
+    flex: none;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.user-role-select:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 12px 12px 52px;
+}
+
+.user-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-detail-row .input-label {
+    width: 44px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.user-email-input {
+    flex: 1;
+    max-width: 280px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.user-detail-heading {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.access-list {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.access-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.access-row + .access-row {
+    border-top: 1px solid var(--border-light);
+}
+
+.access-row.has-access {
+    color: var(--text);
+}
+
+.access-row label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.access-project {
+    flex: 1;
+    min-width: 0;
+}
+
+.access-project > span:first-of-type {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.access-owner {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: var(--bg-hover);
+    color: var(--text-muted);
+}
+
+.access-flag {
+    flex: none;
+    font-size: 12px;
+}
+
+.access-row input:disabled + *,
+.access-flag:has(input:disabled) {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.user-access-note {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.user-detail-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.user-remove-btn:hover {
+    color: var(--danger);
+    background: var(--danger-bg);
+}
+
+.guest-item .user-remove-btn {
+    flex: none;
+}
+
+.label-optional {
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+.name-prompt-modal .share-name-section + .share-name-section {
+    margin-top: 12px;
+}
+
+/* Comments tab: download button beside the tabs */
+.sidebar-tab-action {
+    flex: none;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sidebar-tab-action:hover {
+    color: var(--text);
+    background: var(--bg-elevated);
 }
 
 /* Name Prompt Modal */

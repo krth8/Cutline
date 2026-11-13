@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import time
 from collections import defaultdict
@@ -11,7 +12,13 @@ from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from typing import Dict, List, Optional
-from database import db_check_project_access, db_get_user_by_id
+from database import (
+    db_check_project_access,
+    db_get_share_link,
+    db_get_user_by_id,
+    db_list_revoked_tokens,
+    db_revoke_tokens,
+)
 from api.state import sessions
 
 
@@ -181,6 +188,40 @@ def has_permission(user_role: str, permission: str) -> bool:
     return permission in permissions
 
 
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def clean_email(value) -> Optional[str]:
+    """Trimmed email, or None when empty. Raises 400 if it doesn't look like an address."""
+    email = (value or "").strip() if isinstance(value, str) else ""
+    if not email:
+        return None
+    if len(email) > 254 or not EMAIL_RE.match(email):
+        raise HTTPException(status_code=400, detail="That doesn't look like an email address")
+    return email
+
+
+# ============ Kicked guests ============
+# Share-link guests have no account to delete, so kicking one means refusing
+# the token they hold. Kept in memory, backed by the revoked_tokens table.
+_revoked_subs: Optional[set] = None
+
+
+def _revoked() -> set:
+    global _revoked_subs
+    if _revoked_subs is None:
+        _revoked_subs = set(db_list_revoked_tokens())
+    return _revoked_subs
+
+
+def revoke_token_subs(subs: List[str]) -> None:
+    """Stop accepting the guest tokens with these subs."""
+    subs = [s for s in subs if s]
+    if subs:
+        db_revoke_tokens(subs)
+        _revoked().update(subs)
+
+
 # ============ Authentication Dependencies ============
 
 def principal_from_token(token: Optional[str]) -> Optional[dict]:
@@ -201,8 +242,14 @@ def principal_from_token(token: Optional[str]) -> Optional[dict]:
 
     if payload.get("scope") == "share":
         project_id = payload.get("project_id")
-        if not project_id:
+        if not project_id or payload.get("sub") in _revoked():
             return None
+        # A deleted or deactivated share link takes its guests with it
+        link_id = payload.get("share_link_id")
+        if link_id:
+            link = db_get_share_link(link_id)
+            if not link or not link["isActive"] or link["projectId"] != project_id:
+                return None
         return {
             "id": payload.get("sub"),
             "username": payload.get("username", "Guest"),

@@ -61,6 +61,7 @@ from html_preview import render_html_preview
 from api.auth import (
     Permission,
     can_view_project,
+    clean_email,
     check_comment_rate_limit,
     create_jwt_token,
     get_current_user,
@@ -86,7 +87,8 @@ from api.config import (
     get_media_type,
 )
 from api.media import process_image, safe_upload_name
-from api.state import clip_locks, projects, sessions, tasks, transcode_jobs, user_states
+from api.comment_export import FORMATS as EXPORT_FORMATS, export_comments
+from api.state import clip_locks, live_sockets, projects, sessions, tasks, transcode_jobs, user_states
 from api.routes import router as api_router
 from api.assets import AssetMiddleware, index_response
 from api.events import ClientIdMiddleware
@@ -1353,7 +1355,9 @@ async def track_guest(data: dict, principal: Optional[dict] = Depends(get_princi
     if not name or not project_id:
         raise HTTPException(status_code=400, detail="Name and project ID required")
 
-    guest = db_track_guest(name, project_id, share_link_id)
+    email = clean_email(data.get("email"))
+    token_sub = principal["id"] if principal.get("is_guest") else None
+    guest = db_track_guest(name[:80], project_id, share_link_id, email=email, token_sub=token_sub)
     return {"guest": guest}
 
 
@@ -1886,6 +1890,27 @@ async def serve_thumbnail(clip_id: str):
 
 # ============ Comments API ============
 
+@app.get("/api/projects/{project_id}/comments/export")
+async def export_project_comments(project_id: str, format: str = "md", clip: Optional[str] = None,
+                                  fps: int = 24, principal: Optional[dict] = Depends(get_principal)):
+    """Download a project's review comments as Markdown, CSV or JSON.
+
+    Open to everyone who can already read the comments (members and share-link guests).
+    `clip` limits the export to one clip.
+    """
+    require_project_viewer(principal, project_id)
+    if project_id not in projects:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if format not in EXPORT_FORMATS:
+        raise HTTPException(status_code=400, detail="format must be md, csv or json")
+
+    body, content_type, filename = export_comments(project_id, projects[project_id], format, clip=clip, fps=fps)
+    return Response(content=body, media_type=content_type, headers={
+        "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}",
+        "Cache-Control": "no-store",
+    })
+
+
 def clean_comment_anchor(anchor) -> Optional[dict]:
     """Keep only the known fields of an HTML element anchor, with sane sizes."""
     if not isinstance(anchor, dict):
@@ -2058,6 +2083,8 @@ async def websocket_endpoint(
     project_id = session_id
     if session_id in sessions:
         project_id = sessions[session_id]["project_id"]
+    live_socket = (websocket, project_id)
+    live_sockets.setdefault(principal["id"], set()).add(live_socket)
 
     # Send current state to new user
     await websocket.send_json({
@@ -2237,6 +2264,8 @@ async def websocket_endpoint(
             "type": "user_left",
             "user_id": user_id
         })
+    finally:
+        live_sockets.get(principal["id"], set()).discard(live_socket)
 
 
 @app.get("/api/session/{session_id}")

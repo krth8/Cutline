@@ -23,6 +23,13 @@ function connectWebSocket() {
     AppState.ws.onclose = (event) => {
         updateSessionBadgeState(false);
 
+        // 4403: access to this project was removed (or was never there). Don't keep retrying.
+        if (event.code === 4403) {
+            AppState._wsIntentionalConnect = false;
+            if (typeof Toast !== 'undefined') Toast.error('You no longer have access to this project');
+            return;
+        }
+
         // Only reconnect if we have an active session AND didn't intentionally disconnect
         if (AppState.sessionId && AppState._wsIntentionalConnect && event.code !== 1000) {
             // Exponential backoff for reconnection

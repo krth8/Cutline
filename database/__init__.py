@@ -27,14 +27,15 @@ from .comments import (
 from .users import (
     db_create_user, db_get_user, db_get_user_by_id, db_validate_user,
     db_has_users, db_list_users, db_delete_user, db_update_user_role,
-    db_update_user_password, db_update_user_profile_image, db_init_admin_user
+    db_update_user_password, db_update_user_profile_image, db_init_admin_user,
+    db_update_user_email
 )
 
 from .sharing import (
     db_create_share_link, db_get_share_link, db_validate_share_link_password,
     db_list_share_links, db_list_all_share_links, db_deactivate_share_link,
     db_delete_share_link, db_increment_share_link_access,
-    db_track_guest, db_list_guests, db_delete_guest,
+    db_track_guest, db_list_guests, db_delete_guest, db_revoke_tokens, db_list_revoked_tokens,
     db_create_invite_link, db_get_invite_link, db_list_invite_links,
     db_use_invite_link, db_delete_invite_link
 )
@@ -106,11 +107,12 @@ __all__ = [
     'db_create_user', 'db_get_user', 'db_get_user_by_id', 'db_validate_user',
     'db_has_users', 'db_list_users', 'db_delete_user', 'db_update_user_role',
     'db_update_user_password', 'db_update_user_profile_image', 'db_init_admin_user',
+    'db_update_user_email',
     # Sharing
     'db_create_share_link', 'db_get_share_link', 'db_validate_share_link_password',
     'db_list_share_links', 'db_list_all_share_links', 'db_deactivate_share_link',
     'db_delete_share_link', 'db_increment_share_link_access',
-    'db_track_guest', 'db_list_guests', 'db_delete_guest',
+    'db_track_guest', 'db_list_guests', 'db_delete_guest', 'db_revoke_tokens', 'db_list_revoked_tokens',
     'db_create_invite_link', 'db_get_invite_link', 'db_list_invite_links',
     'db_use_invite_link', 'db_delete_invite_link',
     # Tasks

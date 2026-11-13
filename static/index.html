@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EchoPlay</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/main.css?v=196">
+    <link rel="stylesheet" href="/static/css/main.css?v=197">
 </head>
 <body>
     <!-- Login Overlay (shown when not authenticated) -->
@@ -1028,6 +1028,9 @@
             <div class="sidebar-right-tabs">
                 <button class="sidebar-tab active" data-tab="comments" onclick="switchSidebarTab('comments')">Comments</button>
                 <button class="sidebar-tab" data-tab="tasks" onclick="switchSidebarTab('tasks')">Tasks</button>
+                <button class="sidebar-tab-action" id="downloadCommentsBtn" onclick="showCommentsDownloadMenu(event)" title="Download comments">
+                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-download"/></svg>
+                </button>
             </div>
 
             <!-- Comments Tab Panel -->
@@ -1136,7 +1139,7 @@
     <!-- Scripts: Core modules first -->
     <script src="/static/js/core/state.js?v=2"></script>
     <script src="/static/js/core/utils.js?v=1"></script>
-    <script src="/static/js/core/api.js?v=3"></script>
+    <script src="/static/js/core/api.js?v=4"></script>
     <!-- Core infrastructure (new) -->
     <script src="/static/js/core/PropertyRegistry.js?v=9"></script>
     <script src="/static/js/core/TaskUpdater.js?v=2"></script>
@@ -1159,7 +1162,7 @@
     <script src="/static/js/components/index.js?v=2"></script>
     <script src="/static/js/components/playerDropdowns.js?v=2"></script>
     <!-- Modules (new architecture) -->
-    <script src="/static/js/modules/core/UserManager.js?v=1"></script>
+    <script src="/static/js/modules/core/UserManager.js?v=2"></script>
     <script src="/static/js/modules/core/SettingsManager.js?v=1"></script>
     <script src="/static/js/modules/core/PresetManager.js?v=2"></script>
     <script src="/static/js/modules/projects/TaskManager.js?v=2"></script>
@@ -1180,13 +1183,14 @@
     <script src="/static/js/modules/lounge/LoungeModule.js?v=6"></script>
     <!-- Feature modules -->
     <script src="/static/js/features/settingsUI.js?v=2"></script>
-    <script src="/static/js/features/navigation.js?v=18"></script>
+    <script src="/static/js/features/navigation.js?v=19"></script>
+    <script src="/static/js/features/usersAdmin.js?v=1"></script>
     <!-- Main application -->
-    <script src="/static/js/app.js?v=77"></script>
+    <script src="/static/js/app.js?v=78"></script>
     <script src="/static/js/video-player.js?v=30"></script>
-    <script src="/static/js/websocket.js?v=22"></script>
+    <script src="/static/js/websocket.js?v=23"></script>
     <script src="/static/js/html-review.js?v=1"></script>
-    <script src="/static/js/comments.js?v=33"></script>
+    <script src="/static/js/comments.js?v=34"></script>
     <script src="/static/js/clips.js?v=38"></script>
 </body>
 </html>
