@@ -34,7 +34,7 @@ RUN useradd --create-home --uid 1000 cutline \
 USER cutline
 
 # Name and icon for Docker dashboards (Unraid, CasaOS and others read these)
-LABEL org.opencontainers.image.title="Cutline"       org.opencontainers.image.description="Review and feedback for video, images and HTML pages"       net.unraid.docker.icon="https://raw.githubusercontent.com/krth8/Cutline/main/static/icon-512.png"       net.unraid.docker.webui="http://[IP]:[PORT:8099]/"       icon="https://raw.githubusercontent.com/krth8/Cutline/main/static/icon-512.png"
+LABEL org.opencontainers.image.title="Cutline" \n      org.opencontainers.image.description="Review and feedback for video, images and HTML pages" \n      net.unraid.docker.icon="https://raw.githubusercontent.com/krth8/Cutline/main/static/icon-512.png" \n      net.unraid.docker.webui="http://[IP]:[PORT:8099]/" \n      icon="https://raw.githubusercontent.com/krth8/Cutline/main/static/icon-512.png"
 
 VOLUME /data
 EXPOSE 8099
