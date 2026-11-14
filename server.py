@@ -63,6 +63,7 @@ from html_preview import render_html_preview
 
 # Shared modules
 from api.auth import (
+    JWT_EXPIRATION_HOURS,
     Permission,
     can_view_project,
     clean_email,
@@ -72,7 +73,7 @@ from api.auth import (
     get_principal,
     has_permission,
     media_principals,
-    principal_from_token,
+    principal_from_ticket,
     record_comment_attempt,
     require_permission,
     require_project_access,
@@ -1363,21 +1364,29 @@ async def validate_share_link_access(link_id: str, request: Request, response: R
     # Increment access count
     db_increment_share_link_access(link_id)
 
-    # Return project info plus a short-lived token scoped to this project only
+    # Return project info plus a token scoped to this project only. The guest gets a
+    # session (max a day) so they are logged out when idle, like users.
     project_id = link["projectId"]
+    guest_id = f"guest_{secrets.token_hex(6)}"
+    guest_seconds = JWT_EXPIRATION_HOURS * 3600
     guest_token = create_jwt_token(
-        user_id=f"guest_{secrets.token_hex(6)}",
+        user_id=guest_id,
         username="Guest",
         is_admin=False,
         role="guest",
-        extra_claims={"scope": "share", "project_id": project_id, "share_link_id": link_id},
+        extra_claims={
+            "scope": "share", "project_id": project_id, "share_link_id": link_id,
+            "sid": auth_sessions.create(guest_id, max_age=guest_seconds),
+        },
     )
     set_guest_media_cookie(response, request, project_id, guest_token)
     return {
         "valid": True,
         "projectId": project_id,
         "project": projects.get(project_id, {}),
-        "guestToken": guest_token
+        "guestToken": guest_token,
+        "idleTimeout": auth_sessions.IDLE_TIMEOUT,
+        "idleWarning": auth_sessions.IDLE_WARNING,
     }
 
 
@@ -1388,6 +1397,12 @@ async def delete_share_link(link_id: str, permanent: bool = True, user: dict = D
         success = db_delete_share_link(link_id)
     else:
         success = db_deactivate_share_link(link_id)
+
+    # Guests who are in through this link right now are shown out at once
+    guest_sids = live.guest_sessions(link_id)
+    for sid in guest_sids:
+        auth_sessions.end(sid)
+    await close_session_sockets(guest_sids)
 
     return {"success": success}
 
@@ -1915,9 +1930,9 @@ def _media_project(name: str) -> Optional[str]:
     return _media_owner.get(name)
 
 
-def require_media_access(request: Request, name: str, token: Optional[str]) -> None:
+def require_media_access(request: Request, name: str) -> None:
     """Media is for people who can open the project it belongs to (members and its share-link guests)."""
-    principals = media_principals(request, token)
+    principals = media_principals(request)
     if not principals:
         raise HTTPException(status_code=401, detail="Authentication required")
     project_id = _media_project(name)
@@ -1931,7 +1946,7 @@ MEDIA_HEADERS = {"Cache-Control": "private, max-age=3600"}
 
 
 @app.get("/video/{filename}")
-async def serve_media(filename: str, request: Request, token: Optional[str] = Query(None)):
+async def serve_media(filename: str, request: Request):
     """Serve transcoded video or processed image."""
     # Sanitize filename to prevent path traversal attacks
     safe_filename = Path(filename).name
@@ -1942,7 +1957,7 @@ async def serve_media(filename: str, request: Request, token: Optional[str] = Qu
     if Path(safe_filename).suffix.lower() in {'.html', '.htm'}:
         raise HTTPException(status_code=404, detail="Media not found")
 
-    require_media_access(request, safe_filename, token)
+    require_media_access(request, safe_filename)
 
     # Detect media type from file extension
     ext = Path(safe_filename).suffix.lower()
@@ -1971,7 +1986,7 @@ async def serve_media(filename: str, request: Request, token: Optional[str] = Qu
 
 
 @app.get("/thumbnail/{clip_id}")
-async def serve_thumbnail(clip_id: str, request: Request, token: Optional[str] = Query(None)):
+async def serve_thumbnail(clip_id: str, request: Request):
     """Serve clip thumbnail."""
     # Sanitize clip_id to prevent path traversal attacks
     safe_clip_id = Path(clip_id).name
@@ -1982,7 +1997,7 @@ async def serve_thumbnail(clip_id: str, request: Request, token: Optional[str] =
     if not safe_clip_id.endswith('.jpg'):
         safe_clip_id = f"{safe_clip_id}.jpg"
 
-    require_media_access(request, safe_clip_id, token)
+    require_media_access(request, safe_clip_id)
 
     path = os.path.join(THUMBNAILS_DIR, safe_clip_id)
     if os.path.exists(path):
@@ -2193,9 +2208,9 @@ async def websocket_endpoint(
     session_id: str,
     user_id: str,
     name: Optional[str] = Query(None),
-    token: Optional[str] = Query(None)
+    ticket: Optional[str] = Query(None)
 ):
-    principal = principal_from_token(token)
+    principal = principal_from_ticket(ticket)
     if not can_view_project(principal, resolve_project_id(session_id)):
         await websocket.close(code=WS_ACCESS_REMOVED)
         return

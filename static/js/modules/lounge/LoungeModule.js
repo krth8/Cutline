@@ -196,13 +196,24 @@ const LoungeModule = {
     /**
      * Connect to WebSocket for real-time updates
      */
-    connectWebSocket() {
+    async connectWebSocket() {
         this.disconnectWebSocket();
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/chat/${this.roomId}/${this.userId}?name=${encodeURIComponent(this.userName)}${this.userImage ? '&image=' + encodeURIComponent(this.userImage) : ''}`;
-
-        this.ws = new WebSocket(withAuthToken(wsUrl));
+        const roomId = this.roomId;
+        if (!roomId) return;
+        let socket;
+        try {
+            socket = await openSocket(`/ws/chat/${encodeURIComponent(roomId)}/${encodeURIComponent(this.userId)}${this.userImage ? '?image=' + encodeURIComponent(this.userImage) : ''}`);
+        } catch (e) {
+            this.tryReconnect();
+            return;
+        }
+        // Another room may have been opened in the meantime
+        if (this.roomId !== roomId || this.ws) {
+            socket.close();
+            return;
+        }
+        this.ws = socket;
 
         this.ws.onopen = () => {
             console.log('Chat WebSocket connected');
@@ -217,6 +228,8 @@ const LoungeModule = {
 
         this.ws.onclose = () => {
             console.log('Chat WebSocket disconnected');
+            if (this.ws !== socket) return; // closed on purpose or replaced
+            this.ws = null;
             this.stopHeartbeat();
             this.tryReconnect();
         };
@@ -228,10 +241,9 @@ const LoungeModule = {
 
     disconnectWebSocket() {
         this.stopHeartbeat();
-        if (this.ws) {
-            this.ws.close();
-            this.ws = null;
-        }
+        const socket = this.ws;
+        this.ws = null;
+        if (socket) socket.close();
     },
 
     startHeartbeat() {
@@ -839,14 +851,14 @@ const LoungeModule = {
         if (attachment.fileType === 'image') {
             return `
                 <div class="lounge-attachment image">
-                    <img src="${withAuthToken(`/chat_uploads/${attachment.filename}`)}" alt="${this.escapeHtml(attachment.originalName)}"
-                         onclick="LoungeModule.openImagePreview('${withAuthToken(`/chat_uploads/${attachment.filename}`)}')">
+                    <img src="/chat_uploads/${attachment.filename}" alt="${this.escapeHtml(attachment.originalName)}"
+                         onclick="LoungeModule.openImagePreview('/chat_uploads/${attachment.filename}')">
                 </div>
             `;
         }
 
         return `
-            <a class="lounge-attachment file" href="${withAuthToken(`/chat_uploads/${attachment.filename}`)}" download="${attachment.originalName}">
+            <a class="lounge-attachment file" href="/chat_uploads/${attachment.filename}" download="${attachment.originalName}">
                 <svg class="icon"><use href="/static/icons.svg#icon-file"/></svg>
                 <div class="lounge-attachment-info">
                     <span class="lounge-attachment-name">${this.escapeHtml(attachment.originalName)}</span>

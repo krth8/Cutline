@@ -39,14 +39,17 @@ from api.auth import (
     check_rate_limit,
     clean_email,
     clear_login_attempts,
-    clear_media_cookie,
+    clear_session_cookie,
     get_role_permissions,
     issue_login_token,
+    issue_ws_ticket,
+    request_token,
     record_login_attempt,
     require_admin,
     require_auth,
+    require_principal,
     revoke_token_subs,
-    set_media_cookie,
+    set_session_cookie,
 )
 from api.config import PROFILES_DIR, UPLOAD_DIR
 from api.media import process_image, safe_upload_name
@@ -61,14 +64,18 @@ router = APIRouter()
 def login_response(request: Request, response: Response, user: dict, **extra) -> dict:
     """Start a login session and build the body every login-like endpoint returns."""
     token = issue_login_token(user)
-    set_media_cookie(response, request, token)
+    # Browsers use the HttpOnly cookie and never store the token; scripts use the token from the body
+    set_session_cookie(response, request, token)
     return {
         **extra,
         "user": user,
         "token": token,
-        "idleTimeout": auth_sessions.IDLE_TIMEOUT,
-        "idleWarning": auth_sessions.IDLE_WARNING,
+        **idle_settings(),
     }
+
+
+def idle_settings() -> dict:
+    return {"idleTimeout": auth_sessions.IDLE_TIMEOUT, "idleWarning": auth_sessions.IDLE_WARNING}
 
 
 # ============ Setup API ============
@@ -140,25 +147,30 @@ async def auth_login(data: dict, request: Request, response: Response):
 
 
 @router.post("/api/auth/logout")
-async def auth_logout(response: Response, user: dict = Depends(require_auth)):
-    """End this login session: the token stops working everywhere it is used."""
-    clear_media_cookie(response)
-    auth_sessions.end(user["sid"])
-    await close_session_sockets([user["sid"]])
+async def auth_logout(response: Response, principal: dict = Depends(require_principal)):
+    """End this login (or guest) session: the token stops working everywhere it is used."""
+    if not principal.get("is_guest"):
+        clear_session_cookie(response)
+    auth_sessions.end(principal["sid"])
+    await close_session_sockets([principal["sid"]])
     return {"success": True}
 
 
 @router.post("/api/auth/ping")
-async def auth_ping(user: dict = Depends(require_auth)):
-    """Keep-alive while the user is active without making other requests (e.g. watching a clip)."""
-    return {"idleRemaining": auth_sessions.idle_remaining(user["sid"])}
+async def auth_ping(principal: dict = Depends(require_principal)):
+    """Keep-alive while someone is active without making other requests (e.g. watching a clip)."""
+    return {"idleRemaining": auth_sessions.idle_remaining(principal["sid"]), **idle_settings()}
+
+
+@router.post("/api/auth/ws-ticket")
+async def auth_ws_ticket(request: Request, principal: dict = Depends(require_principal)):
+    """A one-time ticket for opening a WebSocket (so the token never appears in a URL)."""
+    return {"ticket": issue_ws_ticket(request_token(request))}
 
 
 @router.get("/api/auth/me")
-async def auth_me(request: Request, response: Response, user: dict = Depends(require_auth)):
+async def auth_me(user: dict = Depends(require_auth)):
     """Get current authenticated user info."""
-    # Called on every page load: keeps the media cookie in step with the login in use
-    set_media_cookie(response, request, request.headers["authorization"][7:])
     # Fetch full user info from database to include profileImage
     full_user = db_get_user_by_id(user["id"])
     if full_user:
@@ -166,8 +178,7 @@ async def auth_me(request: Request, response: Response, user: dict = Depends(req
     return {
         "user": {k: v for k, v in user.items() if k != "sid"},
         "permissions": get_role_permissions(user["role"]),
-        "idleTimeout": auth_sessions.IDLE_TIMEOUT,
-        "idleWarning": auth_sessions.IDLE_WARNING,
+        **idle_settings(),
         "idleRemaining": auth_sessions.idle_remaining(user["sid"]),
     }
 
@@ -357,6 +368,7 @@ async def admin_delete_guest(guest_id: str, user: dict = Depends(require_admin))
         raise HTTPException(status_code=404, detail="Guest not found")
     revoke_token_subs(subs)
     for sub in subs:
+        auth_sessions.end_for_user(sub)
         await close_live_sockets(sub)
     return {"success": True}
 

@@ -36,8 +36,8 @@ from database.chat import (
 from api.state import WS_ACCESS_REMOVED, SocketRooms, track_socket, untrack_socket
 from api.auth import (
     can_view_project,
-    get_current_user,
-    principal_from_token,
+    media_principals,
+    principal_from_ticket,
     require_auth,
 )
 
@@ -286,10 +286,10 @@ async def chat_websocket_endpoint(
     user_id: str,
     name: Optional[str] = Query(None),
     image: Optional[str] = Query(None),
-    token: Optional[str] = Query(None)
+    ticket: Optional[str] = Query(None)
 ):
     """WebSocket endpoint for real-time chat."""
-    principal = principal_from_token(token)
+    principal = principal_from_ticket(ticket)
     room = db_get_room(room_id)
     allowed = (
         principal is not None
@@ -353,10 +353,9 @@ async def chat_websocket_endpoint(
 
 # Serve chat uploads
 @router.get("/chat_uploads/{filename}")
-async def get_chat_upload(filename: str, token: Optional[str] = Query(None), user: Optional[dict] = Depends(get_current_user)):
-    """Serve uploaded chat files to logged-in users (token via header or ?token= for <img> tags)."""
-    principal = user or principal_from_token(token)
-    if not principal or principal.get("is_guest"):
+async def get_chat_upload(filename: str, request: Request):
+    """Serve uploaded chat files to logged-in users (<img> tags and download links use the login cookie)."""
+    if not any(not p.get("is_guest") for p in media_principals(request)):
         raise HTTPException(status_code=401, detail="Authentication required")
     safe_name = Path(filename).name
     if safe_name != filename:

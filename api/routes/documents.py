@@ -15,7 +15,7 @@ from database.documents import (
     db_create_folder, db_get_folders, db_update_folder, db_delete_folder,
     db_create_document, db_get_documents, db_get_document, db_update_document, db_delete_document,
 )
-from api.auth import can_view_project, principal_from_token, require_auth
+from api.auth import can_view_project, principal_from_ticket, require_auth
 from api.state import WS_ACCESS_REMOVED, SocketRooms, track_socket, untrack_socket
 
 
@@ -212,10 +212,10 @@ async def doc_websocket_endpoint(
     doc_id: str,
     user_id: str,
     name: Optional[str] = Query(None),
-    token: Optional[str] = Query(None)
+    ticket: Optional[str] = Query(None)
 ):
     """WebSocket endpoint for real-time document collaboration."""
-    principal = principal_from_token(token)
+    principal = principal_from_ticket(ticket)
     doc = db_get_document(doc_id)
     if not principal or principal.get("is_guest") or not doc or not can_view_project(principal, doc.get("projectId")):
         await websocket.close(code=WS_ACCESS_REMOVED)

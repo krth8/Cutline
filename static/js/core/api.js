@@ -4,17 +4,29 @@
  */
 
 /**
- * Current auth token: logged-in user first, then share-link guest token.
+ * How requests are authenticated:
+ *
+ * - Logged-in users: the login lives in an HttpOnly cookie that scripts cannot
+ *   read. Nothing secret is kept in the page or in localStorage.
+ * - Share-link guests: a token scoped to one project, kept for this tab only
+ *   (sessionStorage) and sent in the Authorization header.
+ * - WebSockets: a one-time ticket in the URL, never a token (openSocket).
  */
-function getAuthToken() {
-    if (typeof AppState !== 'undefined' && AppState.authToken) return AppState.authToken;
-    if (typeof AppState !== 'undefined' && AppState.guestToken) return AppState.guestToken;
+
+/** The share-link guest's token, or null (also null for logged-in users). */
+function getGuestToken() {
+    if (typeof AppState === 'undefined' || AppState.authToken) return null;
+    if (AppState.guestToken) return AppState.guestToken;
     try {
         return sessionStorage.getItem('guestToken');
     } catch (e) {
         return null;
     }
 }
+
+// Older call sites build their own Authorization header with this; fetch() below
+// replaces whatever they set, so for logged-in users it is simply not sent.
+const getAuthToken = getGuestToken;
 
 /** The `sub` claim of a token (who it belongs to), or null. */
 function tokenSubject(token) {
@@ -36,71 +48,84 @@ function setGuestToken(token) {
         const sub = tokenSubject(token);
         if (sub && !AppState.authToken) AppState.userId = sub;
     }
-    if (token && typeof Live !== 'undefined') Live.connect();
     try {
         if (token) sessionStorage.setItem('guestToken', token);
         else sessionStorage.removeItem('guestToken');
     } catch (e) {}
-}
-
-/**
- * Add ?token= to same-origin URLs that cannot send headers (WebSockets, <img> sources).
- */
-function withAuthToken(url) {
-    const token = getAuthToken();
-    if (!token) return url;
-    return url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+    if (token && typeof Live !== 'undefined') Live.connect();
 }
 
 /**
  * Random id for this browser tab. Sent with API requests so live events
- * caused by this tab aren't echoed back to it.
+ * caused by this tab aren't echoed back to it. The server also requires it on
+ * requests that change something: another site cannot add it (CSRF protection).
  */
 const CLIENT_ID = 'c' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
 window.CLIENT_ID = CLIENT_ID;
 
-// Every same-origin API request goes through here: it gets the auth token, the
-// tab id and how long the user has been idle, and a 401 ends the login.
+/** The headers every API request carries (used by fetch below and by XHR uploads). */
+function requestHeaders() {
+    const headers = { 'X-Client-Id': CLIENT_ID };
+    const guestToken = getGuestToken();
+    if (guestToken) headers['Authorization'] = `Bearer ${guestToken}`;
+    if (typeof Auth !== 'undefined' && Auth.isTracking()) {
+        const idle = Auth.idleSeconds();
+        headers['X-Idle-Seconds'] = String(idle);
+        Auth.noteReported(idle);
+    }
+    return headers;
+}
+
+/** Set the API headers on an XMLHttpRequest (after open()). */
+function applyRequestHeaders(xhr) {
+    Object.entries(requestHeaders()).forEach(([name, value]) => xhr.setRequestHeader(name, value));
+}
+
+/**
+ * Open a WebSocket to a same-origin path. The URL carries a one-time ticket
+ * (valid for a few seconds) instead of the login.
+ */
+async function openSocket(path) {
+    const res = await fetch('/api/auth/ws-ticket', { method: 'POST' });
+    if (!res.ok) throw new Error(`No WebSocket ticket (HTTP ${res.status})`);
+    const { ticket } = await res.json();
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const separator = path.includes('?') ? '&' : '?';
+    return new WebSocket(`${protocol}//${location.host}${path}${separator}ticket=${encodeURIComponent(ticket)}`);
+}
+
+// Every same-origin request goes through here: it gets the API headers, and a
+// 401 means the login (or the guest's access) is over.
 (function () {
     const originalFetch = window.fetch.bind(window);
     // Endpoints where a 401 does not mean "your login is over"
     const NOT_A_SESSION_CHECK = ['/api/auth/login', '/api/auth/logout'];
-    let guestNoticeShown = false;
 
     window.fetch = function (input, init = {}) {
-        let sentToken = null;
         let path = null;
+        let login = null;       // which login the request was made with
+        let guestToken = null;
         try {
             const url = typeof input === 'string' ? input : input.url;
             const sameOrigin = url.startsWith('/') || url.startsWith(window.location.origin);
             if (sameOrigin) {
                 path = new URL(url, window.location.origin).pathname;
                 const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined));
-                const token = getAuthToken();
-                if (token) headers.set('Authorization', `Bearer ${token}`);
-                else headers.delete('Authorization');
-                sentToken = token;
-                headers.set('X-Client-Id', CLIENT_ID);
-                if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-                    const idle = Auth.idleSeconds();
-                    headers.set('X-Idle-Seconds', String(idle));
-                    Auth.noteReported(idle);
-                }
+                headers.delete('Authorization');
+                Object.entries(requestHeaders()).forEach(([name, value]) => headers.set(name, value));
                 init = { ...init, headers };
+                login = typeof Auth !== 'undefined' ? Auth.loginId() : null;
+                guestToken = getGuestToken();
             }
         } catch (e) {}
 
         const request = originalFetch(input, init);
-        if (!sentToken || !path || NOT_A_SESSION_CHECK.includes(path)) return request;
+        if (!path || (!login && !guestToken) || NOT_A_SESSION_CHECK.includes(path)) return request;
 
         return request.then((response) => {
-            if (response.status === 401 && sentToken === getAuthToken()) {
-                if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
-                    Auth.end('expired');
-                } else if (!guestNoticeShown && typeof Toast !== 'undefined') {
-                    guestNoticeShown = true;
-                    Toast.error('Your access to this project has ended. Open the share link again to continue.');
-                }
+            if (response.status === 401 && typeof Auth !== 'undefined') {
+                if (login && login === Auth.loginId()) Auth.end('expired');
+                else if (guestToken && guestToken === getGuestToken()) Auth.endGuest('expired');
             }
             return response;
         });
@@ -112,14 +137,7 @@ const API = {
      * Get auth headers (JWT token if logged in)
      */
     getHeaders() {
-        const headers = {
-            'Content-Type': 'application/json'
-        };
-        const token = getAuthToken();
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-        return headers;
+        return { 'Content-Type': 'application/json' };
     },
 
     /**
@@ -263,10 +281,7 @@ const API = {
             });
 
             xhr.open('POST', `/api/projects/${projectId}/clips`);
-            const token = getAuthToken();
-            if (token) {
-                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-            }
+            applyRequestHeaders(xhr);
             xhr.send(formData);
         });
     },

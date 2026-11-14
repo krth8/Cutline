@@ -149,3 +149,64 @@ def test_role_change_applies_to_existing_logins(client, admin, make_user):
     assert client.get("/api/admin/users", headers=auth(user["token"])).status_code == 403
     client.patch(f"/api/admin/users/{user['user']['id']}", json={"role": "admin"}, headers=auth(admin["token"]))
     assert client.get("/api/admin/users", headers=auth(user["token"])).status_code == 200
+
+
+# ---- Browser logins: HttpOnly cookie + CSRF header ----
+
+def browser():
+    """A client with its own cookie jar, like a separate browser."""
+    from fastapi.testclient import TestClient
+    import server
+    return TestClient(server.app)
+
+
+def test_browser_login_works_from_the_cookie_alone(client, admin):
+    b = browser()
+    res = b.post("/api/auth/login", json=ADMIN)
+    cookie = res.headers["set-cookie"].lower()
+    assert "cutline_session=" in cookie and "httponly" in cookie and "samesite=lax" in cookie
+    assert b.get("/api/auth/me").status_code == 200
+
+
+def test_cookie_alone_cannot_change_anything(client, admin):
+    """A form on another site can make the browser send the cookie, but not our header."""
+    b = browser()
+    b.post("/api/auth/login", json=ADMIN)
+    assert b.post("/api/projects", json={"name": "Forged"}).status_code == 401
+    assert b.post("/api/auth/logout").status_code == 401
+    assert b.post("/api/projects", json={"name": "Mine"}, headers={"X-Client-Id": "tab"}).status_code == 200
+
+
+def test_logout_clears_the_cookie(client, make_user):
+    user = make_user()
+    b = browser()
+    b.post("/api/auth/login", json={"username": user["user"]["username"], "password": "user-password-123"})
+    res = b.post("/api/auth/logout", headers={"X-Client-Id": "tab"})
+    assert res.status_code == 200
+    assert b.get("/api/auth/me").status_code == 401
+
+
+# ---- Share-link guests have sessions too ----
+
+def test_guest_times_out_when_idle(client, make_project, share):
+    project_id = make_project()
+    guest = share(project_id)
+    assert client.get(f"/api/projects/{project_id}", headers=auth(guest["token"])).status_code == 200
+    session_of(guest["token"])["last_activity"] = time.time() - auth_sessions.IDLE_TIMEOUT - 1
+    assert client.get(f"/api/projects/{project_id}", headers=auth(guest["token"])).status_code == 401
+
+
+def test_guest_can_keep_alive_and_leave(client, make_project, share):
+    project_id = make_project()
+    guest = share(project_id)
+    ping = client.post("/api/auth/ping", headers=auth(guest["token"]))
+    assert ping.status_code == 200 and ping.json()["idleTimeout"] == auth_sessions.IDLE_TIMEOUT
+    assert client.post("/api/auth/logout", headers=auth(guest["token"])).status_code == 200
+    assert client.get(f"/api/projects/{project_id}", headers=auth(guest["token"])).status_code == 401
+
+
+def test_guest_token_without_a_session_is_refused(client, make_project):
+    project_id = make_project()
+    token = create_jwt_token("guest_x", "Guest", False, role="guest",
+                             extra_claims={"scope": "share", "project_id": project_id})
+    assert client.get(f"/api/projects/{project_id}", headers=auth(token)).status_code == 401

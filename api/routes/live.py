@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from api.auth import principal_from_token
+from api.auth import principal_from_ticket
 from api.events import live
 from api.state import WS_SESSION_ENDED, track_socket, untrack_socket
 
@@ -15,14 +15,14 @@ router = APIRouter()
 async def live_socket(
     websocket: WebSocket,
     client_id: str = Query(..., max_length=64),
-    token: Optional[str] = Query(None),
+    ticket: Optional[str] = Query(None),
 ):
     """One per browser tab, for logged-in users and share-link guests.
 
     The tab sends {"type": "watch", "projects": [ids]} to choose the projects
     it gets updates for, and {"type": "ping"} to check the line.
     """
-    principal = principal_from_token(token)
+    principal = principal_from_ticket(ticket)
     await websocket.accept()
     if not principal:
         # Accept first so the browser gets the close code: the login is over

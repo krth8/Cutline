@@ -20,6 +20,7 @@ const Live = (function () {
     let lastHeard = 0;
     let wasConnected = false;
     let stopped = false;
+    let connecting = false;
     const handlers = {};
     const wanted = {};   // slot ('review', 'tasks') -> project id
     let sent = '';       // the watch list the server last got from us
@@ -59,17 +60,37 @@ const Live = (function () {
         sendWatch();
     }
 
-    function connect() {
+    function canConnect() {
+        return (typeof Auth !== 'undefined' && Auth.isLoggedIn()) || !!getGuestToken();
+    }
+
+    function retryLater() {
+        const delay = Math.min(1000 * 2 ** retries, 30000);
+        retries++;
+        clearTimeout(retryTimer);
+        retryTimer = setTimeout(connect, delay);
+    }
+
+    async function connect() {
         stopped = false;
         clearTimeout(retryTimer);
-        if (ws && ws.readyState <= WebSocket.OPEN) return;
-        const token = typeof getAuthToken === 'function' ? getAuthToken() : null;
-        if (!token) return;
+        if (connecting || (ws && ws.readyState <= WebSocket.OPEN) || !canConnect()) return;
 
-        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const socket = new WebSocket(withAuthToken(
-            `${protocol}//${location.host}/ws/live?client_id=${encodeURIComponent(window.CLIENT_ID || '')}`
-        ));
+        connecting = true;
+        let socket;
+        try {
+            socket = await openSocket(`/ws/live?client_id=${encodeURIComponent(window.CLIENT_ID || '')}`);
+        } catch (e) {
+            // No ticket: offline, or the login is over (a 401 is handled by fetch itself)
+            connecting = false;
+            if (!stopped && canConnect()) retryLater();
+            return;
+        }
+        connecting = false;
+        if (stopped) {
+            socket.close(1000);
+            return;
+        }
         ws = socket;
 
         socket.onopen = () => {
@@ -96,14 +117,10 @@ const Live = (function () {
             sent = '';
             if (event.code === SESSION_ENDED) {
                 // The login (or the guest's access) is over
-                if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) Auth.end('expired');
-                else emit('guest_access_ended', {});
+                if (typeof Auth !== 'undefined') Auth.sessionEnded();
                 return;
             }
-            if (stopped) return;
-            const delay = Math.min(1000 * 2 ** retries, 30000);
-            retries++;
-            retryTimer = setTimeout(connect, delay);
+            if (!stopped) retryLater();
         };
     }
 
@@ -130,7 +147,7 @@ const Live = (function () {
     // Come back quickly after sleep / network change instead of waiting for the backoff
     window.addEventListener('online', () => { retries = 0; if (!stopped) connect(); });
     document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && !ws && !stopped) { retries = 0; connect(); }
+        if (!document.hidden && !ws && !connecting && !stopped) { retries = 0; connect(); }
     });
 
     return { connect, stop, watch, on, isConnected: () => !!ws && ws.readyState === WebSocket.OPEN };
@@ -186,12 +203,6 @@ window.Live = Live;
 
     Live.on('access_removed', (msg) => {
         if (isReviewProject(msg)) leaveProject('You no longer have access to this project');
-    });
-
-    Live.on('guest_access_ended', () => {
-        if (typeof Toast !== 'undefined') {
-            Toast.error('Your access to this project has ended. Open the share link again to continue.');
-        }
     });
 
     Live.on('projects_changed', () => {

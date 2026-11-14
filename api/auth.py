@@ -10,7 +10,6 @@ import time
 from collections import defaultdict
 from datetime import timedelta
 from fastapi import Depends, HTTPException, Request, Response, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from typing import Dict, List, Optional
 from database import (
     db_check_project_access,
@@ -31,9 +30,6 @@ if not JWT_SECRET:
 JWT_ALGORITHM = "HS256"
 # Share-link guest tokens. Login tokens live as long as their session (api/sessions.py).
 JWT_EXPIRATION_HOURS = 24
-
-# Security scheme
-security = HTTPBearer(auto_error=False)
 
 
 def create_jwt_token(user_id: str, username: str, is_admin: bool, role: str = None, expires_delta: timedelta = None, extra_claims: dict = None) -> str:
@@ -237,8 +233,6 @@ def revoke_token_subs(subs: List[str]) -> None:
         _revoked().update(subs)
 
 
-# ============ Authentication Dependencies ============
-
 def principal_from_token(token: Optional[str], touch: bool = True) -> Optional[dict]:
     """Resolve a JWT into either a user or a share-link guest.
 
@@ -267,6 +261,10 @@ def principal_from_token(token: Optional[str], touch: bool = True) -> Optional[d
             link = db_get_share_link(link_id)
             if not link or not link["isActive"] or link["projectId"] != project_id:
                 return None
+        # Guests time out when idle, like users
+        sid = payload.get("sid")
+        if not auth_sessions.validate(sid, payload.get("sub"), touch=touch):
+            return None
         return {
             "id": payload.get("sub"),
             "username": payload.get("username", "Guest"),
@@ -274,6 +272,8 @@ def principal_from_token(token: Optional[str], touch: bool = True) -> Optional[d
             "role": "guest",
             "is_guest": True,
             "project_id": project_id,
+            "share_link_id": link_id,
+            "sid": sid,
         }
 
     db_user = db_get_user_by_id(payload.get("sub"))
@@ -293,12 +293,15 @@ def principal_from_token(token: Optional[str], touch: bool = True) -> Optional[d
     }
 
 
-# ============ Media cookies ============
-# <video> and <img> requests cannot send an Authorization header, so the
-# browser also gets the token in an HttpOnly cookie. Only the media routes
-# read these cookies; the API itself keeps requiring the header.
-MEDIA_COOKIE = "cutline_media"            # the login token of a user
-GUEST_MEDIA_COOKIE = "cutline_guest_"     # + project id: a share-link guest's token
+# ============ Where the token comes from ============
+# Browsers keep the login token in an HttpOnly cookie, out of reach of scripts.
+# Because a cookie is sent automatically, requests that change something must
+# also carry the X-Client-Id header, which another site cannot add (CSRF).
+# Scripts and share-link guests send the token in the Authorization header.
+SESSION_COOKIE = "cutline_session"        # the login token of a user
+GUEST_MEDIA_COOKIE = "cutline_guest_"     # + project id: a guest's token, for <img>/<video> only
+CSRF_HEADER = "x-client-id"
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 
 def _set_cookie(response: Response, request: Request, name: str, token: str, max_age: int) -> None:
@@ -308,63 +311,111 @@ def _set_cookie(response: Response, request: Request, name: str, token: str, max
     )
 
 
-def set_media_cookie(response: Response, request: Request, token: str) -> None:
-    _set_cookie(response, request, MEDIA_COOKIE, token, auth_sessions.MAX_AGE)
+def set_session_cookie(response: Response, request: Request, token: str) -> None:
+    _set_cookie(response, request, SESSION_COOKIE, token, auth_sessions.MAX_AGE)
 
 
 def set_guest_media_cookie(response: Response, request: Request, project_id: str, token: str) -> None:
     _set_cookie(response, request, GUEST_MEDIA_COOKIE + project_id, token, JWT_EXPIRATION_HOURS * 3600)
 
 
-def clear_media_cookie(response: Response) -> None:
-    response.delete_cookie(MEDIA_COOKIE, path="/")
+def clear_session_cookie(response: Response) -> None:
+    response.delete_cookie(SESSION_COOKIE, path="/")
 
 
-def media_principals(request: Request, token: Optional[str] = None) -> List[dict]:
-    """Everyone this media request speaks for: header or ?token=, the login cookie, guest cookies.
+def _bearer(request: Request) -> Optional[str]:
+    header = request.headers.get("authorization", "")
+    return header[7:] if header.lower().startswith("bearer ") else None
+
+
+def request_token(request: Request) -> Optional[str]:
+    """The token an API request is made with: the Authorization header, else the login cookie."""
+    token = _bearer(request)
+    if token:
+        return token
+    cookie = request.cookies.get(SESSION_COOKIE)
+    if cookie and (request.method in SAFE_METHODS or request.headers.get(CSRF_HEADER)):
+        return cookie
+    return None
+
+
+def media_principals(request: Request) -> List[dict]:
+    """Everyone a media request (<img>, <video>, download link) speaks for:
+    the header, the login cookie and any guest cookies.
 
     Fetching media is never counted as user activity.
     """
-    tokens = [token]
-    header = request.headers.get("authorization", "")
-    if header.lower().startswith("bearer "):
-        tokens.append(header[7:])
+    tokens = [_bearer(request)]
     for name, value in request.cookies.items():
-        if name == MEDIA_COOKIE or name.startswith(GUEST_MEDIA_COOKIE):
+        if name == SESSION_COOKIE or name.startswith(GUEST_MEDIA_COOKIE):
             tokens.append(value)
     principals = [principal_from_token(t, touch=False) for t in tokens if t]
     return [p for p in principals if p]
 
 
-async def get_principal(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[dict]:
+# ============ WebSocket tickets ============
+# A WebSocket URL ends up in logs, so it never carries the token. The browser
+# asks for a ticket (one use, valid for a few seconds) and connects with that.
+WS_TICKET_SECONDS = 30
+_ws_tickets: Dict[str, tuple] = {}  # ticket -> (token, expires at)
+
+
+def issue_ws_ticket(token: str) -> str:
+    now = time.time()
+    for ticket, (_, expires) in list(_ws_tickets.items()):
+        if expires < now:
+            del _ws_tickets[ticket]
+    ticket = secrets.token_urlsafe(24)
+    _ws_tickets[ticket] = (token, now + WS_TICKET_SECONDS)
+    return ticket
+
+
+def principal_from_ticket(ticket: Optional[str]) -> Optional[dict]:
+    """Who a WebSocket belongs to. Opening a socket is never counted as user activity."""
+    token, expires = _ws_tickets.pop(ticket, (None, 0)) if ticket else (None, 0)
+    if not token or expires < time.time():
+        return None
+    return principal_from_token(token, touch=False)
+
+
+# ============ Authentication Dependencies ============
+
+async def get_principal(request: Request) -> Optional[dict]:
     """Current user or share-link guest, or None."""
-    return principal_from_token(credentials.credentials if credentials else None)
+    return principal_from_token(request_token(request))
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[dict]:
-    """Get the current authenticated (non-guest) user from JWT token."""
-    principal = principal_from_token(credentials.credentials if credentials else None)
+async def get_current_user(request: Request) -> Optional[dict]:
+    """Get the current authenticated (non-guest) user."""
+    principal = principal_from_token(request_token(request))
     if principal is None or principal.get("is_guest"):
         return None
     return principal
 
 
-async def require_auth(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
-    """Require authentication - raises 401 if not authenticated."""
-    if credentials is None:
+async def require_principal(request: Request) -> dict:
+    """A logged-in user or a share-link guest - raises 401 otherwise."""
+    principal = principal_from_token(request_token(request))
+    if principal is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+    return principal
+
+
+async def require_auth(request: Request) -> dict:
+    """Require a logged-in user.
+
+    401 means "no valid login" (browsers show the login screen on it);
+    a share-link guest is known but not allowed, so gets 403.
+    """
+    principal = principal_from_token(request_token(request))
+    if principal is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"}
         )
-
-    principal = principal_from_token(credentials.credentials)
-    if principal is None or principal.get("is_guest"):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
+    if principal.get("is_guest"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not available to share-link guests")
     return principal
 
 

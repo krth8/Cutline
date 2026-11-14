@@ -2,9 +2,14 @@
  * Auth - the one place that knows whether someone is logged in.
  *
  *   Auth.start(data)   after a successful login / setup / registration
- *   Auth.restore()     on page load: pick the login up from localStorage
+ *   Auth.restore()     on page load: pick the login up again
  *   Auth.logout()      the user asked to log out
  *   Auth.end(reason)   the login is over (timed out, ended on the server, ...)
+ *   Auth.startGuest()  a share-link guest opened a project (same idle rules)
+ *
+ * The login itself is an HttpOnly cookie the page cannot read. localStorage
+ * only holds who is logged in (name, role) and a random id for the login, so
+ * tabs can tell when it changes.
  *
  * Idle logout: the server ends a login after `idleTimeout` seconds without
  * user input. Every API request tells the server how long ago the user last
@@ -32,6 +37,8 @@ const Auth = (function () {
     let ending = false;
     let ticker = null;
     let warningEl = null;
+    let loginId = null;   // random id of this login (not a secret)
+    let guest = false;    // tracking a share-link guest instead of a login
 
     function store(key, value) {
         try {
@@ -53,12 +60,17 @@ const Auth = (function () {
         return !!AppState.authToken;
     }
 
+    /** Someone's idle time is being tracked: a logged-in user or a share-link guest. */
+    function isTracking() {
+        return isLoggedIn() || guest;
+    }
+
     // ============ Login state ============
 
-    function apply(user, token, permissions) {
+    function apply(user, permissions) {
         AppState.adminUser = user;
         AppState.isAdmin = !!(user && (user.isAdmin || user.role === 'admin'));
-        AppState.authToken = token;
+        AppState.authToken = true; // "logged in"; the token itself is in an HttpOnly cookie
         AppState.permissions = permissions || [];
         AppState.userName = (user && user.username) || 'Anonymous';
         if (user && user.id) AppState.userId = user.id;
@@ -67,7 +79,7 @@ const Auth = (function () {
     function save() {
         if (AppState.authToken && AppState.adminUser) {
             store(AUTH_KEY, JSON.stringify({
-                token: AppState.authToken,
+                login: loginId,
                 user: AppState.adminUser,
                 permissions: AppState.permissions,
             }));
@@ -84,7 +96,8 @@ const Auth = (function () {
     /** Log in with the response of /api/auth/login (or setup / registration). */
     function start(data) {
         setIdleConfig(data);
-        apply(data.user, data.token, data.permissions);
+        loginId = 'l' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        apply(data.user, data.permissions);
         store(REASON_KEY, null);
         markActive(true);
         noteReported(0);
@@ -100,11 +113,12 @@ const Auth = (function () {
         try {
             stored = JSON.parse(read(AUTH_KEY));
         } catch (e) {}
-        if (!stored || !stored.token || !stored.user) {
-            store(AUTH_KEY, null);
+        if (!stored || !stored.login || !stored.user) {
+            store(AUTH_KEY, null); // nothing, or the old format that kept the token here
             return false;
         }
-        apply(stored.user, stored.token, stored.permissions);
+        loginId = stored.login;
+        apply(stored.user, stored.permissions);
         // Opening the page is activity, but other tabs may know of something newer
         const shared = Number(read(ACTIVITY_KEY)) || 0;
         lastActivity = Math.max(shared, Date.now());
@@ -116,11 +130,11 @@ const Auth = (function () {
 
     /** Check the stored login with the server and pick up permissions, profile and idle settings. */
     async function refresh() {
-        const token = AppState.authToken;
-        if (!token) return;
+        const login = loginId;
+        if (!isLoggedIn()) return;
         try {
             const res = await fetch('/api/auth/me');
-            if (!res.ok || token !== AppState.authToken) return; // a 401 already ended the login (api.js)
+            if (!res.ok || login !== loginId) return; // a 401 already ended the login (api.js)
             const data = await res.json();
             setIdleConfig(data);
             AppState.permissions = data.permissions || [];
@@ -140,13 +154,18 @@ const Auth = (function () {
     let loggingOut = false;
     async function logout() {
         loggingOut = true;
+        if (!isLoggedIn()) {
+            if (guest) {
+                await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+                endGuest();
+            }
+            return;
+        }
         // Other tabs follow at once (storage event), before the server starts closing connections
         store(AUTH_KEY, null);
-        if (isLoggedIn()) {
-            try {
-                await fetch('/api/auth/logout', { method: 'POST' });
-            } catch (e) {}
-        }
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (e) {}
         end();
     }
 
@@ -163,11 +182,49 @@ const Auth = (function () {
         if (reason === 'expired' && idleSeconds() >= idleTimeout - Math.min(60, idleWarning)) reason = 'idle';
         if (reason && REASONS[reason]) store(REASON_KEY, reason);
         store(AUTH_KEY, null);
+        loginId = null;
         AppState.authToken = null;
         AppState.adminUser = null;
         AppState.isAdmin = false;
         AppState.permissions = [];
         window.location.replace('/');
+    }
+
+    // ============ Share-link guests ============
+
+    /** A guest opened a project through a share link: they time out when idle, like users. */
+    function startGuest(data) {
+        if (isLoggedIn()) return;
+        setIdleConfig(data);
+        guest = true;
+        markActive(true);
+        noteReported(0);
+        watch();
+    }
+
+    /**
+     * The guest's access is over (idle, kicked, link removed). Sends them back
+     * through the share link, which says why if the link itself is gone.
+     */
+    function endGuest(reason) {
+        if (ending || isLoggedIn()) return;
+        ending = true;
+        clearInterval(ticker);
+        if (loggingOut) reason = null;
+        if (reason === 'expired' && guest && idleSeconds() >= idleTimeout - Math.min(60, idleWarning)) reason = 'idle';
+        let linkId = null;
+        try {
+            linkId = sessionStorage.getItem('shareLinkId');
+            ['guestToken', 'guestName', 'guestProjectId'].forEach(key => sessionStorage.removeItem(key));
+            if (reason === 'idle') sessionStorage.setItem('guestNotice', REASONS.idle);
+        } catch (e) {}
+        window.location.replace(linkId ? `/s/${encodeURIComponent(linkId)}` : '/');
+    }
+
+    /** The server closed the session of whoever is using this tab. */
+    function sessionEnded() {
+        if (isLoggedIn()) end('expired');
+        else endGuest('expired');
     }
 
     /** Message for the login screen after an involuntary logout (shown until the next login). */
@@ -204,14 +261,14 @@ const Auth = (function () {
 
     let timingOut = false;
     function tick() {
-        if (!isLoggedIn() || ending || timingOut) return;
+        if (!isTracking() || ending || timingOut) return;
         if (isMediaPlaying() && !warningEl) markActive();
 
         const idle = idleSeconds();
         if (idle >= idleTimeout) {
             // End it on the server too, then show the login screen
             timingOut = true;
-            const done = () => end('idle');
+            const done = () => (isLoggedIn() ? end('idle') : endGuest('idle'));
             fetch('/api/auth/logout', { method: 'POST' }).catch(() => {}).finally(done);
             setTimeout(done, 3000);
             return;
@@ -262,14 +319,14 @@ const Auth = (function () {
                 if (warningEl) hideWarning();
             }
         } else if (e.key === AUTH_KEY && !ending) {
-            let token = null;
+            let login = null;
             try {
-                token = e.newValue ? JSON.parse(e.newValue).token : null;
+                login = e.newValue ? JSON.parse(e.newValue).login || null : null;
             } catch (err) {}
-            if (token === AppState.authToken) return;
-            if (AppState.isShareLinkGuest && !AppState.authToken) return; // guests don't follow logins
+            if (login === loginId) return;
+            if (guest || (AppState.isShareLinkGuest && !isLoggedIn())) return; // guests don't follow logins
             ending = true;
-            if (token) window.location.reload();   // logged in (or switched user) in another tab
+            if (login) window.location.reload();   // logged in (or switched user) in another tab
             else window.location.replace('/');     // logged out in another tab
         }
     });
@@ -324,7 +381,8 @@ const Auth = (function () {
 
     return {
         start, restore, refresh, save, logout, end, logoutMessage,
-        isLoggedIn, idleSeconds, noteReported, markActive,
+        startGuest, endGuest, sessionEnded,
+        isLoggedIn, isTracking, loginId: () => loginId, idleSeconds, noteReported, markActive,
     };
 })();
 

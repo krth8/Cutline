@@ -126,6 +126,13 @@ class LiveHub:
                 continue
             await self._send(conn, message)
 
+    def guest_sessions(self, share_link_id: str) -> list:
+        """Session ids of the guests who are connected through a share link."""
+        return list({
+            conn.principal.get("sid") for conn in self.connections.values()
+            if conn.principal.get("is_guest") and conn.principal.get("share_link_id") == share_link_id
+        } - {None})
+
     async def recheck_access(self, user_id: str, project_id: str) -> None:
         """A user's rights in a project changed (or were removed): update what their tabs receive."""
         for conn in list(self.connections.values()):

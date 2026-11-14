@@ -13,8 +13,11 @@ def no_rate_limit():
     api_auth.comment_attempts.clear()
 
 
-def connect(client, token, client_id):
-    return client.websocket_connect(f"/ws/live?client_id={client_id}&token={token}")
+@pytest.fixture
+def connect(client, ticket):
+    def _connect(token, client_id):
+        return client.websocket_connect(f"/ws/live?client_id={client_id}&ticket={ticket(token)}")
+    return _connect
 
 
 def watch(ws, *project_ids):
@@ -42,19 +45,34 @@ def comment(client, project_id, token, client_id=None):
     return res.json()
 
 
-def test_dead_token_is_told_the_login_is_over(client):
+def test_dead_token_is_told_the_login_is_over(client, connect):
     with pytest.raises(WebSocketDisconnect) as closed:
-        with connect(client, "not-a-token", "tab") as ws:
+        with connect("not-a-token", "tab") as ws:
             ws.receive_json()
     assert closed.value.code == 4401
 
 
-def test_comments_reach_everyone_watching_but_not_the_tab_that_wrote_them(client, admin, make_project, make_user, grant):
+def test_a_token_in_the_url_does_not_open_a_socket(client, admin):
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect(f"/ws/live?client_id=tab&token={admin['token']}") as ws:
+            ws.receive_json()
+
+
+def test_a_ticket_works_once(client, admin, ticket):
+    one = ticket(admin["token"])
+    with client.websocket_connect(f"/ws/live?client_id=tab&ticket={one}") as ws:
+        assert nothing_pending(ws)
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect(f"/ws/live?client_id=tab&ticket={one}") as ws:
+            ws.receive_json()
+
+
+def test_comments_reach_everyone_watching_but_not_the_tab_that_wrote_them(client, admin, make_project, make_user, grant, connect):
     project_id = make_project()
     user = make_user()
     grant(project_id, user["user"]["id"])
 
-    with connect(client, admin["token"], "admin-tab") as writer, connect(client, user["token"], "user-tab") as reader:
+    with connect(admin["token"], "admin-tab") as writer, connect(user["token"], "user-tab") as reader:
         assert watch(writer, project_id) == [project_id]
         assert watch(reader, project_id) == [project_id]
 
@@ -74,9 +92,9 @@ def test_comments_reach_everyone_watching_but_not_the_tab_that_wrote_them(client
         assert reader.receive_json() == {"type": "comment_deleted", "commentId": posted["id"], "project": project_id}
 
 
-def test_a_second_tab_of_the_same_user_is_updated(client, admin, make_project):
+def test_a_second_tab_of_the_same_user_is_updated(client, admin, make_project, connect):
     project_id = make_project()
-    with connect(client, admin["token"], "tab-1") as one, connect(client, admin["token"], "tab-2") as two:
+    with connect(admin["token"], "tab-1") as one, connect(admin["token"], "tab-2") as two:
         watch(one, project_id)
         watch(two, project_id)
         comment(client, project_id, admin["token"], client_id="tab-1")
@@ -84,28 +102,28 @@ def test_a_second_tab_of_the_same_user_is_updated(client, admin, make_project):
         assert nothing_pending(one)
 
 
-def test_only_the_watched_project_is_heard(client, admin, make_project):
+def test_only_the_watched_project_is_heard(client, admin, make_project, connect):
     watched, other = make_project(), make_project()
-    with connect(client, admin["token"], "tab") as ws:
+    with connect(admin["token"], "tab") as ws:
         watch(ws, watched)
         comment(client, other, admin["token"])
         assert nothing_pending(ws)
 
 
-def test_cannot_watch_a_project_without_access(client, make_project, make_user, share):
+def test_cannot_watch_a_project_without_access(client, make_project, make_user, share, connect):
     project_id, other = make_project(), make_project()
     outsider = make_user()
     guest = share(other)
-    with connect(client, outsider["token"], "tab") as ws:
+    with connect(outsider["token"], "tab") as ws:
         assert watch(ws, project_id) == []
-    with connect(client, guest["token"], "guest-tab") as ws:
+    with connect(guest["token"], "guest-tab") as ws:
         assert watch(ws, project_id, other) == [other]
 
 
-def test_guests_get_comments_but_not_tasks(client, admin, make_project, share):
+def test_guests_get_comments_but_not_tasks(client, admin, make_project, share, connect):
     project_id = make_project()
     guest = share(project_id)
-    with connect(client, guest["token"], "guest-tab") as ws:
+    with connect(guest["token"], "guest-tab") as ws:
         watch(ws, project_id)
         res = client.post(f"/api/projects/{project_id}/tasks", json={"name": "Secret task"}, headers=auth(admin["token"]))
         assert res.status_code == 200, res.text
@@ -114,12 +132,12 @@ def test_guests_get_comments_but_not_tasks(client, admin, make_project, share):
         assert ws.receive_json()["type"] == "comment_added"
 
 
-def test_task_changes_reach_members_with_task_access(client, admin, make_project, make_user, grant):
+def test_task_changes_reach_members_with_task_access(client, admin, make_project, make_user, grant, connect):
     project_id = make_project()
     tasker, reviewer = make_user(), make_user()
     grant(project_id, tasker["user"]["id"], can_tasks=True)
     grant(project_id, reviewer["user"]["id"], can_tasks=False)
-    with connect(client, tasker["token"], "t") as with_tasks, connect(client, reviewer["token"], "r") as without:
+    with connect(tasker["token"], "t") as with_tasks, connect(reviewer["token"], "r") as without:
         watch(with_tasks, project_id)
         watch(without, project_id)
         task = client.post(f"/api/projects/{project_id}/tasks", json={"name": "Grade shot 4"},
@@ -134,11 +152,11 @@ def test_task_changes_reach_members_with_task_access(client, admin, make_project
         assert with_tasks.receive_json() == {"type": "task_comments_changed", "taskId": task_id, "project": project_id}
 
 
-def test_revoking_access_stops_the_updates(client, admin, make_project, make_user, grant):
+def test_revoking_access_stops_the_updates(client, admin, make_project, make_user, grant, connect):
     project_id = make_project()
     user = make_user()
     grant(project_id, user["user"]["id"])
-    with connect(client, user["token"], "tab") as ws:
+    with connect(user["token"], "tab") as ws:
         watch(ws, project_id)
         client.delete(f"/api/projects/{project_id}/access/{user['user']['id']}", headers=auth(admin["token"]))
         assert ws.receive_json() == {"type": "access_removed", "project": project_id}
@@ -147,27 +165,38 @@ def test_revoking_access_stops_the_updates(client, admin, make_project, make_use
         assert nothing_pending(ws)
 
 
-def test_logout_closes_the_socket(client, make_user):
+def test_logout_closes_the_socket(client, make_user, connect):
     user = make_user()
     with pytest.raises(WebSocketDisconnect) as closed:
-        with connect(client, user["token"], "tab") as ws:
+        with connect(user["token"], "tab") as ws:
             assert nothing_pending(ws)
             client.post("/api/auth/logout", headers=auth(user["token"]))
             ws.receive_json()
     assert closed.value.code == 4401
 
 
-def test_new_projects_show_up_for_other_users(client, admin, make_project, make_user):
+def test_removing_a_share_link_disconnects_its_guests(client, admin, make_project, share, connect):
+    project_id = make_project()
+    guest = share(project_id)
+    with pytest.raises(WebSocketDisconnect) as closed:
+        with connect(guest["token"], "guest-tab") as ws:
+            assert nothing_pending(ws)
+            client.delete(f"/api/share/{guest['linkId']}", headers=auth(admin["token"]))
+            ws.receive_json()
+    assert closed.value.code == 4401
+
+
+def test_new_projects_show_up_for_other_users(client, admin, make_project, make_user, connect):
     user = make_user()
-    with connect(client, user["token"], "tab") as ws:
+    with connect(user["token"], "tab") as ws:
         assert nothing_pending(ws)
         make_project()
         assert ws.receive_json() == {"type": "projects_changed"}
 
 
-def test_a_tab_can_watch_two_projects(client, admin, make_project):
+def test_a_tab_can_watch_two_projects(client, admin, make_project, connect):
     review, tasks = make_project(), make_project()
-    with connect(client, admin["token"], "tab") as ws:
+    with connect(admin["token"], "tab") as ws:
         assert watch(ws, review, tasks) == [review, tasks]
         comment(client, tasks, admin["token"])
         assert ws.receive_json()["project"] == tasks

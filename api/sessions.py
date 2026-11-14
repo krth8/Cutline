@@ -3,6 +3,8 @@
 Every login creates a session; its id travels in the token (`sid`). A token
 only works while its session is alive, so logging out, changing a password or
 sitting idle for too long ends it on the server - not just in the browser.
+Share-link guests get a session too (keyed by their token's id), so they
+time out the same way.
 
 "Idle" means no user input. Browsers report how long ago the user last did
 something with every request (X-Idle-Seconds), so background polling does not
@@ -56,12 +58,12 @@ def _alive(session: dict, now: float) -> bool:
     return now < session["expires_at"] and now - session["last_activity"] < IDLE_TIMEOUT
 
 
-def create(user_id: str) -> str:
-    """Start a session for a user who just logged in. Returns its id."""
+def create(user_id: str, max_age: int = MAX_AGE) -> str:
+    """Start a session for a user who just logged in (or a guest who opened a share link). Returns its id."""
     now = int(time.time())
     sid = secrets.token_urlsafe(24)
-    db_create_auth_session(sid, user_id, now, now + MAX_AGE)
-    _all()[sid] = {"user_id": user_id, "last_activity": now, "expires_at": now + MAX_AGE, "saved": now}
+    db_create_auth_session(sid, user_id, now, now + max_age)
+    _all()[sid] = {"user_id": user_id, "last_activity": now, "expires_at": now + max_age, "saved": now}
     return sid
 
 

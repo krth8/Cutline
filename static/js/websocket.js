@@ -7,15 +7,39 @@ function initWebSocket() {
     // WebSocket will be initialized when session starts
 }
 
-function connectWebSocket() {
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+async function connectWebSocket() {
+    const sessionId = AppState.sessionId;
     const userName = AppState.userName || AppState.userId;
+    if (!sessionId) return;
 
     // Track that we're intentionally connected
     AppState._wsIntentionalConnect = true;
-    AppState._wsReconnectAttempts = 0;
 
-    AppState.ws = new WebSocket(withAuthToken(`${protocol}//${location.host}/ws/${AppState.sessionId}/${AppState.userId}?name=${encodeURIComponent(userName)}`));
+    const stillWanted = () => AppState.sessionId === sessionId && AppState._wsIntentionalConnect;
+    const retry = () => {
+        const attempts = AppState._wsReconnectAttempts || 0;
+        const delay = Math.min(2000 * Math.pow(2, attempts), 30000);
+        AppState._wsReconnectAttempts = attempts + 1;
+        setTimeout(() => { if (stillWanted()) connectWebSocket(); }, delay);
+    };
+
+    let opened;
+    try {
+        opened = await openSocket(`/ws/${encodeURIComponent(sessionId)}/${encodeURIComponent(AppState.userId)}?name=${encodeURIComponent(userName)}`);
+    } catch (e) {
+        if (stillWanted()) retry();
+        return;
+    }
+    // The user may have left the session while the socket was being opened
+    if (!stillWanted()) {
+        opened.close(1000);
+        return;
+    }
+    if (AppState.ws && AppState.ws !== opened) {
+        AppState.ws.onclose = null;
+        AppState.ws.close(1000);
+    }
+    AppState.ws = opened;
 
     const socket = AppState.ws;
     let keepAlive = null;
@@ -28,8 +52,8 @@ function connectWebSocket() {
             if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'pong' }));
         }, 25000);
     };
-    AppState.ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
-    AppState.ws.onclose = (event) => {
+    socket.onmessage = (e) => handleMessage(JSON.parse(e.data));
+    socket.onclose = (event) => {
         clearInterval(keepAlive);
         updateSessionBadgeState(false);
 
@@ -41,17 +65,10 @@ function connectWebSocket() {
         }
 
         // Only reconnect if we have an active session AND didn't intentionally disconnect
-        if (AppState.sessionId && AppState._wsIntentionalConnect && event.code !== 1000) {
-            // Exponential backoff for reconnection
-            const attempts = AppState._wsReconnectAttempts || 0;
-            const delay = Math.min(2000 * Math.pow(2, attempts), 30000);
-            AppState._wsReconnectAttempts = attempts + 1;
-
-            console.log(`Reconnecting in ${delay}ms (attempt ${attempts + 1})`);
-            setTimeout(connectWebSocket, delay);
-        }
+        if (AppState.ws === socket) AppState.ws = null;
+        if (stillWanted() && event.code !== 1000) retry();
     };
-    AppState.ws.onerror = () => {
+    socket.onerror = () => {
         updateSessionBadgeState(false);
     };
 }

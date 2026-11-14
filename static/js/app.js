@@ -19,11 +19,8 @@ function getContrastTextColor(hexColor) {
 
 // ============ Auth Helper ============
 function getAuthHeaders() {
-    const headers = { 'Content-Type': 'application/json' };
-    if (AppState.authToken) {
-        headers['Authorization'] = `Bearer ${AppState.authToken}`;
-    }
-    return headers;
+    // Authentication is added by fetch() itself (core/api.js)
+    return { 'Content-Type': 'application/json' };
 }
 
 // Kept for the many callers: fetch() itself adds the token and handles a
@@ -155,7 +152,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const linkId = pathMatch[1];
         // Hide login overlay for share links
         document.getElementById('loginOverlay').classList.add('hidden');
-        handleShareLinkAccess(linkId);
+        // A guest who reloaded the page carries on where they were; anyone else goes through the link
+        if (!(await restoreGuest(linkId))) handleShareLinkAccess(linkId);
         return;  // Don't proceed with normal init
     }
 
@@ -184,12 +182,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // If not authenticated, show login overlay
     if (!AppState.authToken) {
-        // A share-link guest who reloaded the page goes back through their link
-        const guestLink = sessionStorage.getItem('shareLinkId');
-        if (guestLink) {
-            window.location.replace(`/s/${encodeURIComponent(guestLink)}`);
-            return;
-        }
         const message = Auth.logoutMessage();
         if (message) {
             const notice = document.getElementById('loginError');
@@ -1052,10 +1044,7 @@ async function handleMultiUpload(e) {
     };
 
     xhr.open('POST', `/api/projects/${AppState.projectId}/clips`);
-    const uploadToken = getAuthToken();
-    if (uploadToken) {
-        xhr.setRequestHeader('Authorization', `Bearer ${uploadToken}`);
-    }
+    applyRequestHeaders(xhr);
     xhr.send(formData);
 
     // Clear input
@@ -2450,10 +2439,13 @@ window.initColorPalette = initColorPalette;
 // ============ Share Link System ============
 
 async function handleShareLinkAccess(linkId) {
-    // Store link ID (sessionStorage: a reload sends the guest back through the link)
+    // Store link ID (sessionStorage: this tab stays a guest of this link across reloads)
     AppState.currentShareLinkId = linkId;
     try {
         sessionStorage.setItem('shareLinkId', linkId);
+        const notice = sessionStorage.getItem('guestNotice');
+        sessionStorage.removeItem('guestNotice');
+        if (notice && typeof Toast !== 'undefined') Toast.info(notice);
     } catch (e) {}
 
     // Fetch link info
@@ -2587,7 +2579,51 @@ async function validateAndLoadShareLink(linkId) {
     }
 }
 
+/**
+ * A guest reloaded the page: their token, name and project are remembered for
+ * this tab, so they go straight back in without the name prompt.
+ * Returns false if this tab has no (working) guest session for the link.
+ */
+async function restoreGuest(linkId) {
+    let token, name, projectId;
+    try {
+        if (sessionStorage.getItem('shareLinkId') !== linkId) return false;
+        token = sessionStorage.getItem('guestToken');
+        name = sessionStorage.getItem('guestName');
+        projectId = sessionStorage.getItem('guestProjectId');
+    } catch (e) {}
+    if (!token || !name || !projectId) return false;
+
+    setGuestToken(token);
+    AppState.currentShareLinkId = linkId;
+    AppState.userName = name;
+    try {
+        const ping = await fetch('/api/auth/ping', { method: 'POST' });
+        // 401: timed out, kicked or link removed - fetch() is already sending the guest back through the link
+        if (ping.status === 401) return true;
+        const res = ping.ok ? await fetch(`/api/projects/${projectId}`) : null;
+        if (!res || !res.ok) {
+            if (res && res.status === 401) return true;
+            setGuestToken(null);
+            return false;
+        }
+        await loadProjectFromShareLink({ ...(await ping.json()), projectId, project: await res.json() });
+        return true;
+    } catch (e) {
+        console.error('Could not restore the guest session:', e);
+        setGuestToken(null);
+        return false;
+    }
+}
+
 async function loadProjectFromShareLink(data) {
+    // Remember the guest for this tab (a reload carries on from here) and start the idle timer
+    try {
+        sessionStorage.setItem('guestProjectId', data.projectId);
+        sessionStorage.setItem('guestName', AppState.userName || 'Guest');
+    } catch (e) {}
+    Auth.startGuest(data);
+
     // Set project data
     AppState.projectId = data.projectId;
     AppState.sessionId = data.sessionId || data.projectId;  // Use specific session if provided
@@ -2624,22 +2660,22 @@ async function loadProjectFromShareLink(data) {
     }
     // Don't set active here - let WebSocket connection state control it
 
-    // Load clips
-    if (project.clips) {
-        AppState.clips = project.clips;
-        renderClipsSidebar();
-        renderClipBin();
+    // Comments first: selecting a clip below renders the ones that belong to it
+    AppState.comments = project.comments || [];
 
-        if (project.video) {
-            cacheVideo(`/video/${project.video}`);
-        }
+    // Load clips and open the first one (as for logged-in users)
+    AppState.currentClip = null;
+    AppState.clips = project.clips || {};
+    renderClipsSidebar();
+    renderClipBin();
+    const clipNames = Object.keys(AppState.clips);
+    if (clipNames.length > 0) {
+        const first = AppState.clips[clipNames[0]];
+        selectClipVersion(clipNames[0], first.activeVersion || first.versions[0].version);
+    } else {
+        showEmptyPlayerState();
     }
-
-    // Load comments
-    if (project.comments) {
-        AppState.comments = project.comments;
-        renderComments();
-    }
+    renderComments();
 
     // Load annotations
     if (project.annotations) {

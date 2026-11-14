@@ -32,6 +32,7 @@ function switchSidebarTab(tabName) {
 async function loadClipTasks() {
     const listEl = document.getElementById('clipTasksList');
     if (!listEl) return;
+    if (AppState.isShareLinkGuest) return; // tasks are for project members
 
     // Get current clip ID from AppState
     const clipId = getCurrentClipId();

@@ -938,14 +938,23 @@ const DocsModule = {
     /**
      * Connect to WebSocket for document collaboration
      */
-    connectWebSocket(docId) {
+    async connectWebSocket(docId) {
         // Disconnect from previous document
         this.disconnectWebSocket();
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/docs/${docId}/${this.userId}?name=${encodeURIComponent(this.userName)}`;
-
-        this.ws = new WebSocket(withAuthToken(wsUrl));
+        let socket;
+        try {
+            socket = await openSocket(`/ws/docs/${encodeURIComponent(docId)}/${encodeURIComponent(this.userId)}`);
+        } catch (e) {
+            this.tryReconnect(docId);
+            return;
+        }
+        // Another document may have been opened in the meantime
+        if (this.currentDocId !== docId || this.ws) {
+            socket.close();
+            return;
+        }
+        this.ws = socket;
 
         this.ws.onopen = () => {
             console.log('Docs WebSocket connected');
@@ -960,6 +969,8 @@ const DocsModule = {
 
         this.ws.onclose = () => {
             console.log('Docs WebSocket disconnected');
+            if (this.ws !== socket) return; // closed on purpose or replaced
+            this.ws = null;
             this.stopHeartbeat();
             this.tryReconnect(docId);
         };
@@ -974,10 +985,9 @@ const DocsModule = {
      */
     disconnectWebSocket() {
         this.stopHeartbeat();
-        if (this.ws) {
-            this.ws.close();
-            this.ws = null;
-        }
+        const socket = this.ws;
+        this.ws = null;
+        if (socket) socket.close();
         this.collaborators = [];
     },
 

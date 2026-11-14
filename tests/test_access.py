@@ -86,9 +86,10 @@ def test_guest_sees_only_the_shared_project(client, make_project, share):
 def test_guest_is_not_a_logged_in_user(client, make_project, share):
     project_id = make_project()
     guest = share(project_id)
-    assert client.get("/api/auth/me", headers=auth(guest["token"])).status_code == 401
-    assert client.get(f"/api/projects/{project_id}/tasks", headers=auth(guest["token"])).status_code == 401
-    assert client.post("/api/projects", json={"name": "x"}, headers=auth(guest["token"])).status_code == 401
+    # 403, not 401: the guest's own session is fine, they are just not allowed
+    assert client.get("/api/auth/me", headers=auth(guest["token"])).status_code == 403
+    assert client.get(f"/api/projects/{project_id}/tasks", headers=auth(guest["token"])).status_code == 403
+    assert client.post("/api/projects", json={"name": "x"}, headers=auth(guest["token"])).status_code == 403
 
 
 def test_deleting_a_share_link_locks_its_guests_out(client, admin, make_project, share):

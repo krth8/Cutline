@@ -37,9 +37,31 @@ def auth(token):
     return {"Authorization": f"Bearer {token}"}
 
 
+@pytest.fixture
+def ticket(client):
+    """A one-time WebSocket ticket for a token (what the browser fetches before opening a socket)."""
+    def _ticket(token):
+        res = client.post("/api/auth/ws-ticket", headers=auth(token))
+        return res.json()["ticket"] if res.status_code == 200 else "no-ticket"
+    return _ticket
+
+
+class ApiClient(TestClient):
+    """Talks to the API like a script: tokens in headers, no cookie jar.
+
+    (Tests that need browser behaviour create their own TestClient.)
+    """
+
+    def request(self, *args, **kwargs):
+        try:
+            return super().request(*args, **kwargs)
+        finally:
+            self.cookies.clear()
+
+
 @pytest.fixture(scope="session")
 def client():
-    with TestClient(server.app) as c:
+    with ApiClient(server.app) as c:
         yield c
 
 
