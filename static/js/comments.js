@@ -85,9 +85,7 @@ async function submitComment() {
     const comment = {
         frame: currentFrame,
         anchor: anchor,
-        user: AppState.userId,
-        userName: AppState.userName || AppState.userId,
-        userProfileImage: AppState.adminUser?.profileImage || null,
+        userName: AppState.userName || 'Guest', // used for share-link guests; logged-in users are named by the server
         text: text,
         // Override frame with current; HTML drawings also remember the page view they were drawn on
         drawing: hasDrawing
@@ -109,11 +107,11 @@ async function submitComment() {
         body: JSON.stringify(comment)
     });
 
-    // Add comment locally if not in session (no WebSocket to receive it)
-    if (!AppState.sessionId && response.ok) {
-        const savedComment = await response.json();
-        AppState.comments.push(savedComment);
-        renderComments();
+    if (response.ok) {
+        addCommentLocally(await response.json());
+    } else {
+        showCommentError(response, 'Could not post the comment');
+        return;
     }
 
     if (response.ok && anchor && typeof HtmlReview !== 'undefined') {
@@ -136,12 +134,9 @@ async function submitComment() {
         if (AppState.drawMode) toggleDrawMode();
         if (response.ok) HtmlReview.showDrawing(comment.drawing);
     } else if (hasDrawing) {
-        // Small delay to ensure comment is added to AppState.comments (for session mode)
-        setTimeout(() => {
-            if (typeof showFrameDrawings === 'function') {
-                showFrameDrawings(currentFrame);
-            }
-        }, 100);
+        if (typeof showFrameDrawings === 'function') {
+            showFrameDrawings(currentFrame);
+        }
     }
 }
 
@@ -215,9 +210,7 @@ async function submitInlineReply() {
     const currentFrame = getCurrentFrame();
     const comment = {
         frame: currentFrame,
-        user: AppState.userId,
-        userName: AppState.userName || AppState.userId,
-        userProfileImage: AppState.adminUser?.profileImage || null,
+        userName: AppState.userName || 'Guest',
         text: text,
         drawing: null,
         clipBaseName: AppState.currentClip?.baseName || null,
@@ -236,15 +229,32 @@ async function submitInlineReply() {
         body: JSON.stringify(comment)
     });
 
-    // Add comment locally if not in session (no WebSocket to receive it)
-    if (!AppState.sessionId && response.ok) {
-        const savedComment = await response.json();
-        AppState.comments.push(savedComment);
-        renderComments();
+    if (response.ok) {
+        addCommentLocally(await response.json());
+    } else {
+        showCommentError(response, 'Could not post the reply');
+        return;
     }
 
     // Clear reply state
     cancelReply();
+}
+
+/** Show a comment this tab just saved (other tabs get it over the live connection). */
+function addCommentLocally(comment) {
+    if (!comment || AppState.comments.some(c => c.id === comment.id)) return;
+    AppState.comments.push(comment);
+    renderComments();
+}
+
+async function showCommentError(response, fallback) {
+    if (response.status === 401) return; // the login ended; handled centrally
+    let message = fallback;
+    try {
+        const body = await response.json();
+        if (typeof body.detail === 'string') message = body.detail;
+    } catch (e) {}
+    if (typeof Toast !== 'undefined') Toast.error(message);
 }
 
 function cancelReply() {
@@ -281,15 +291,12 @@ async function toggleCommentResolved(commentId) {
         : `/api/projects/${AppState.projectId}/comment/${commentId}/resolved`;
 
     try {
-        const headers = { 'Content-Type': 'application/json' };
-        if (typeof getAuthHeaders === 'function') {
-            Object.assign(headers, getAuthHeaders());
-        }
-        await fetch(endpoint, {
+        const response = await fetch(endpoint, {
             method: 'PATCH',
-            headers,
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ resolved: newResolved })
         });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
     } catch (err) {
         console.error('Failed to update comment resolved status:', err);
         // Revert on error
@@ -1320,19 +1327,18 @@ async function deleteComment(commentId) {
     try {
         const response = await fetch(endpoint, { method: 'DELETE' });
         if (response.ok) {
-            // Remove locally if not in session (no WebSocket to receive it)
-            if (!AppState.sessionId) {
-                AppState.comments = AppState.comments.filter(c => c.id !== commentId);
-                renderComments();
-            }
+            handleCommentDeleted(commentId);
+        } else {
+            showCommentError(response, 'Could not delete the comment');
         }
     } catch (err) {
         console.error('Failed to delete comment:', err);
     }
 }
 
-// Handle WebSocket comment_deleted event
+// A comment is gone (deleted here or, via the live connection, by someone else)
 function handleCommentDeleted(commentId) {
+    if (!AppState.comments.some(c => c.id === commentId)) return;
     AppState.comments = AppState.comments.filter(c => c.id !== commentId);
     renderComments();
 }

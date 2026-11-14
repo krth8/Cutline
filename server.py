@@ -19,7 +19,7 @@ import uuid
 import shutil
 import asyncio
 import secrets
-import hashlib
+import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from pathlib import Path
@@ -44,6 +44,10 @@ from database import (
     db_increment_share_link_access,
     db_track_guest,
     db_create_notification,
+    db_batch_upsert_comments,
+    db_delete_comment,
+    db_add_annotation,
+    db_get_user_by_id,
     db_init_admin_user,
     db_get_user,
     db_list_statuses,
@@ -103,7 +107,7 @@ from api.state import (
 from api import sessions as auth_sessions
 from api.routes import router as api_router
 from api.assets import AssetMiddleware, index_response
-from api.events import ClientIdMiddleware
+from api.events import ClientIdMiddleware, live
 
 app = FastAPI()
 
@@ -450,8 +454,13 @@ async def add_clip_to_project(project_id: str, filename: str, thumbnail: str = N
         if version >= clip_entry['activeVersion']:
             clip_entry['activeVersion'] = version
 
-        # Mark for write-back persistence
+        # Save now: an upload must survive a crash, and deleting or linking the
+        # clip needs it in the database
         cache_manager.mark_clip_dirty(project_id, base_name)
+        await cache_manager.persist_now()
+
+        # Show the new version to everyone looking at the project (the uploader too)
+        await live.to_project(project_id, {"type": "clip_updated", "baseName": base_name, "clip": clip_entry}, echo=True)
 
 
 async def get_video_duration(filepath: str) -> float:
@@ -978,35 +987,51 @@ async def ensure_transcode_worker():
 
 
 class ConnectionManager:
+    """Review sessions: synced playback, shared cursors and live drawing.
+
+    A user can have the same session open in several tabs, so connections are
+    kept per socket while presence (user_states) is per user.
+    """
+
     def __init__(self):
-        self.active_connections: Dict[str, Dict[str, WebSocket]] = {}  # session_id -> {user_id -> ws}
+        # session_id -> {connection id -> (websocket, user_id)}
+        self.active_connections: Dict[str, Dict[int, tuple]] = {}
 
-    async def connect(self, websocket: WebSocket, session_id: str, user_id: str, user_name: Optional[str] = None):
+    async def connect(self, websocket: WebSocket, session_id: str, user_id: str, user_name: Optional[str] = None) -> int:
         await websocket.accept()
-        if session_id not in self.active_connections:
-            self.active_connections[session_id] = {}
-        self.active_connections[session_id][user_id] = websocket
+        conn_id = id(websocket)
+        self.active_connections.setdefault(session_id, {})[conn_id] = (websocket, user_id)
 
-        # Initialize user state with name
-        if session_id not in user_states:
-            user_states[session_id] = {}
-        user_states[session_id][user_id] = {
-            "id": user_id,
-            "name": user_name or user_id,
-            "frame": 0,
-            "playing": False,
-            "cursor": None,
-            "color": f"hsl({hash(user_id) % 360}, 70%, 50%)"
-        }
+        states = user_states.setdefault(session_id, {})
+        if user_id in states:
+            states[user_id]["name"] = user_name or user_id
+        else:
+            states[user_id] = {
+                "id": user_id,
+                "name": user_name or user_id,
+                "frame": 0,
+                "playing": False,
+                "cursor": None,
+                "color": f"hsl({hash(user_id) % 360}, 70%, 50%)"
+            }
 
         # Track user in session
-        if session_id in sessions:
-            if user_id not in sessions[session_id]["users"]:
-                sessions[session_id]["users"].append(user_id)
+        if session_id in sessions and user_id not in sessions[session_id]["users"]:
+            sessions[session_id]["users"].append(user_id)
+        return conn_id
 
-    def disconnect(self, session_id: str, user_id: str):
-        if session_id in self.active_connections:
-            self.active_connections[session_id].pop(user_id, None)
+    def disconnect(self, session_id: str, conn_id: int) -> Optional[str]:
+        """Drop a connection. Returns the user id if that was the user's last tab in the session."""
+        conns = self.active_connections.get(session_id, {})
+        entry = conns.pop(conn_id, None)
+        if not conns:
+            self.active_connections.pop(session_id, None)
+        if entry is None:
+            return None
+        user_id = entry[1]
+        if any(uid == user_id for _, uid in conns.values()):
+            return None
+
         if session_id in user_states:
             user_states[session_id].pop(user_id, None)
         if session_id in sessions and user_id in sessions[session_id]["users"]:
@@ -1014,23 +1039,23 @@ class ConnectionManager:
             # Track when session became empty for cleanup
             if len(sessions[session_id]["users"]) == 0:
                 sessions[session_id]["lastUserActivity"] = datetime.now().isoformat()
+        return user_id
 
-    async def broadcast(self, session_id: str, message: dict, exclude_user: str = None):
-        """Broadcast message to all users in session (parallel using asyncio.gather)"""
-        if session_id in self.active_connections:
-            async def safe_send(ws):
-                try:
-                    await ws.send_json(message)
-                except (ConnectionError, RuntimeError):
-                    pass  # Client disconnected, ignore
+    async def broadcast(self, session_id: str, message: dict, exclude: int = None):
+        """Send to every connection in the session, except connection `exclude`."""
+        async def safe_send(ws):
+            try:
+                await ws.send_json(message)
+            except Exception:
+                pass  # Client disconnected, ignore
 
-            tasks = [
-                safe_send(ws)
-                for uid, ws in list(self.active_connections[session_id].items())
-                if uid != exclude_user
-            ]
-            if tasks:
-                await asyncio.gather(*tasks)
+        sends = [
+            safe_send(ws)
+            for conn_id, (ws, _) in list(self.active_connections.get(session_id, {}).items())
+            if conn_id != exclude
+        ]
+        if sends:
+            await asyncio.gather(*sends)
 
     def get_users(self, session_id: str) -> List[dict]:
         if session_id not in user_states:
@@ -1076,6 +1101,8 @@ async def create_project(data: dict, user: dict = Depends(require_permission(Per
 
     # Also keep in memory
     projects[project_id] = project
+
+    await live.to_all_users({"type": "projects_changed"})
 
     return {"project_id": project_id, "project": projects[project_id]}
 
@@ -1152,6 +1179,8 @@ async def upload_cover(project_id: str, file: UploadFile = File(...), user: dict
     projects[project_id]["coverImage"] = cover_url
     db_update_project_cover(project_id, cover_url)
 
+    await live.to_all_users({"type": "projects_changed"})
+
     return {"coverImage": cover_url}
 
 
@@ -1209,6 +1238,9 @@ async def delete_project(project_id: str, user: dict = Depends(require_permissio
     sessions_to_remove = [sid for sid, sess in sessions.items() if sess["project_id"] == project_id]
     for sid in sessions_to_remove:
         del sessions[sid]
+
+    await live.to_project(project_id, {"type": "project_deleted", "project": project_id})
+    await live.to_all_users({"type": "projects_changed"})
 
     return {
         "success": True,
@@ -1415,6 +1447,10 @@ async def update_clip_status(project_id: str, base_name: str, data: dict, user: 
     # Mark for write-back persistence
     cache_manager.mark_clip_dirty(project_id, base_name)
 
+    await live.to_project(project_id, {
+        "type": "clip_updated", "baseName": base_name, "clip": projects[project_id]["clips"][base_name]
+    })
+
     return {"success": True}
 
 
@@ -1467,6 +1503,8 @@ async def delete_clip(project_id: str, base_name: str, user: dict = Depends(requ
     # Update in-memory data
     if base_name in projects[project_id].get("clips", {}):
         del projects[project_id]["clips"][base_name]
+
+    await live.to_project(project_id, {"type": "clip_deleted", "baseName": base_name})
 
     return {
         "success": True,
@@ -1604,7 +1642,7 @@ async def end_session(session_id: str, user: dict = Depends(require_permission(P
 
         # Close all WebSocket connections for this session
         if session_id in manager.active_connections:
-            for ws in list(manager.active_connections[session_id].values()):
+            for ws, _ in list(manager.active_connections[session_id].values()):
                 try:
                     await ws.close(code=1000, reason="Session ended")
                 except Exception:
@@ -1966,123 +2004,143 @@ def clean_comment_anchor(anchor) -> Optional[dict]:
     return cleaned or None
 
 
+MAX_COMMENT_TEXT = 10_000
+MAX_DRAWING_BYTES = 2_000_000
+
+
+def _comment_project(session_or_project_id: str, principal: Optional[dict]) -> str:
+    """The project a comment request is about, after checking the caller may see it."""
+    project_id = resolve_project_id(session_or_project_id)
+    require_project_viewer(principal, project_id)
+    if project_id not in projects:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project_id
+
+
+def _find_comment(project_id: str, comment_id: str) -> dict:
+    comment = next((c for c in projects[project_id]["comments"] if c.get("id") == comment_id), None)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    return comment
+
+
+def _may_delete_comment(principal: dict, comment: dict) -> bool:
+    """Admins delete anything, everyone else only what they wrote."""
+    if principal.get("is_admin") or comment.get("user") == principal["id"]:
+        return True
+    # Comments from before logins had a stable id carry a random per-tab id; match those on the name
+    return (
+        not principal.get("is_guest")
+        and str(comment.get("user") or "").startswith("user_")
+        and comment.get("userName") == principal["username"]
+    )
+
+
 @app.post("/api/session/{session_id}/comment")
 @app.post("/api/projects/{session_id}/comment")
-async def add_comment(session_id: str, comment: dict, request: Request, user: Optional[dict] = Depends(get_current_user), principal: Optional[dict] = Depends(get_principal)):
-    """Add a comment to a session/project. Guests can comment with rate limiting."""
+async def add_comment(session_id: str, data: dict, request: Request, principal: Optional[dict] = Depends(get_principal)):
+    """Add a review comment (project members and share-link guests).
+
+    Who wrote it comes from the token, never from the request body.
+    """
     # Anti-spam: rate limit comments by IP
     client_ip = request.client.host if request.client else "unknown"
     if not check_comment_rate_limit(client_ip):
         raise HTTPException(status_code=429, detail="Too many comments. Please slow down.")
     record_comment_attempt(client_ip)
 
-    # Find project from session or use session_id as project_id
-    project_id = session_id
-    if session_id in sessions:
-        project_id = sessions[session_id]["project_id"]
+    project_id = _comment_project(session_id, principal)
 
-    if project_id not in projects:
-        raise HTTPException(status_code=404, detail="Project not found")
-    require_project_viewer(principal, project_id)
+    text = data.get("text")
+    text = text.strip()[:MAX_COMMENT_TEXT] if isinstance(text, str) else ""
+    drawing = data.get("drawing") if isinstance(data.get("drawing"), dict) else None
+    if drawing and len(json.dumps(drawing)) > MAX_DRAWING_BYTES:
+        raise HTTPException(status_code=413, detail="Drawing is too large")
+    if not text and not drawing:
+        raise HTTPException(status_code=400, detail="A comment needs text or a drawing")
 
-    comment["createdAt"] = datetime.now().isoformat()
-    comment["id"] = str(uuid.uuid4())[:8]
-    # Store client IP hash for ownership verification (guests)
-    comment["_clientHash"] = hashlib.sha256(client_ip.encode()).hexdigest()[:16]
+    if principal.get("is_guest"):
+        name = data.get("userName")
+        user_name = (name.strip()[:80] if isinstance(name, str) else "") or "Guest"
+        profile_image = None
+    else:
+        user_name = principal["username"]
+        profile_image = (db_get_user_by_id(principal["id"]) or {}).get("profileImage")
 
-    comment["anchor"] = clean_comment_anchor(comment.get("anchor"))
+    def as_int(value, default=None):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
 
-    # Handle drawing data
-    if comment.get("drawing"):
-        drawing = comment["drawing"]
-        if not drawing.get("color"):
-            user_state = user_states.get(session_id, {}).get(comment.get("user"), {})
-            drawing["color"] = user_state.get("color", "#6366f1")
+    def short_text(value, limit):
+        return value[:limit] if isinstance(value, str) and value else None
 
-    # Add to memory
+    parent_id = data.get("parentId")
+    if not any(c.get("id") == parent_id for c in projects[project_id]["comments"]):
+        parent_id = None
+
+    if drawing and not drawing.get("color"):
+        drawing["color"] = user_states.get(session_id, {}).get(principal["id"], {}).get("color", "#6366f1")
+
+    comment = {
+        "id": str(uuid.uuid4())[:8],
+        "frame": as_int(data.get("frame"), 0),
+        "user": principal["id"],
+        "userName": user_name,
+        "userProfileImage": profile_image,
+        "text": text,
+        "drawing": drawing,
+        "color": short_text(data.get("color"), 32),
+        "clipBaseName": short_text(data.get("clipBaseName"), 300),
+        "clipVersion": as_int(data.get("clipVersion")),
+        "parentId": parent_id,
+        "anchor": clean_comment_anchor(data.get("anchor")),
+        "resolved": False,
+        "createdAt": datetime.now().isoformat(),
+    }
+
+    # Saved before anyone is told about it
+    db_batch_upsert_comments(project_id, [comment])
     projects[project_id]["comments"].append(comment)
 
-    # Mark for write-back persistence (batch persisted every 30s)
-    cache_manager.mark_comment_dirty(project_id, comment["id"])
-
-    await manager.broadcast(session_id, {
-        "type": "comment",
-        "data": comment
-    })
+    await live.to_project(project_id, {"type": "comment_added", "comment": comment})
 
     return comment
 
 
 @app.delete("/api/session/{session_id}/comment/{comment_id}")
 @app.delete("/api/projects/{session_id}/comment/{comment_id}")
-async def delete_comment(session_id: str, comment_id: str, request: Request, user: Optional[dict] = Depends(get_current_user), principal: Optional[dict] = Depends(get_principal)):
-    """Delete a comment. Users can only delete their own comments (or admins can delete any)."""
-    # Find project from session or use session_id as project_id
-    project_id = session_id
-    if session_id in sessions:
-        project_id = sessions[session_id]["project_id"]
+async def delete_comment(session_id: str, comment_id: str, principal: Optional[dict] = Depends(get_principal)):
+    """Delete a comment: your own, or any comment if you are an admin."""
+    project_id = _comment_project(session_id, principal)
+    comment = _find_comment(project_id, comment_id)
 
-    if project_id not in projects:
-        raise HTTPException(status_code=404, detail="Project not found")
-    require_project_viewer(principal, project_id)
-
-    # Find the comment
-    comment = next((c for c in projects[project_id]["comments"] if c.get("id") == comment_id), None)
-    if not comment:
-        raise HTTPException(status_code=404, detail="Comment not found")
-
-    # Check ownership: authenticated admin can delete any, others can only delete own
-    client_ip = request.client.host if request.client else "unknown"
-    client_hash = hashlib.sha256(client_ip.encode()).hexdigest()[:16]
-
-    is_admin = user and user.get("is_admin")
-    is_owner_by_user = user and comment.get("user") == user.get("id")
-    is_owner_by_hash = comment.get("_clientHash") == client_hash
-
-    if not (is_admin or is_owner_by_user or is_owner_by_hash):
+    if not _may_delete_comment(principal, comment):
         raise HTTPException(status_code=403, detail="You can only delete your own comments")
 
-    # Remove from memory
+    db_delete_comment(project_id, comment_id)
     projects[project_id]["comments"] = [
         c for c in projects[project_id]["comments"] if c.get("id") != comment_id
     ]
 
-    # Mark for write-back deletion
-    cache_manager.mark_comment_deleted(project_id, comment_id)
-
-    # Broadcast deletion to other users
-    await manager.broadcast(session_id, {
-        "type": "comment_deleted",
-        "comment_id": comment_id
-    })
+    await live.to_project(project_id, {"type": "comment_deleted", "commentId": comment_id})
 
     return {"success": True}
 
 
 @app.patch("/api/session/{session_id}/comment/{comment_id}/resolved")
 @app.patch("/api/projects/{session_id}/comment/{comment_id}/resolved")
-async def update_comment_resolved(session_id: str, comment_id: str, data: dict, request: Request, user: Optional[dict] = Depends(get_current_user), principal: Optional[dict] = Depends(get_principal)):
+async def update_comment_resolved(session_id: str, comment_id: str, data: dict, principal: Optional[dict] = Depends(get_principal)):
     """Update the resolved status of a comment."""
-    # Find project from session or use session_id as project_id
-    project_id = session_id
-    if session_id in sessions:
-        project_id = sessions[session_id]["project_id"]
+    project_id = _comment_project(session_id, principal)
+    comment = _find_comment(project_id, comment_id)
 
-    if project_id not in projects:
-        raise HTTPException(status_code=404, detail="Project not found")
-    require_project_viewer(principal, project_id)
-
-    # Find the comment
-    comment = next((c for c in projects[project_id]["comments"] if c.get("id") == comment_id), None)
-    if not comment:
-        raise HTTPException(status_code=404, detail="Comment not found")
-
-    # Update resolved status
-    resolved = data.get("resolved", False)
+    resolved = bool(data.get("resolved", False))
     comment["resolved"] = resolved
+    db_batch_upsert_comments(project_id, [comment])
 
-    # Mark comment as dirty for persistence
-    cache_manager.mark_comment_dirty(project_id, comment_id)
+    await live.to_project(project_id, {"type": "comment_updated", "commentId": comment_id, "resolved": resolved})
 
     return {"success": True, "resolved": resolved}
 
@@ -2102,7 +2160,13 @@ async def websocket_endpoint(
         await websocket.close(code=WS_ACCESS_REMOVED)
         return
 
-    await manager.connect(websocket, session_id, user_id, name)
+    # Who this is comes from the token; the id in the URL is ignored
+    user_id = principal["id"]
+    if principal.get("is_guest"):
+        name = (name or "").strip()[:80] or "Guest"
+    else:
+        name = principal["username"]
+    conn_id = await manager.connect(websocket, session_id, user_id, name)
 
     # Get project from session
     project_id = session_id
@@ -2124,7 +2188,7 @@ async def websocket_endpoint(
         await manager.broadcast(session_id, {
             "type": "user_joined",
             "user": user_state
-        }, exclude_user=user_id)
+        }, exclude=conn_id)
 
     # Create notification for project owner
     try:
@@ -2142,12 +2206,7 @@ async def websocket_endpoint(
                     message=f"{joining_user_name} joined {project.get('name', 'your project')}",
                     project_id=project_id
                 )
-                # Send notification via WebSocket if owner is connected
-                if owner["id"] in manager.active_connections.get(session_id, {}):
-                    await manager.active_connections[session_id][owner["id"]].send_json({
-                        "type": "notification",
-                        "notification": notification
-                    })
+                await live.to_user(owner["id"], {"type": "notification", "notification": notification})
     except Exception as e:
         print(f"Error creating join notification: {e}")
 
@@ -2170,7 +2229,7 @@ async def websocket_endpoint(
                     "user_id": user_id,
                     "frame": data.get("frame"),
                     "playing": data.get("playing")
-                }, exclude_user=user_id)
+                }, exclude=conn_id)
 
             elif data["type"] == "sync_inout":
                 await manager.broadcast(session_id, {
@@ -2179,7 +2238,7 @@ async def websocket_endpoint(
                     "inPoint": data.get("inPoint"),
                     "outPoint": data.get("outPoint"),
                     "loopEnabled": data.get("loopEnabled")
-                }, exclude_user=user_id)
+                }, exclude=conn_id)
 
             elif data["type"] == "sync_clip":
                 await manager.broadcast(session_id, {
@@ -2187,14 +2246,14 @@ async def websocket_endpoint(
                     "user_id": user_id,
                     "baseName": data.get("baseName"),
                     "version": data.get("version")
-                }, exclude_user=user_id)
+                }, exclude=conn_id)
 
             elif data["type"] == "sync_quality":
                 await manager.broadcast(session_id, {
                     "type": "sync_quality",
                     "user_id": user_id,
                     "quality": data.get("quality")
-                }, exclude_user=user_id)
+                }, exclude=conn_id)
 
             elif data["type"] == "sync_compare":
                 await manager.broadcast(session_id, {
@@ -2203,7 +2262,7 @@ async def websocket_endpoint(
                     "compareMode": data.get("compareMode"),
                     "compareVersion": data.get("compareVersion"),
                     "wipePosition": data.get("wipePosition")
-                }, exclude_user=user_id)
+                }, exclude=conn_id)
 
             elif data["type"] == "sync_zoom":
                 await manager.broadcast(session_id, {
@@ -2212,14 +2271,14 @@ async def websocket_endpoint(
                     "scale": data.get("scale"),
                     "panX": data.get("panX"),
                     "panY": data.get("panY")
-                }, exclude_user=user_id)
+                }, exclude=conn_id)
 
             elif data["type"] == "sync_timecode_mode":
                 await manager.broadcast(session_id, {
                     "type": "sync_timecode_mode",
                     "user_id": user_id,
                     "showTimecode": data.get("showTimecode")
-                }, exclude_user=user_id)
+                }, exclude=conn_id)
 
             elif data["type"] == "cursor":
                 user_state["cursor"] = {
@@ -2232,7 +2291,7 @@ async def websocket_endpoint(
                     "x": data.get("x"),
                     "y": data.get("y"),
                     "color": user_state.get("color", "#5f5de5")
-                }, exclude_user=user_id)
+                }, exclude=conn_id)
 
             elif data["type"] == "draw":
                 await manager.broadcast(session_id, {
@@ -2243,14 +2302,14 @@ async def websocket_endpoint(
                     "color": data.get("color") or user_state.get("color", "#5f5de5"),
                     "brushSize": data.get("brushSize", 6),
                     "brushType": data.get("brushType", "pen")
-                }, exclude_user=user_id)
+                }, exclude=conn_id)
 
             elif data["type"] == "draw_complete":
                 # First, notify others to clear the remote drawing preview
                 await manager.broadcast(session_id, {
                     "type": "draw_complete",
                     "user_id": user_id
-                }, exclude_user=user_id)
+                }, exclude=conn_id)
 
                 annotation = {
                     "id": str(uuid.uuid4())[:8],
@@ -2261,10 +2320,8 @@ async def websocket_endpoint(
                     "createdAt": datetime.now().isoformat()
                 }
                 if project_id in projects:
-                    # Add to memory
+                    db_add_annotation(project_id, annotation)
                     projects[project_id]["annotations"].append(annotation)
-                    # Mark for write-back persistence
-                    cache_manager.mark_annotation_dirty(project_id, annotation["id"])
 
                 await manager.broadcast(session_id, {
                     "type": "annotation_saved",
@@ -2282,14 +2339,16 @@ async def websocket_endpoint(
                 if user_state:
                     user_state["lastSeen"] = datetime.now().isoformat()
 
-    except WebSocketDisconnect:
-        manager.disconnect(session_id, user_id)
-        await manager.broadcast(session_id, {
-            "type": "user_left",
-            "user_id": user_id
-        })
+    except (WebSocketDisconnect, ValueError, RuntimeError, KeyError):
+        pass
     finally:
         untrack_socket(principal, live_socket)
+        # Tell the others once the user's last tab in the session is gone
+        if manager.disconnect(session_id, conn_id):
+            await manager.broadcast(session_id, {
+                "type": "user_left",
+                "user_id": user_id
+            })
 
 
 @app.get("/api/session/{session_id}")

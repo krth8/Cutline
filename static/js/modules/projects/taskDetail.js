@@ -800,6 +800,28 @@ async function initTaskComments(taskId) {
     }
 }
 
+/**
+ * Someone else changed the comments, checklist or linked clips of a task:
+ * reload that part if the task is the one open here.
+ */
+function refreshOpenTaskDetail(taskId, part) {
+    if (!currentTask || currentTask.id !== taskId) return;
+    if (part === 'checklist') {
+        loadChecklist(taskId);
+    } else if (part === 'clips') {
+        loadLinkedClips(taskId);
+    } else if (part === 'comments' && taskCommentsInstance) {
+        // Don't redraw the comment box while someone is typing in it
+        const typing = document.activeElement?.closest?.('#taskDetailComments');
+        if (typing && document.activeElement.value) return;
+        taskCommentsInstance.loadComments().then(() => {
+            const countEl = document.getElementById('taskDetailCommentsCount');
+            if (countEl) countEl.textContent = `(${taskCommentsInstance.getCount()})`;
+        });
+    }
+}
+window.refreshOpenTaskDetail = refreshOpenTaskDetail;
+
 // ============ Property Dropdowns ============
 
 /**

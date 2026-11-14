@@ -90,6 +90,7 @@ const Auth = (function () {
         noteReported(0);
         save();
         watch();
+        if (typeof Live !== 'undefined') Live.connect();
     }
 
     /** Pick up the login stored by an earlier page load. Returns true if there is one. */
@@ -109,6 +110,7 @@ const Auth = (function () {
         lastActivity = Math.max(shared, Date.now());
         watch();
         refresh();
+        if (typeof Live !== 'undefined') Live.connect();
         return true;
     }
 

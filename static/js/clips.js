@@ -411,27 +411,7 @@ async function deleteClip(baseName) {
             throw new Error(data.detail || 'Kunne ikke slette klipp');
         }
 
-        // Remove from AppState
-        delete AppState.clips[baseName];
-
-        // If this was the current clip, clear selection
-        if (AppState.currentClip?.baseName === baseName) {
-            AppState.currentClip = null;
-            if (typeof HtmlReview !== 'undefined') HtmlReview.unload();
-            // Select first available clip if any
-            const remainingClips = Object.keys(AppState.clips);
-            if (remainingClips.length > 0) {
-                const firstClip = AppState.clips[remainingClips[0]];
-                selectClipVersion(remainingClips[0], firstClip.activeVersion);
-            }
-        }
-
-        // Re-render UI
-        renderClipsSidebar();
-        renderClipBin();
-        if (typeof renderProjectsSidebar === 'function') {
-            renderProjectsSidebar();
-        }
+        removeClipLocally(baseName);
 
     } catch (error) {
         console.error('Delete clip error:', error);
@@ -439,7 +419,70 @@ async function deleteClip(baseName) {
     }
 }
 
+/** A clip is gone (deleted here or, via the live connection, by someone else). */
+function removeClipLocally(baseName) {
+    if (!AppState.clips[baseName]) return;
+    delete AppState.clips[baseName];
+
+    // If this was the current clip, move to another one
+    if (AppState.currentClip?.baseName === baseName) {
+        AppState.currentClip = null;
+        if (typeof HtmlReview !== 'undefined') HtmlReview.unload();
+        const remainingClips = Object.keys(AppState.clips);
+        if (remainingClips.length > 0) {
+            const firstClip = AppState.clips[remainingClips[0]];
+            selectClipVersion(remainingClips[0], firstClip.activeVersion);
+        } else if (typeof showEmptyPlayerState === 'function') {
+            showEmptyPlayerState();
+        }
+    }
+
+    renderClipsSidebar();
+    renderClipBin();
+    if (typeof renderProjectsSidebar === 'function') renderProjectsSidebar();
+}
+
+/**
+ * Take in a clip as the server has it now (new version, status change, ...)
+ * without disturbing what this tab is playing.
+ */
+function applyClipUpdate(baseName, clip, announce) {
+    const existing = AppState.clips[baseName];
+    const isCurrent = AppState.currentClip?.baseName === baseName;
+    const knownVersions = new Set((existing?.versions || []).map(v => v.version));
+    const newVersions = (clip.versions || []).filter(v => !knownVersions.has(v.version));
+
+    const next = { ...clip };
+    // Keep this tab on the version it is showing
+    if (isCurrent && next.versions.some(v => v.version === AppState.currentClip.version)) {
+        next.activeVersion = AppState.currentClip.version;
+    }
+    AppState.clips[baseName] = next;
+
+    if (!AppState.currentClip) {
+        // Nothing was open (empty project): show the clip that just arrived
+        document.getElementById('emptyPlayerOverlay')?.classList.remove('visible');
+        selectClipVersion(baseName, clip.activeVersion);
+    } else {
+        renderClipsSidebar();
+        renderClipBin();
+        if (typeof renderProjectsSidebar === 'function') renderProjectsSidebar();
+        if (isCurrent) {
+            if (typeof updateVersionDropdown === 'function') updateVersionDropdown();
+            if (typeof updateStatusDropdownUI === 'function') updateStatusDropdownUI();
+            if (typeof initCompareControl === 'function') initCompareControl();
+        }
+    }
+
+    if (announce && newVersions.length && typeof Toast !== 'undefined') {
+        const newest = newVersions[0];
+        Toast.info(existing ? `New version of ${baseName}: ${newest.versionStr || 'v' + newest.version}` : `New clip: ${baseName}`);
+    }
+}
+
 // Make functions globally accessible
+window.removeClipLocally = removeClipLocally;
+window.applyClipUpdate = applyClipUpdate;
 window.initClips = initClips;
 window.addClipVersion = addClipVersion;
 window.selectClipVersion = selectClipVersion;

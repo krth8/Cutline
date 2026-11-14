@@ -1,14 +1,20 @@
-"""Per-project live events (task changes) pushed to open task views over WebSocket.
+"""Live updates: one WebSocket per browser tab (/ws/live).
 
-Each browser tab sends a random X-Client-Id header with its API requests and
-uses the same id when it opens the events socket, so a change is not echoed
-back to the tab that made it.
+A tab connects once it has a token and tells the server which project it is
+looking at ("watch"). Changes to that project (comments, clips, tasks) and
+things addressed to the user (notifications, project list changes) are pushed
+over it, so nobody has to reload to see what others did.
+
+Each tab sends a random X-Client-Id header with its API requests and uses the
+same id on the socket, so a change is not echoed back to the tab that made it.
 """
 
 import contextvars
 from typing import Dict, Optional
 
 from fastapi import WebSocket
+
+from database import db_check_project_access
 
 # Set per request by ClientIdMiddleware
 current_client_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar("current_client_id", default=None)
@@ -36,34 +42,101 @@ class ClientIdMiddleware:
             await self.app(scope, receive, send)
 
 
-class ProjectEvents:
+MAX_WATCHED = 5
+
+
+class LiveConnection:
+    def __init__(self, websocket: WebSocket, client_id: str, principal: dict):
+        self.websocket = websocket
+        self.client_id = client_id
+        self.principal = principal
+        # Projects this tab is watching: project_id -> may see task events
+        self.projects: Dict[str, bool] = {}
+
+
+class LiveHub:
     def __init__(self):
-        self.connections: Dict[str, Dict[str, WebSocket]] = {}  # project_id -> {client_id -> ws}
+        self.connections: Dict[int, LiveConnection] = {}
 
-    async def connect(self, project_id: str, client_id: str, websocket: WebSocket):
-        await websocket.accept()
-        self.connections.setdefault(project_id, {})[client_id] = websocket
+    def add(self, websocket: WebSocket, client_id: str, principal: dict) -> LiveConnection:
+        conn = LiveConnection(websocket, client_id, principal)
+        self.connections[id(websocket)] = conn
+        return conn
 
-    def disconnect(self, project_id: str, client_id: str, websocket: WebSocket):
-        conns = self.connections.get(project_id, {})
-        if conns.get(client_id) is websocket:
-            del conns[client_id]
-        if not conns:
-            self.connections.pop(project_id, None)
+    def remove(self, conn: LiveConnection) -> None:
+        self.connections.pop(id(conn.websocket), None)
 
-    async def broadcast(self, project_id: str, message: dict):
-        """Send to everyone watching the project except the client that caused the change."""
-        conns = self.connections.get(project_id)
-        if not conns:
-            return
-        origin = current_client_id.get()
-        for client_id, ws in list(conns.items()):
-            if client_id == origin:
+    def _access(self, principal: dict, project_id: str) -> Optional[bool]:
+        """None if the principal may not see the project, else whether it may see its tasks."""
+        if principal.get("is_guest"):
+            return False if principal.get("project_id") == project_id else None
+        if not db_check_project_access(principal["id"], project_id):
+            return None
+        return db_check_project_access(principal["id"], project_id, require_tasks=True)
+
+    def watch(self, conn: LiveConnection, project_ids: list) -> list:
+        """Set the projects a connection gets updates for. Returns the ones it may not see."""
+        conn.projects = {}
+        denied = []
+        for project_id in project_ids[:MAX_WATCHED]:
+            if not isinstance(project_id, str) or not project_id:
                 continue
-            try:
-                await ws.send_json(message)
-            except Exception:
-                self.disconnect(project_id, client_id, ws)
+            can_tasks = self._access(conn.principal, project_id)
+            if can_tasks is None:
+                denied.append(project_id)
+            else:
+                conn.projects[project_id] = can_tasks
+        return denied
+
+    async def _send(self, conn: LiveConnection, message: dict) -> None:
+        try:
+            await conn.websocket.send_json(message)
+        except Exception:
+            self.remove(conn)
+
+    async def to_project(self, project_id: str, message: dict, tasks_only: bool = False, echo: bool = False) -> None:
+        """Send to every tab watching the project (the message gets a "project" field).
+
+        tasks_only: only to people with task access (never guests).
+        echo: also send to the tab whose request caused the change. Use it for
+        changes that did not come straight from a request (e.g. a finished transcode).
+        """
+        origin = None if echo else current_client_id.get()
+        message = {**message, "project": project_id}
+        for conn in list(self.connections.values()):
+            if project_id not in conn.projects:
+                continue
+            if tasks_only and not conn.projects[project_id]:
+                continue
+            if origin and conn.client_id == origin:
+                continue
+            await self._send(conn, message)
+
+    async def to_user(self, user_id: str, message: dict) -> None:
+        """Send to every tab of one user."""
+        for conn in list(self.connections.values()):
+            if conn.principal["id"] == user_id:
+                await self._send(conn, message)
+
+    async def to_all_users(self, message: dict) -> None:
+        """Send to every logged-in user's tabs (not guests), except the one that caused it."""
+        origin = current_client_id.get()
+        for conn in list(self.connections.values()):
+            if conn.principal.get("is_guest") or (origin and conn.client_id == origin):
+                continue
+            await self._send(conn, message)
+
+    async def recheck_access(self, user_id: str, project_id: str) -> None:
+        """A user's rights in a project changed (or were removed): update what their tabs receive."""
+        for conn in list(self.connections.values()):
+            if conn.principal["id"] != user_id or project_id not in conn.projects:
+                continue
+            can_tasks = self._access(conn.principal, project_id)
+            if can_tasks is None:
+                del conn.projects[project_id]
+                await self._send(conn, {"type": "access_removed", "project": project_id})
+            else:
+                conn.projects[project_id] = can_tasks
 
 
-project_events = ProjectEvents()
+live = LiveHub()

@@ -13,6 +13,7 @@ from database import (
     db_update_project_access,
 )
 from api.auth import require_auth, require_project_access
+from api.events import live
 from api.state import close_live_sockets, projects
 
 
@@ -82,6 +83,10 @@ async def grant_project_access(project_id: str, data: dict, user: dict = Depends
         granted_by=user["id"]
     )
 
+    # Their project list (and what an open project view may show) changes right away
+    await live.recheck_access(target_user_id, project_id)
+    await live.to_user(target_user_id, {"type": "projects_changed"})
+
     return {"access": access}
 
 
@@ -111,6 +116,9 @@ async def update_project_access(project_id: str, target_user_id: str, data: dict
     success = db_update_project_access(target_user_id, project_id, can_review=can_review, can_tasks=can_tasks)
     if not success:
         raise HTTPException(status_code=404, detail="Access record not found")
+
+    await live.recheck_access(target_user_id, project_id)
+    await live.to_user(target_user_id, {"type": "projects_changed"})
 
     return {"success": True}
 
@@ -142,6 +150,8 @@ async def revoke_project_access(project_id: str, target_user_id: str, user: dict
 
     # End any live review session they have open in this project
     await close_live_sockets(target_user_id, project_id)
+    await live.recheck_access(target_user_id, project_id)
+    await live.to_user(target_user_id, {"type": "projects_changed"})
 
     return {"success": True}
 

@@ -4,10 +4,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
-    Query,
     Request,
-    WebSocket,
-    WebSocketDisconnect,
 )
 from typing import List, Optional
 from cache import cache_manager
@@ -19,37 +16,17 @@ from database import (
     db_get_task,
     db_get_untagged_clips,
 )
-from api.auth import Permission, has_permission, principal_from_token, require_auth
-from api.events import project_events
+from api.auth import Permission, has_permission, require_auth
+from api.events import live
 from api.state import projects, tasks
 
 
 router = APIRouter()
 
 
-@router.websocket("/ws/projects/{project_id}/events")
-async def project_events_socket(
-    websocket: WebSocket,
-    project_id: str,
-    client_id: str = Query(..., max_length=64),
-    token: Optional[str] = Query(None),
-):
-    """Live task events for one project (logged-in members with task access)."""
-    principal = principal_from_token(token)
-    if (not principal or principal.get("is_guest")
-            or not db_check_project_access(principal["id"], project_id, require_tasks=True)):
-        await websocket.close(code=4403)
-        return
-
-    await project_events.connect(project_id, client_id, websocket)
-    try:
-        while True:
-            # Clients only send keep-alive pings
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        pass
-    finally:
-        project_events.disconnect(project_id, client_id, websocket)
+async def task_changed(task: dict, what: str) -> None:
+    """Tell open task views that a task's comments, checklist or linked clips changed."""
+    await live.to_project(task["projectId"], {"type": f"task_{what}_changed", "taskId": task["id"]}, tasks_only=True)
 
 
 def can_edit_tasks(user: dict, project_id: str) -> bool:
@@ -183,7 +160,7 @@ async def create_task(project_id: str, data: dict, user: dict = Depends(require_
     if parent_id and parent_id in tasks:
         tasks[parent_id]["childCount"] = tasks[parent_id].get("childCount", 0) + 1
 
-    await project_events.broadcast(project_id, {"type": "task_created", "task": full_task or task})
+    await live.to_project(project_id, {"type": "task_created", "task": full_task or task}, tasks_only=True)
     return {"task": full_task or task}
 
 
@@ -252,7 +229,7 @@ async def update_task(task_id: str, data: dict, user: dict = Depends(require_aut
     # Mark for write-back persistence
     cache_manager.mark_task_dirty(task_id)
 
-    await project_events.broadcast(task["projectId"], {"type": "task_updated", "task": task})
+    await live.to_project(task["projectId"], {"type": "task_updated", "task": task}, tasks_only=True)
     return {"task": task}
 
 
@@ -294,7 +271,7 @@ async def delete_task(task_id: str, user: dict = Depends(require_auth)):
     if parent_id and parent_id in tasks:
         tasks[parent_id]["childCount"] = max(0, tasks[parent_id].get("childCount", 1) - 1)
 
-    await project_events.broadcast(task["projectId"], {"type": "task_deleted", "taskId": task_id, "parentId": parent_id})
+    await live.to_project(task["projectId"], {"type": "task_deleted", "taskId": task_id, "parentId": parent_id}, tasks_only=True)
     return {"success": True}
 
 
@@ -319,7 +296,7 @@ async def reorder_tasks_endpoint(project_id: str, data: dict, user: dict = Depen
             tasks[task_id]["sortOrder"] = i
             cache_manager.mark_task_dirty(task_id)
 
-    await project_events.broadcast(project_id, {"type": "tasks_reordered"})
+    await live.to_project(project_id, {"type": "tasks_reordered"}, tasks_only=True)
     return {"success": True}
 
 
@@ -396,6 +373,7 @@ async def create_task_comment(task_id: str, data: dict, user: dict = Depends(req
         user_profile_image=user.get("profileImage")
     )
 
+    await task_changed(task, "comments")
     return {"comment": comment}
 
 
@@ -419,13 +397,14 @@ async def delete_task_comment(task_id: str, comment_id: str, user: dict = Depend
         raise HTTPException(status_code=404, detail="Comment not found")
 
     # Only comment author or admin can delete
-    if comment["userId"] != user["id"] and not user.get("isAdmin"):
+    if comment["userId"] != user["id"] and not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Cannot delete other user's comment")
 
     success = db_delete_task_comment(comment_id)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to delete comment")
 
+    await task_changed(task, "comments")
     return {"success": True}
 
 
@@ -471,6 +450,7 @@ async def link_task_clip(task_id: str, data: dict, user: dict = Depends(require_
     if not success:
         raise HTTPException(status_code=500, detail="Failed to link clip")
 
+    await task_changed(task, "clips")
     return {"success": True}
 
 
@@ -492,6 +472,7 @@ async def unlink_task_clip(task_id: str, clip_id: int, user: dict = Depends(requ
     if not success:
         raise HTTPException(status_code=404, detail="Clip link not found")
 
+    await task_changed(task, "clips")
     return {"success": True}
 
 
@@ -554,6 +535,7 @@ async def create_checklist_item(task_id: str, request: Request, user: dict = Dep
         raise HTTPException(status_code=400, detail="Text is required")
 
     item = db_create_checklist_item(task_id, text)
+    await task_changed(task, "checklist")
     return {"item": item}
 
 
@@ -577,6 +559,7 @@ async def update_checklist_item(task_id: str, item_id: str, request: Request, us
     if not item:
         raise HTTPException(status_code=404, detail="Checklist item not found")
 
+    await task_changed(task, "checklist")
     return {"item": item}
 
 
@@ -596,6 +579,7 @@ async def delete_checklist_item(task_id: str, item_id: str, user: dict = Depends
     if not success:
         raise HTTPException(status_code=404, detail="Checklist item not found")
 
+    await task_changed(task, "checklist")
     return {"success": True}
 
 

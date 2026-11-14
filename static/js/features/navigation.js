@@ -101,9 +101,8 @@ function switchTab(tabName) {
             AppState.projectId = currentTasksProjectId;
         }
 
-        // Initialize ReviewModule if available and project is selected
-        if (typeof ReviewModule !== 'undefined' && AppState.projectId) {
-            ReviewModule.init(AppState.projectId);
+        if (typeof UserManager !== 'undefined' && AppState.projectId) {
+            UserManager.setProjectAccessFromList(AppState.projectId);
         }
 
         // Show project selection modal if no project is selected

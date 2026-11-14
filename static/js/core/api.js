@@ -36,6 +36,7 @@ function setGuestToken(token) {
         const sub = tokenSubject(token);
         if (sub && !AppState.authToken) AppState.userId = sub;
     }
+    if (token && typeof Live !== 'undefined') Live.connect();
     try {
         if (token) sessionStorage.setItem('guestToken', token);
         else sessionStorage.removeItem('guestToken');

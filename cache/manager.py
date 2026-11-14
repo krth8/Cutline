@@ -1,10 +1,15 @@
 """
 In-Memory Cache Manager with Periodic Persistence
 
-Implements write-back caching strategy:
-- All data changes go to memory first
+Implements write-back caching for clips and tasks:
+- Changes go to memory first
 - Dirty data is persisted periodically (every 30s) or when buffer exceeds threshold
 - Graceful shutdown ensures all dirty data is flushed
+- persist_now() writes at once, for changes that must not be lost or that
+  other database code depends on (a new clip version)
+
+Review comments and annotations are not cached: they are written straight to
+the database when they are made.
 """
 
 import asyncio
@@ -179,16 +184,6 @@ class CacheManager:
         self.dirty_tracker.mark_dirty("project", project_id)
         self._check_threshold()
 
-    def mark_comment_dirty(self, project_id: str, comment_id: str) -> None:
-        """Mark a comment as needing persistence."""
-        self.dirty_tracker.mark_dirty("comment", f"{project_id}:{comment_id}")
-        self._check_threshold()
-
-    def mark_annotation_dirty(self, project_id: str, annotation_id: str) -> None:
-        """Mark an annotation as needing persistence."""
-        self.dirty_tracker.mark_dirty("annotation", f"{project_id}:{annotation_id}")
-        self._check_threshold()
-
     def mark_clip_dirty(self, project_id: str, base_name: str) -> None:
         """Mark a clip as needing persistence."""
         self.dirty_tracker.mark_dirty("clip", f"{project_id}:{base_name}")
@@ -202,16 +197,6 @@ class CacheManager:
     def mark_status_dirty(self, status_id: str) -> None:
         """Mark a status as needing persistence."""
         self.dirty_tracker.mark_dirty("status", status_id)
-        self._check_threshold()
-
-    def mark_comment_deleted(self, project_id: str, comment_id: str) -> None:
-        """Mark a comment for deletion."""
-        self.dirty_tracker.mark_dirty("comment_delete", f"{project_id}:{comment_id}")
-        self._check_threshold()
-
-    def mark_annotation_deleted(self, project_id: str, annotation_id: str) -> None:
-        """Mark an annotation for deletion."""
-        self.dirty_tracker.mark_dirty("annotation_delete", f"{project_id}:{annotation_id}")
         self._check_threshold()
 
     def _check_threshold(self) -> None:
@@ -251,22 +236,11 @@ class CacheManager:
 
         try:
             # Import here to avoid circular imports
-            from database.batch import (
-                db_batch_upsert_comments,
-                db_batch_upsert_annotations,
-                db_batch_upsert_clips,
-                db_batch_upsert_tasks,
-                db_batch_delete_comments,
-                db_batch_delete_annotations
-            )
+            from database.batch import db_batch_upsert_clips, db_batch_upsert_tasks
 
             # Persist in order of dependency
-            persisted_counts["comments"] = await self._persist_dirty_comments(db_batch_upsert_comments)
-            persisted_counts["annotations"] = await self._persist_dirty_annotations(db_batch_upsert_annotations)
             persisted_counts["clips"] = await self._persist_dirty_clips(db_batch_upsert_clips)
             persisted_counts["tasks"] = await self._persist_dirty_tasks(db_batch_upsert_tasks)
-            persisted_counts["comment_deletes"] = await self._persist_deleted_comments(db_batch_delete_comments)
-            persisted_counts["annotation_deletes"] = await self._persist_deleted_annotations(db_batch_delete_annotations)
 
             # Update stats
             elapsed = (datetime.now() - start_time).total_seconds() * 1000
@@ -285,6 +259,10 @@ class CacheManager:
             import traceback
             traceback.print_exc()
 
+    async def persist_now(self) -> None:
+        """Write everything that is dirty to the database right away."""
+        await self._persist_dirty()
+
     async def _flush_all_dirty(self) -> None:
         """Force persistence of all dirty data (for shutdown)."""
         if self.dirty_tracker.has_dirty():
@@ -292,65 +270,6 @@ class CacheManager:
             await self._persist_dirty()
 
     # === Entity-specific persistence methods ===
-
-    async def _persist_dirty_comments(self, batch_upsert_fn) -> int:
-        """Persist dirty comments."""
-        dirty = self.dirty_tracker.get_dirty("comment")
-        if not dirty:
-            return 0
-
-        # Group by project
-        by_project = defaultdict(list)
-        for key in dirty.keys():
-            project_id, comment_id = key.split(":", 1)
-            if project_id in self._projects:
-                comment = next(
-                    (c for c in self._projects[project_id].get("comments", [])
-                     if c.get("id") == comment_id),
-                    None
-                )
-                if comment:
-                    by_project[project_id].append(comment)
-
-        persisted = set()
-        for project_id, comments in by_project.items():
-            try:
-                await asyncio.to_thread(batch_upsert_fn, project_id, comments)
-                persisted.update(f"{project_id}:{c['id']}" for c in comments)
-            except Exception as e:
-                print(f"Failed to persist comments for {project_id}: {e}")
-
-        self.dirty_tracker.clear_dirty("comment", persisted)
-        return len(persisted)
-
-    async def _persist_dirty_annotations(self, batch_upsert_fn) -> int:
-        """Persist dirty annotations."""
-        dirty = self.dirty_tracker.get_dirty("annotation")
-        if not dirty:
-            return 0
-
-        by_project = defaultdict(list)
-        for key in dirty.keys():
-            project_id, annotation_id = key.split(":", 1)
-            if project_id in self._projects:
-                annotation = next(
-                    (a for a in self._projects[project_id].get("annotations", [])
-                     if a.get("id") == annotation_id),
-                    None
-                )
-                if annotation:
-                    by_project[project_id].append(annotation)
-
-        persisted = set()
-        for project_id, annotations in by_project.items():
-            try:
-                await asyncio.to_thread(batch_upsert_fn, project_id, annotations)
-                persisted.update(f"{project_id}:{a['id']}" for a in annotations)
-            except Exception as e:
-                print(f"Failed to persist annotations for {project_id}: {e}")
-
-        self.dirty_tracker.clear_dirty("annotation", persisted)
-        return len(persisted)
 
     async def _persist_dirty_clips(self, batch_upsert_fn) -> int:
         """Persist dirty clips."""
@@ -397,51 +316,6 @@ class CacheManager:
                 return 0
 
         return len(tasks_to_persist)
-
-    async def _persist_deleted_comments(self, batch_delete_fn) -> int:
-        """Persist comment deletions."""
-        dirty = self.dirty_tracker.get_dirty("comment_delete")
-        if not dirty:
-            return 0
-
-        # Group by project
-        by_project = defaultdict(list)
-        for key in dirty.keys():
-            project_id, comment_id = key.split(":", 1)
-            by_project[project_id].append(comment_id)
-
-        deleted = set()
-        for project_id, comment_ids in by_project.items():
-            try:
-                await asyncio.to_thread(batch_delete_fn, project_id, comment_ids)
-                deleted.update(f"{project_id}:{cid}" for cid in comment_ids)
-            except Exception as e:
-                print(f"Failed to delete comments for {project_id}: {e}")
-
-        self.dirty_tracker.clear_dirty("comment_delete", deleted)
-        return len(deleted)
-
-    async def _persist_deleted_annotations(self, batch_delete_fn) -> int:
-        """Persist annotation deletions."""
-        dirty = self.dirty_tracker.get_dirty("annotation_delete")
-        if not dirty:
-            return 0
-
-        by_project = defaultdict(list)
-        for key in dirty.keys():
-            project_id, annotation_id = key.split(":", 1)
-            by_project[project_id].append(annotation_id)
-
-        deleted = set()
-        for project_id, annotation_ids in by_project.items():
-            try:
-                await asyncio.to_thread(batch_delete_fn, project_id, annotation_ids)
-                deleted.update(f"{project_id}:{aid}" for aid in annotation_ids)
-            except Exception as e:
-                print(f"Failed to delete annotations for {project_id}: {e}")
-
-        self.dirty_tracker.clear_dirty("annotation_delete", deleted)
-        return len(deleted)
 
     # === Stats Methods ===
 

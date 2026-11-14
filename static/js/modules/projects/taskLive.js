@@ -1,65 +1,22 @@
 /**
  * TaskLive - applies other users' task changes to the open task list in real time.
  *
- * TaskManager.init() connects to /ws/projects/<id>/events; TaskManager.clear()
- * disconnects. Changes made in this tab are not echoed back (see X-Client-Id).
+ * The events arrive over the shared live connection (core/live.js);
+ * TaskManager.init() says which project's tasks to follow and
+ * TaskManager.clear() stops. Changes made in this tab are not echoed back.
  */
 const TaskLive = (function () {
-    let ws = null;
     let projectId = null;
-    let retries = 0;
-    let retryTimer = null;
-    let pingTimer = null;
     let pendingRender = false;
 
     function connect(pid) {
-        if (pid === projectId && ws && ws.readyState <= 1) return;
-        disconnect();
-        projectId = pid;
-        if (!pid || typeof withAuthToken !== 'function') return;
-
-        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const url = withAuthToken(`${protocol}//${location.host}/ws/projects/${encodeURIComponent(pid)}/events?client_id=${encodeURIComponent(window.CLIENT_ID || '')}`);
-        const socket = new WebSocket(url);
-        ws = socket;
-
-        socket.onopen = () => {
-            retries = 0;
-            pingTimer = setInterval(() => {
-                if (socket.readyState === 1) socket.send('ping');
-            }, 25000);
-        };
-        socket.onmessage = (event) => {
-            try {
-                handle(JSON.parse(event.data));
-            } catch (e) {
-                console.error('TaskLive: bad message', e);
-            }
-        };
-        socket.onclose = (event) => {
-            clearInterval(pingTimer);
-            if (ws !== socket) return; // replaced or closed on purpose
-            ws = null;
-            if (event.code === 4403) return; // no access - don't retry
-            const delay = Math.min(1000 * 2 ** retries, 30000);
-            retries++;
-            retryTimer = setTimeout(() => {
-                if (projectId === pid) {
-                    connect(pid);
-                    // We may have missed changes while offline
-                    reload();
-                }
-            }, delay);
-        };
+        projectId = pid || null;
+        Live.watch('tasks', projectId);
     }
 
     function disconnect() {
-        clearTimeout(retryTimer);
-        clearInterval(pingTimer);
-        const socket = ws;
-        ws = null;
         projectId = null;
-        if (socket) socket.close(1000);
+        Live.watch('tasks', null);
     }
 
     // ============ Applying changes ============
@@ -114,6 +71,7 @@ const TaskLive = (function () {
     }
 
     function handle(msg) {
+        if (!projectId || msg.project !== projectId) return;
         if (!window.TaskManager || TaskManager.getProjectId() !== projectId) return;
         const list = tasks();
 
@@ -173,7 +131,7 @@ const TaskLive = (function () {
         }
     }
 
-    return { connect, disconnect, isConnected: () => !!ws && ws.readyState === 1 };
+    return { connect, disconnect, handle, reload };
 })();
 
 window.TaskLive = TaskLive;

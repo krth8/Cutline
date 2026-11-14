@@ -1,4 +1,7 @@
-// ============ WebSocket Module ============
+// ============ Review session socket ============
+// Only the things that exist while people review together: synced playback,
+// shared cursors and live drawing. Comments, clips and notifications arrive
+// over the always-on live connection (core/live.js).
 
 function initWebSocket() {
     // WebSocket will be initialized when session starts
@@ -23,10 +26,10 @@ function connectWebSocket() {
     AppState.ws.onclose = (event) => {
         updateSessionBadgeState(false);
 
-        // 4403: access to this project was removed (or was never there). Don't keep retrying.
-        if (event.code === 4403) {
+        // 4403: access to this project was removed. 4401: the login ended. Don't keep retrying;
+        // the live connection (core/live.js) tells the user.
+        if (event.code === 4403 || event.code === 4401) {
             AppState._wsIntentionalConnect = false;
-            if (typeof Toast !== 'undefined') Toast.error('You no longer have access to this project');
             return;
         }
 
@@ -210,33 +213,11 @@ function handleMessage(msg) {
             }
             break;
 
-        case 'comment':
-            AppState.comments.push(msg.data);
-            renderComments();
-            break;
-
-        case 'comment_deleted':
-            handleCommentDeleted(msg.comment_id);
-            break;
-
         case 'annotation_saved':
             const a = msg.annotation;
             if (!AppState.annotations[a.frame]) AppState.annotations[a.frame] = [];
             AppState.annotations[a.frame].push(a);
             renderTimelineMarkers();
-            break;
-
-        case 'clip_added':
-            if (msg.clip) {
-                const clipInfo = parseClipFilename(msg.clip.filename);
-                addClipVersion(clipInfo.baseName, clipInfo.version, msg.clip.filename);
-            }
-            break;
-
-        case 'notification':
-            if (msg.notification && window.handleNewNotification) {
-                window.handleNewNotification(msg.notification);
-            }
             break;
 
         case 'sync_compare':

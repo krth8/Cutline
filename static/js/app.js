@@ -809,6 +809,22 @@ async function createProject() {
 }
 
 // ============ Load Projects ============
+/** The project list changed on the server (new project, access granted or removed, ...). */
+async function refreshProjectsList() {
+    if (!AppState.authToken) return;
+    try {
+        const res = await fetch('/api/projects');
+        if (!res.ok) return;
+        AppState.projects = (await res.json()).projects || [];
+        renderProjectsSidebar();
+        if (typeof UserManager !== 'undefined' && AppState.projectId) {
+            UserManager.setProjectAccessFromList(AppState.projectId);
+        }
+    } catch (e) {
+        console.error('Failed to refresh projects:', e);
+    }
+}
+
 async function loadProjects() {
     try {
         const res = await authFetch('/api/projects');
@@ -857,9 +873,9 @@ async function loadProject(projectId) {
             switchTab('review');
         }
 
-        // Initialize ReviewModule if available (new architecture)
-        if (typeof ReviewModule !== 'undefined') {
-            ReviewModule.init(projectId);
+        // What this user may do in the project
+        if (typeof UserManager !== 'undefined') {
+            UserManager.setProjectAccessFromList(projectId);
         }
 
         initSessionUI(data);
@@ -2583,6 +2599,9 @@ async function loadProjectFromShareLink(data) {
 
     // Hide welcome overlay
     elements.uploadOverlay.classList.add('hidden');
+
+    // Guests come for the review; a fresh browser would otherwise open on the projects tab
+    if (typeof switchTab === 'function') switchTab('review');
 
     // Hide projects sidebar for guests (they can only access their shared project)
     document.querySelector('.app')?.classList.add('projects-hidden');
@@ -4368,12 +4387,8 @@ function handleNewNotification(notification) {
     }
 }
 
-// Load notifications on auth
-AppState.subscribe(['authToken'], () => {
-    if (AppState.authToken && !AppState.isShareLinkGuest) {
-        loadNotifications();
-    }
-});
+// Notifications are loaded when the live connection comes up (core/live.js)
+// and new ones arrive over it.
 
 window.toggleNotificationsPanel = toggleNotificationsPanel;
 window.closeNotificationsPanel = closeNotificationsPanel;
