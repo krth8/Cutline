@@ -14,12 +14,13 @@ function initNavigation() {
     // Update user display on state change
     AppState.subscribe(['adminUser', 'isAdmin'], updateUserDisplay);
 
-    // Restore saved tab from localStorage
+    // Restore saved tab from localStorage. A deep link decides the tab itself (Routes.apply),
+    // and Pages is only ever opened through its URL.
     const savedTab = localStorage.getItem('activeTab');
-    if (savedTab && ['projects', 'review', 'docs', 'lounge'].includes(savedTab)) {
+    if (savedTab && ['projects', 'review', 'docs', 'lounge'].includes(savedTab) && !Routes.isDeepLink()) {
         // Delay to ensure DOM is ready
         requestAnimationFrame(() => {
-            switchTab(savedTab);
+            switchTab(savedTab, { history: 'replace' });
         });
     } else {
         // Initialize tab indicator position for default tab
@@ -41,7 +42,15 @@ function updateTabIndicator() {
     indicator.style.transform = `translateX(${tabRect.left - containerRect.left}px)`;
 }
 
-function switchTab(tabName) {
+/**
+ * Show a tab. options.history says what happens to the URL (see Routes.sync):
+ * 'push' (default, the user chose the tab), 'replace', or 'none' (the URL chose the tab).
+ */
+function switchTab(tabName, options) {
+    // Share-link guests have no Pages tab
+    if (tabName === 'pages' && AppState.isShareLinkGuest) tabName = 'review';
+    const previousTab = AppState.activeTab;
+
     // Save docs before switching away from docs tab
     if (AppState.activeTab === 'docs' && typeof DocsModule !== 'undefined') {
         DocsModule.cleanup();
@@ -55,7 +64,8 @@ function switchTab(tabName) {
         projects: document.getElementById('viewProjects'),
         review: document.getElementById('viewReview'),
         docs: document.getElementById('viewDocs'),
-        lounge: document.getElementById('viewLounge')
+        lounge: document.getElementById('viewLounge'),
+        pages: document.getElementById('viewPages')
     };
 
     const toolbars = {
@@ -87,6 +97,10 @@ function switchTab(tabName) {
     // Store active tab (in memory and localStorage)
     AppState.activeTab = tabName;
     localStorage.setItem('activeTab', tabName);
+
+    // The URL follows the tab; the Pages bundle is mounted only while its tab is shown
+    Routes.sync(tabName, options && options.history, previousTab);
+    Routes.afterSwitch(tabName);
 
     // Load data for the active tab
     if (tabName === 'projects') {

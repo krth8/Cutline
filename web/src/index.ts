@@ -4,8 +4,8 @@ import { getPlatform } from './platform';
 export const version = '0.1.0';
 
 export interface CutlinePagesApi {
-  /** Render the Pages app into `element` for a route like "/p/abc/pages". Calling it again re-renders. */
-  mount(element: Element, route: string): void;
+  /** Render the Pages app into `element` (the route is read from the URL). Calling it again is harmless. */
+  mount(element: Element, route?: string): void;
   unmount(element: Element): void;
   version: string;
 }
@@ -19,6 +19,8 @@ declare global {
 }
 
 window.CutlinePages = api;
+// The bundle is deferred, so the legacy page may have been waiting for it (static/js/features/routes.js)
+window.dispatchEvent(new CustomEvent('cutline:pages-ready'));
 
 /**
  * /dev/ui is a full-screen page for admins: the legacy page does not know the
@@ -36,7 +38,7 @@ function mountDevUiWhenReady(): void {
       host.className = 'cl-fullscreen';
       host.id = 'cl-dev-ui';
       document.body.appendChild(host);
-      mountApp(host, window.location.pathname);
+      mountApp(host);
     } else if (Date.now() - started > 30000) {
       clearInterval(timer); // never logged in: leave the legacy login alone
     }
