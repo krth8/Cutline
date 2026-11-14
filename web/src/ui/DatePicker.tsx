@@ -10,6 +10,8 @@ export interface DatePickerProps {
   weekStartsOn?: 0 | 1;
   /** Show a "Clear" button (default true). */
   clearable?: boolean;
+  /** Show a "Today" button (default true). */
+  showToday?: boolean;
   className?: string;
 }
 
@@ -35,7 +37,7 @@ const addMonths = (d: Date, n: number) => {
 };
 
 /** An inline month calendar. Wrap it in a Popover to use it as a field. */
-export function DatePicker({ value, onChange, weekStartsOn = 1, clearable = true, className }: DatePickerProps) {
+export function DatePicker({ value, onChange, weekStartsOn = 1, clearable = true, showToday = true, className }: DatePickerProps) {
   const selected = parseISODate(value);
   const [focused, setFocused] = useState<Date>(() => selected ?? new Date());
   const gridRef = useRef<HTMLDivElement>(null);
@@ -135,16 +137,20 @@ export function DatePicker({ value, onChange, weekStartsOn = 1, clearable = true
           </div>
         ))}
       </div>
-      <div className="cl-datepicker__footer">
-        <button type="button" className="cl-datepicker__link" onClick={() => onChange(todayISO)}>
-          Today
-        </button>
-        {clearable && (
-          <button type="button" className="cl-datepicker__link" disabled={!value} onClick={() => onChange(null)}>
-            Clear
-          </button>
-        )}
-      </div>
+      {(showToday || clearable) && (
+        <div className="cl-datepicker__footer">
+          {showToday && (
+            <button type="button" className="cl-datepicker__link" onClick={() => onChange(todayISO)}>
+              Today
+            </button>
+          )}
+          {clearable && (
+            <button type="button" className="cl-datepicker__link" disabled={!value} onClick={() => onChange(null)}>
+              Clear
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
