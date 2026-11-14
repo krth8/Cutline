@@ -177,6 +177,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;  // Don't proceed until setup is complete
     }
 
+    // After an idle logout we are back at "/": return to the URL the user was on
+    Routes.restore();
+
     // Pick up a stored login (checked with the server in the background)
     Auth.restore();
 
@@ -198,24 +201,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('uploadOverlay').classList.add('hidden');
 
     // Load projects in sidebar
-    loadProjects();
+    const projectsLoaded = loadProjects();
 
     // Load clip statuses (await to ensure statuses available before clips render)
     await loadStatuses();
 
-    // Check URL for project/session
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlSession = urlParams.get('session');
-    const urlProject = urlParams.get('project');
-
-    if (urlSession) {
-        // Session link - join session (pass project as fallback)
-        joinSessionFromUrl(urlSession, urlProject);
-    } else if (urlProject) {
-        // Direct project link (view only, no session)
-        AppState.projectId = urlProject;
-        loadProject(urlProject);
-    }
+    // The URL decides the tab: /p/<id>/review (also the old ?project=<id>&session=<id> links),
+    // the Pages routes, or "/" for the last tab. The Pages sidebar needs the project list.
+    await projectsLoaded;
+    Routes.apply({ initial: true });
 });
 
 // Join session from URL parameter
@@ -237,7 +231,7 @@ async function joinSessionFromUrl(sessionId, fallbackProjectId = null) {
                 AppState.projectId = fallbackProjectId;
                 loadProject(fallbackProjectId);
                 // Clean up URL to just project
-                history.replaceState(null, '', `?project=${fallbackProjectId}`);
+                history.replaceState(null, '', Routes.reviewUrl(fallbackProjectId));
                 return;
             }
 
@@ -254,7 +248,7 @@ async function joinSessionFromUrl(sessionId, fallbackProjectId = null) {
         AppState.currentProject = data.project;
 
         // Update URL to include project for clarity
-        history.replaceState(null, '', `?project=${data.project_id}&session=${sessionId}`);
+        history.replaceState(null, '', Routes.reviewUrl(data.project_id, sessionId));
 
         // Switch to review tab when joining session
         if (typeof switchTab === 'function') {
@@ -500,7 +494,7 @@ function copySessionLink(sessionId) {
     // Include both project and session for robustness
     let url = `${window.location.origin}?session=${sessionId}`;
     if (projectId) {
-        url = `${window.location.origin}?project=${projectId}&session=${sessionId}`;
+        url = `${window.location.origin}${Routes.reviewUrl(projectId, sessionId)}`;
     }
 
     navigator.clipboard.writeText(url).then(() => {
@@ -825,7 +819,8 @@ async function loadProjects() {
         renderProjectsSidebar();
 
         // Show project selection modal if on Review tab with no project selected
-        if (!AppState.projectId && AppState.projects.length > 0) {
+        // (a deep link names its own tab and project: Routes.apply handles it)
+        if (!AppState.projectId && AppState.projects.length > 0 && !Routes.isDeepLink()) {
             const activeTab = AppState.activeTab || 'review';
             if (activeTab === 'review') {
                 setTimeout(() => showProjectSelectionModal(), 200);
@@ -944,8 +939,13 @@ function initSessionUI(project) {
         connectWebSocket();
     }
 
-    // Update URL
-    history.replaceState(null, '', `?project=${AppState.projectId}`);
+    // Update URL (share-link guests keep their /s/<id> path)
+    if (AppState.isShareLinkGuest) {
+        history.replaceState(null, '', `?project=${AppState.projectId}`);
+    } else if (AppState.projectId) {
+        const url = new URL(Routes.reviewUrl(AppState.projectId, AppState.sessionId), location.origin);
+        if (location.pathname !== url.pathname) history.replaceState(history.state, '', url.pathname + url.search);
+    }
 }
 
 // ============ Upload with Progress ============
@@ -3736,7 +3736,7 @@ async function mainLogin() {
             document.getElementById('loginPassword').value = '';
 
             // Load projects in sidebar
-            loadProjects();
+            const projectsLoaded = loadProjects();
 
             // Update user display in header
             if (typeof updateUserDisplay === 'function') {
@@ -3747,6 +3747,12 @@ async function mainLogin() {
             if (typeof updateSettingsAuthUI === 'function') {
                 updateSettingsAuthUI();
             }
+
+            // Land on the URL that was opened before the login (a deep link)
+            if (Routes.isDeepLink()) {
+                await Promise.all([projectsLoaded, typeof loadStatuses === 'function' ? loadStatuses() : null]);
+            }
+            Routes.apply({ initial: true });
         } else {
             errorEl.classList.remove('hidden');
             errorEl.textContent = data.error || 'Invalid credentials';

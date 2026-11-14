@@ -724,6 +724,8 @@
                 <button class="main-tab" data-tab="review">Review</button>
                 <button class="main-tab" data-tab="docs">Docs</button>
                 <button class="main-tab" data-tab="lounge">Lounge</button>
+                <!-- Shown by routes.js for logged-in users only (never for share-link guests) -->
+                <button class="main-tab hidden" data-tab="pages" id="mainTabPages">Pages</button>
             </nav>
 
             <div class="header-actions">
@@ -1027,6 +1029,9 @@
             <div class="view-lounge hidden" id="viewLounge">
                 <!-- LoungeModule renders content here -->
             </div>
+
+            <!-- Pages View (React bundle mounts here: static/dist/pages.js) -->
+            <div class="view-pages hidden" id="viewPages"></div>
         </main>
 
         <!-- Right Sidebar - Comments/Tasks -->
@@ -1146,7 +1151,7 @@
     <script src="/static/js/core/state.js?v=2"></script>
     <script src="/static/js/core/utils.js?v=1"></script>
     <script src="/static/js/core/api.js?v=4"></script>
-    <script src="/static/js/core/auth.js"></script>
+    <script src="/static/js/core/auth.js?v=2"></script>
     <script src="/static/js/core/live.js"></script>
     <!-- Core infrastructure (new) -->
     <script src="/static/js/core/PropertyRegistry.js?v=9"></script>
@@ -1187,10 +1192,11 @@
     <script src="/static/js/modules/lounge/LoungeModule.js?v=6"></script>
     <!-- Feature modules -->
     <script src="/static/js/features/settingsUI.js?v=2"></script>
-    <script src="/static/js/features/navigation.js?v=19"></script>
+    <script src="/static/js/features/routes.js?v=2"></script>
+    <script src="/static/js/features/navigation.js?v=20"></script>
     <script src="/static/js/features/usersAdmin.js?v=1"></script>
     <!-- Main application -->
-    <script src="/static/js/app.js?v=78"></script>
+    <script src="/static/js/app.js?v=79"></script>
     <script src="/static/js/video-player.js?v=31"></script>
     <script src="/static/js/websocket.js?v=23"></script>
     <script src="/static/js/html-review.js?v=2"></script>

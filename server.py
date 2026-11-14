@@ -1425,6 +1425,17 @@ async def dev_ui_page():
     return index_response()
 
 
+# Routes of the Pages app (PLAN.md 5.3). The page itself decides what to show from the URL.
+@app.get("/me")
+@app.get("/me/page/{page_id}")
+@app.get("/p/{project_id}/pages")
+@app.get("/p/{project_id}/page/{page_id}")
+@app.get("/p/{project_id}/review")
+async def app_route_page():
+    """Serve the main page for the in-app routes."""
+    return index_response()
+
+
 @app.post("/api/guests/track")
 async def track_guest(data: dict, principal: Optional[dict] = Depends(get_principal)):
     """Track a guest joining via share link (requires the share-link guest token)."""

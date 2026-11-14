@@ -39,6 +39,11 @@ Code in `web/src` reaches the old page only through `web/src/platform.ts`; tests
 `createFakePlatform()` from `web/src/testing/fakePlatform.ts`. Shared components live in
 `web/src/ui/`; admins can see all of them at `/dev/ui`.
 
+The app is addressed by URL: `/p/<project>/review`, `/p/<project>/pages`, `/me` and more
+(PLAN.md 5.3; `web/src/router.ts` and `static/js/features/routes.js`). The browser checks for
+routes and the shell run against a throwaway server with `python web/dev/check_routes.py`
+(needs Playwright and a built bundle).
+
 ### Backend
 
 ```
