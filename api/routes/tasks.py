@@ -16,7 +16,7 @@ from database import (
     db_get_task,
     db_get_untagged_clips,
 )
-from api.auth import Permission, has_permission, require_auth
+from api.auth import Permission, can_edit_tasks, has_permission, require_auth
 from api.events import live
 from api.state import projects, tasks
 
@@ -27,12 +27,6 @@ router = APIRouter()
 async def task_changed(task: dict, what: str) -> None:
     """Tell open task views that a task's comments, checklist or linked clips changed."""
     await live.to_project(task["projectId"], {"type": f"task_{what}_changed", "taskId": task["id"]}, tasks_only=True)
-
-
-def can_edit_tasks(user: dict, project_id: str) -> bool:
-    """Task access on the project and a role that may change things (viewers are read-only)."""
-    return has_permission(user.get("role", "guest"), Permission.PROJECT_UPDATE) and \
-        db_check_project_access(user["id"], project_id, require_tasks=True)
 
 
 # ============ Untagged Clips API ============
