@@ -430,14 +430,17 @@ def test_live_events_for_task_changes(client, admin, project, connect):
         task = client.post(f"/api/projects/{project}/tasks", json={"name": "Live"}, headers=h).json()["task"]
         event = watcher.receive_json()
         assert event["type"] == "task_created" and event["task"]["id"] == task["id"]
+        assert watcher.receive_json()["type"] == "rows_changed"  # table views hear of it too
         assert nothing_pending(writer)  # the tab that made the change is not told
 
         client.patch(f"/api/tasks/{task['id']}", json={"name": "Live 2"}, headers=h)
         event = watcher.receive_json()
         assert event["type"] == "task_updated" and event["task"]["name"] == "Live 2"
+        assert watcher.receive_json()["type"] == "rows_changed"
 
         client.post(f"/api/projects/{project}/tasks/reorder", json={"taskIds": [task["id"]]}, headers=h)
         assert watcher.receive_json() == {"type": "tasks_reordered", "project": project}
+        assert watcher.receive_json()["type"] == "rows_changed"
 
         item = client.post(f"/api/tasks/{task['id']}/checklist", json={"text": "x"}, headers=h).json()["item"]
         assert watcher.receive_json() == {"type": "task_checklist_changed", "taskId": task["id"], "project": project}
@@ -454,6 +457,7 @@ def test_live_events_for_task_changes(client, admin, project, connect):
         client.delete(f"/api/tasks/{task['id']}", headers=h)
         assert watcher.receive_json() == {"type": "task_deleted", "taskId": task["id"], "parentId": None,
                                           "project": project}
+        assert watcher.receive_json()["type"] == "rows_changed"
         assert nothing_pending(writer)
 
 

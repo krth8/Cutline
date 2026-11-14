@@ -68,6 +68,156 @@ def can_edit_tasks(user: dict, project_id: str) -> bool:
         db_check_project_access(user["id"], project_id, require_tasks=True)
 
 
+async def rows_changed(project_id: str, ids: List[str], change: str) -> None:
+    """Tell open table views that rows of the project's task table changed."""
+    await live.to_project(
+        project_id,
+        {"type": "rows_changed", "tableRef": f"tasks:{project_id}", "ids": list(ids), "change": change},
+        tasks_only=True,
+    )
+
+
+# Common VFX/animation stages for suggestions
+COMMON_STAGES = ["Previz", "Layout", "Animation", "Lighting", "FX", "Compositing", "Review"]
+
+
+def stage_tags(project_id: str) -> dict:
+    """Stage tags used in a project, and the common ones suggested for new tasks."""
+    stages = {t["stageTag"] for t in tasks.values() if t.get("projectId") == project_id and t.get("stageTag")}
+    return {"usedStages": sorted(stages), "suggestedStages": list(COMMON_STAGES)}
+
+
+# ---- Shared by the task API and the table API (api/tables/tasks_source.py) ----
+# Permission checks stay with the callers; these validate, save to the database, bring the
+# in-memory copy in step and tell watching tabs (task_* event and rows_changed).
+
+async def create_task_record(user: dict, project_id: str, data: dict) -> dict:
+    name = data.get("name")
+    if not name:
+        raise HTTPException(status_code=400, detail="Task name is required")
+
+    parent_id = data.get("parentId")
+    check_parent(project_id, parent_id)
+    check_assignees(data.get("assigneeIds") or [data.get("assigneeId")])
+
+    # Written to the database first; the in-memory copy is read back from it
+    task = db_create_task(
+        project_id=project_id,
+        name=name,
+        created_by=user.get("id"),
+        parent_id=parent_id,
+        clip_id=data.get("clipId"),
+        section_id=data.get("sectionId"),
+        stage_tag=data.get("stageTag"),
+        description=data.get("description"),
+        status_id=data.get("statusId"),
+        assignee_id=data.get("assigneeId"),  # Single assignee (legacy)
+        assignee_ids=data.get("assigneeIds"),  # Multiple assignees (new)
+        priority=data.get("priority", "medium"),
+        due_date=data.get("dueDate"),
+        custom_fields=data.get("customFields")
+    )
+
+    full_task = reload_task(task["id"])
+    if parent_id:
+        reload_task(parent_id)
+
+    await live.to_project(project_id, {"type": "task_created", "task": full_task or task}, tasks_only=True)
+    await rows_changed(project_id, [task["id"]], "created")
+    return full_task or task
+
+
+async def update_task_record(task: dict, data: dict) -> dict:
+    """Apply the given API fields (name, statusId, assigneeIds, ...) to a task."""
+    task_id = task["id"]
+
+    # API field -> database column
+    field_mapping = {
+        "name": "name",
+        "description": "description",
+        "parentId": "parent_id",
+        "sectionId": "section_id",
+        "stageTag": "stage_tag",
+        "statusId": "status_id",
+        "priority": "priority",
+        "dueDate": "due_date",
+        "customFields": "custom_fields",
+        "sortOrder": "sort_order",
+    }
+    updates = {col: data[field] for field, col in field_mapping.items() if field in data}
+
+    if "name" in updates and not updates["name"]:
+        raise HTTPException(status_code=400, detail="Task name is required")
+    if "parentId" in data:
+        check_parent(task["projectId"], data["parentId"], task_id)
+    if data.get("statusId") and not any(st["id"] == data["statusId"] for st in db_list_statuses()):
+        raise HTTPException(status_code=400, detail="Unknown status")
+    if "assigneeIds" in data or "assigneeId" in data:
+        assignee_ids = data.get("assigneeIds") or ([data.get("assigneeId")] if data.get("assigneeId") else [])
+        check_assignees(assignee_ids)
+        updates["assignee_ids"] = [a for a in assignee_ids if a]
+
+    old_parent = task.get("parentId")
+    if updates:
+        db_update_task(task_id, **updates)
+
+    # Saved: bring the in-memory copy (and the child counts of the parents involved) in step
+    task = reload_task(task_id) or task
+    for pid in {old_parent, task.get("parentId")}:
+        if pid and pid != task_id:
+            reload_task(pid)
+
+    await live.to_project(task["projectId"], {"type": "task_updated", "task": task}, tasks_only=True)
+    await rows_changed(task["projectId"], [task_id], "updated")
+    return task
+
+
+async def delete_task_record(task: dict) -> None:
+    """Delete a task and its children."""
+    task_id = task["id"]
+
+    # Find and remove all children recursively from memory
+    def find_children(parent_id: str) -> List[str]:
+        child_ids = [t["id"] for t in tasks.values() if t.get("parentId") == parent_id]
+        all_ids = list(child_ids)
+        for cid in child_ids:
+            all_ids.extend(find_children(cid))
+        return all_ids
+
+    ids_to_remove = [task_id] + find_children(task_id)
+
+    # Update parent's childCount if this is a subtask
+    parent_id = task.get("parentId")
+
+    # Delete from database (cascade delete handles children)
+    success = db_delete_task(task_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete task")
+
+    # Remove from in-memory cache
+    for tid in ids_to_remove:
+        tasks.pop(tid, None)
+
+    if parent_id:
+        reload_task(parent_id)
+
+    await live.to_project(task["projectId"], {"type": "task_deleted", "taskId": task_id, "parentId": parent_id}, tasks_only=True)
+    await rows_changed(task["projectId"], ids_to_remove, "deleted")
+
+
+async def reorder_task_records(project_id: str, task_ids: List[str]) -> List[str]:
+    """Give the tasks the order of the list. Returns the ids that were reordered."""
+    # Only tasks of this project can be reordered
+    task_ids = [tid for tid in task_ids if tid in tasks and tasks[tid]["projectId"] == project_id]
+    db_reorder_tasks(task_ids)
+    for i, tid in enumerate(task_ids):
+        tasks[tid]["sortOrder"] = i
+
+    await live.to_project(project_id, {"type": "tasks_reordered"}, tasks_only=True)
+    await rows_changed(project_id, task_ids, "reordered")
+    return task_ids
+
+
 # ============ Untagged Clips API ============
 
 @router.get("/api/projects/{project_id}/untagged-clips")
@@ -161,38 +311,8 @@ async def create_task(project_id: str, data: dict, user: dict = Depends(require_
     if not can_edit_tasks(user, project_id):
         raise HTTPException(status_code=403, detail="Task access denied for this project")
 
-    name = data.get("name")
-    if not name:
-        raise HTTPException(status_code=400, detail="Task name is required")
-
-    parent_id = data.get("parentId")
-    check_parent(project_id, parent_id)
-    check_assignees(data.get("assigneeIds") or [data.get("assigneeId")])
-
-    # Written to the database first; the in-memory copy is read back from it
-    task = db_create_task(
-        project_id=project_id,
-        name=name,
-        created_by=user.get("id"),
-        parent_id=parent_id,
-        clip_id=data.get("clipId"),
-        section_id=data.get("sectionId"),
-        stage_tag=data.get("stageTag"),
-        description=data.get("description"),
-        status_id=data.get("statusId"),
-        assignee_id=data.get("assigneeId"),  # Single assignee (legacy)
-        assignee_ids=data.get("assigneeIds"),  # Multiple assignees (new)
-        priority=data.get("priority", "medium"),
-        due_date=data.get("dueDate"),
-        custom_fields=data.get("customFields")
-    )
-
-    full_task = reload_task(task["id"])
-    if parent_id:
-        reload_task(parent_id)
-
-    await live.to_project(project_id, {"type": "task_created", "task": full_task or task}, tasks_only=True)
-    return {"task": full_task or task}
+    task = await create_task_record(user, project_id, data)
+    return {"task": task}
 
 
 @router.get("/api/tasks/{task_id}")
@@ -222,43 +342,7 @@ async def update_task(task_id: str, data: dict, user: dict = Depends(require_aut
     if not can_edit_tasks(user, task["projectId"]):
         raise HTTPException(status_code=403, detail="Task access denied for this project")
 
-    # API field -> database column
-    field_mapping = {
-        "name": "name",
-        "description": "description",
-        "parentId": "parent_id",
-        "sectionId": "section_id",
-        "stageTag": "stage_tag",
-        "statusId": "status_id",
-        "priority": "priority",
-        "dueDate": "due_date",
-        "customFields": "custom_fields",
-        "sortOrder": "sort_order",
-    }
-    updates = {col: data[field] for field, col in field_mapping.items() if field in data}
-
-    if "name" in updates and not updates["name"]:
-        raise HTTPException(status_code=400, detail="Task name is required")
-    if "parentId" in data:
-        check_parent(task["projectId"], data["parentId"], task_id)
-    if data.get("statusId") and not any(st["id"] == data["statusId"] for st in db_list_statuses()):
-        raise HTTPException(status_code=400, detail="Unknown status")
-    if "assigneeIds" in data or "assigneeId" in data:
-        assignee_ids = data.get("assigneeIds") or ([data.get("assigneeId")] if data.get("assigneeId") else [])
-        check_assignees(assignee_ids)
-        updates["assignee_ids"] = [a for a in assignee_ids if a]
-
-    old_parent = task.get("parentId")
-    if updates:
-        db_update_task(task_id, **updates)
-
-    # Saved: bring the in-memory copy (and the child counts of the parents involved) in step
-    task = reload_task(task_id) or task
-    for pid in {old_parent, task.get("parentId")}:
-        if pid and pid != task_id:
-            reload_task(pid)
-
-    await live.to_project(task["projectId"], {"type": "task_updated", "task": task}, tasks_only=True)
+    task = await update_task_record(task, data)
     return {"task": task}
 
 
@@ -274,32 +358,7 @@ async def delete_task(task_id: str, user: dict = Depends(require_auth)):
     if not can_edit_tasks(user, task["projectId"]):
         raise HTTPException(status_code=403, detail="Task access denied for this project")
 
-    # Find and remove all children recursively from memory
-    def find_children(parent_id: str) -> List[str]:
-        child_ids = [t["id"] for t in tasks.values() if t.get("parentId") == parent_id]
-        all_ids = list(child_ids)
-        for cid in child_ids:
-            all_ids.extend(find_children(cid))
-        return all_ids
-
-    ids_to_remove = [task_id] + find_children(task_id)
-
-    # Update parent's childCount if this is a subtask
-    parent_id = task.get("parentId")
-
-    # Delete from database (cascade delete handles children)
-    success = db_delete_task(task_id)
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to delete task")
-
-    # Remove from in-memory cache
-    for tid in ids_to_remove:
-        tasks.pop(tid, None)
-
-    if parent_id:
-        reload_task(parent_id)
-
-    await live.to_project(task["projectId"], {"type": "task_deleted", "taskId": task_id, "parentId": parent_id}, tasks_only=True)
+    await delete_task_record(task)
     return {"success": True}
 
 
@@ -318,13 +377,7 @@ async def reorder_tasks_endpoint(project_id: str, data: dict, user: dict = Depen
     if not task_ids:
         raise HTTPException(status_code=400, detail="taskIds array is required")
 
-    # Only tasks of this project can be reordered
-    task_ids = [tid for tid in task_ids if tid in tasks and tasks[tid]["projectId"] == project_id]
-    db_reorder_tasks(task_ids)
-    for i, tid in enumerate(task_ids):
-        tasks[tid]["sortOrder"] = i
-
-    await live.to_project(project_id, {"type": "tasks_reordered"}, tasks_only=True)
+    await reorder_task_records(project_id, task_ids)
     return {"success": True}
 
 
@@ -339,20 +392,7 @@ async def list_stage_tags(project_id: str, user: dict = Depends(require_auth)):
     if not db_check_project_access(user["id"], project_id, require_tasks=True):
         raise HTTPException(status_code=403, detail="Task access denied for this project")
 
-    # Get stage tags from in-memory tasks
-    project_tasks = [t for t in tasks.values() if t.get("projectId") == project_id]
-    stages = set()
-    for task in project_tasks:
-        if task.get("stageTag"):
-            stages.add(task["stageTag"])
-
-    # Common VFX/animation stages for suggestions
-    common_stages = ["Previz", "Layout", "Animation", "Lighting", "FX", "Compositing", "Review"]
-
-    return {
-        "usedStages": sorted(list(stages)),
-        "suggestedStages": common_stages
-    }
+    return stage_tags(project_id)
 
 
 # ============ Task Comments API ============
