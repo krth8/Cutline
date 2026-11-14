@@ -77,11 +77,13 @@ def _body(page: dict, user: dict) -> dict:
 
 
 async def _notify(page: dict, change: str) -> None:
-    """Tell the people who can see the page: project pages go to the project's tabs
-    (task pages only to people with task access), personal pages to the owner's tabs."""
+    """Tell the people who can see the page: project pages go to the project's tabs,
+    personal pages to the owner's tabs. Task pages send no events."""
+    if page["kind"] == "task":
+        return
     message = {"type": "page_changed", "pageId": page["id"], "change": change}
     if page["spaceType"] == "project":
-        await live.to_project(page["projectId"], message, tasks_only=page["kind"] == "task")
+        await live.to_project(page["projectId"], message)
     else:
         await live.to_user(page["ownerId"], message)
 
@@ -113,12 +115,11 @@ def _clean_parent(value):
 @router.get("/api/spaces/{space}/pages")
 async def list_pages(space: str, archived: int = 0, user: dict = Depends(require_auth)):
     """The pages of a space as a flat list ordered by sortOrder (the client builds the tree).
-    ?archived=1 lists the archived pages instead. Task pages are left out for people without task access."""
+    ?archived=1 lists the archived pages instead. Task pages are never listed."""
     space_type, project_id = _space(space, user)
     rows = db_list_pages(space_type, project_id=project_id, owner_id=user["id"] if space_type == "personal" else None,
                          archived=bool(archived))
-    if space_type == "project" and not db_check_project_access(user["id"], project_id, require_tasks=True):
-        rows = [r for r in rows if r["kind"] != "task"]
+    rows = [r for r in rows if r["kind"] != "task"]  # task pages are reached through their task only
     return [{"id": r["id"], "parentId": r["parentId"], "title": r["title"], "icon": r["icon"],
              "sortOrder": r["sortOrder"], "kind": r["kind"]} for r in rows]
 
@@ -176,7 +177,7 @@ async def update_page(page_id: str, data: dict, user: dict = Depends(require_aut
                 changes.append("moved")
         if archived is not None and archived != (page["archivedAt"] is not None):
             page = db_set_archived(page_id, archived)
-            changes.append("archived")
+            changes.append("archived" if archived else "restored")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 

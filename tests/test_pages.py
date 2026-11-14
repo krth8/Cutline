@@ -396,9 +396,9 @@ def test_task_page_access_follows_the_task_rules(client, team, admin, share):
     for who in ("reviewer", "outsider"):
         assert client.get(f"/api/tasks/{task_id}/page", headers=auth(team[who])).status_code == 403
         assert client.get(f"/api/pages/{pid}", headers=auth(team[who])).status_code == 403
-    # ... and the tree hides it from the reviewer, who can still read project pages
-    assert any(r["kind"] == "task" for r in tree(client, team["member"], team["space"]))
-    assert not any(r["kind"] == "task" for r in tree(client, team["reviewer"], team["space"]))
+    # Task pages are never listed in the tree
+    assert not any(r["kind"] == "task" for r in tree(client, team["member"], team["space"]))
+    assert not any(r["kind"] == "task" for r in tree(client, team["member"], team["space"], archived=True))
 
     # A viewer-role member with task access reads but cannot edit
     got = client.get(f"/api/pages/{pid}", headers=auth(team["viewer"])).json()
@@ -442,6 +442,7 @@ def test_page_events_reach_other_tabs_but_not_the_origin(client, team, make_user
 
         headers = {**auth(team["member"]), "X-Client-Id": "writer"}
         for body, change in [({"title": "Renamed"}, "renamed"), ({"sortOrder": 5}, "moved"),
+                             ({"archived": True}, "archived"), ({"archived": False}, "restored"),
                              ({"archived": True}, "archived")]:
             assert client.patch(f"/api/pages/{page['id']}", json=body, headers=headers).status_code == 200
             event = reader.receive_json()
@@ -451,15 +452,15 @@ def test_page_events_reach_other_tabs_but_not_the_origin(client, team, make_user
         assert nothing_pending(writer)
 
 
-def test_task_page_events_skip_people_without_task_access(client, team, make_user, grant, connect):
+def test_task_pages_send_no_events(client, team, connect):
     task_id = make_task(client, team["member"], team["project"])
     page_id = client.get(f"/api/tasks/{task_id}/page", headers=auth(team["member"])).json()["id"]
-    with connect(team["member"], "writer") as writer, connect(team["reviewer"], "reviewer") as reviewer:
+    with connect(team["member"], "writer") as writer, connect(team["viewer"], "other") as other:
         watch(writer, team["project"])
-        watch(reviewer, team["project"])
+        watch(other, team["project"])
         headers = {**auth(team["member"]), "X-Client-Id": "writer"}
         assert client.patch(f"/api/pages/{page_id}", json={"title": "New"}, headers=headers).status_code == 200
-        assert nothing_pending(reviewer)
+        assert nothing_pending(other)
 
 
 def test_personal_page_events_go_to_the_owners_other_tabs_only(client, make_user, connect):
