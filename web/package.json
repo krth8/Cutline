@@ -7,11 +7,31 @@
     "build": "node build.mjs",
     "watch": "node build.mjs --watch",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:editor-demo": "node dev/build_editor_demo.mjs"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.8.0",
+    "@tiptap/core": "^3.34.0",
+    "@tiptap/extension-collaboration": "^3.34.0",
+    "@tiptap/extension-collaboration-caret": "^3.34.0",
+    "@tiptap/extension-drag-handle": "^3.34.0",
+    "@tiptap/extension-drag-handle-react": "^3.34.0",
+    "@tiptap/extension-highlight": "^3.34.0",
+    "@tiptap/extension-image": "^3.34.0",
+    "@tiptap/extension-list": "^3.34.0",
+    "@tiptap/extension-node-range": "^3.34.0",
+    "@tiptap/extensions": "^3.34.0",
+    "@tiptap/markdown": "^3.34.0",
+    "@tiptap/pm": "^3.34.0",
+    "@tiptap/react": "^3.34.0",
+    "@tiptap/starter-kit": "^3.34.0",
+    "@tiptap/suggestion": "^3.34.0",
+    "@tiptap/y-tiptap": "^3.3.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.33"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.2",
