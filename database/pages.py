@@ -246,6 +246,67 @@ def db_claim_page_import(page_id: str, user_id: str) -> bool:
             conn,
             """UPDATE pages SET import_claimed_by = ?
                WHERE id = ? AND import_claimed_by IS NULL AND legacy_html IS NOT NULL
-                 AND (ydoc IS NULL OR LENGTH(ydoc) <= ?)""",
-            (user_id, page_id, EMPTY_YDOC_BYTES))
+                 AND (ydoc IS NULL OR LENGTH(ydoc) <= ?)
+                 AND NOT EXISTS (SELECT 1 FROM page_updates WHERE page_id = ?)""",
+            (user_id, page_id, EMPTY_YDOC_BYTES, page_id))
         return cursor.rowcount == 1
+
+
+# ============ Collaborative content (ydoc, text, page_updates; PLAN.md 5.7) ============
+
+def _bytes(value) -> Optional[bytes]:
+    """BLOB columns come back as bytes (SQLite) or memoryview (PostgreSQL)."""
+    return bytes(value) if value is not None else None
+
+
+def db_page_has_content(page_id: str) -> bool:
+    """True if the page's document has content: a non-empty snapshot or any pending update."""
+    with get_db() as conn:
+        row = fetchone(execute(conn, "SELECT LENGTH(ydoc) AS n FROM pages WHERE id = ?", (page_id,)))
+        if row and row["n"] and row["n"] > EMPTY_YDOC_BYTES:
+            return True
+        return fetchone(execute(conn, "SELECT 1 AS x FROM page_updates WHERE page_id = ? LIMIT 1", (page_id,))) is not None
+
+
+def db_load_page_state(page_id: str) -> Tuple[Optional[bytes], List[Tuple[int, bytes]]]:
+    """The snapshot (pages.ydoc, or None) and the pending updates [(id, bytes)] in the order they were stored."""
+    with get_db() as conn:
+        row = fetchone(execute(conn, "SELECT ydoc FROM pages WHERE id = ?", (page_id,)))
+        rows = fetchall(execute(conn, 'SELECT id, "update" AS data FROM page_updates WHERE page_id = ? ORDER BY id',
+                                (page_id,)))
+    return (_bytes(row["ydoc"]) if row else None), [(r["id"], _bytes(r["data"])) for r in rows]
+
+
+def db_append_page_updates(page_id: str, updates: List[bytes]) -> None:
+    """Store updates in the given order (one transaction). Raises if the page no longer exists."""
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        for data in updates:
+            execute(conn, 'INSERT INTO page_updates (page_id, "update", created_at) VALUES (?, ?, ?)',
+                    (page_id, data, now))
+
+
+def db_pages_with_updates() -> List[Tuple[str, int]]:
+    """[(page_id, pending row count)] for every page that has updates waiting for a snapshot."""
+    with get_db() as conn:
+        rows = fetchall(execute(conn, "SELECT page_id, COUNT(*) AS n FROM page_updates GROUP BY page_id"))
+    return [(r["page_id"], r["n"]) for r in rows]
+
+
+def db_write_page_snapshot(page_id: str, ydoc: bytes, text: str, merged_up_to_id: int) -> int:
+    """Store the merged document and text and delete exactly the pending rows with id <= merged_up_to_id,
+    in one transaction. Rows stored meanwhile have higher ids and stay. Returns the number of rows deleted."""
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        cursor = execute(conn, "UPDATE pages SET ydoc = ?, text = ?, updated_at = ? WHERE id = ?",
+                         (ydoc, text, now, page_id))
+        if cursor.rowcount == 0:
+            return 0
+        return execute(conn, "DELETE FROM page_updates WHERE page_id = ? AND id <= ?",
+                       (page_id, merged_up_to_id)).rowcount
+
+
+def db_get_page_text(page_id: str) -> Optional[str]:
+    with get_db() as conn:
+        row = fetchone(execute(conn, "SELECT text FROM pages WHERE id = ?", (page_id,)))
+    return row["text"] if row else None

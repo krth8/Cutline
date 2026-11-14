@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from api.auth import can_access_space, can_edit_page, can_read_page, require_auth
 from api.events import live
+from api.pagesync import close_unavailable_rooms
 from api.state import projects, tasks
 from database import db_check_project_access
 from database.pages import (
@@ -15,6 +16,7 @@ from database.pages import (
     db_get_or_create_task_page,
     db_get_page,
     db_list_pages,
+    db_page_has_content,
     db_set_archived,
     db_update_page,
     parse_space,
@@ -52,7 +54,8 @@ def _load(page_id: str, user: dict, write: bool = False) -> dict:
 
 
 def _needs_import(page: dict) -> bool:
-    return bool(page["legacyHtml"]) and not page["hasContent"]
+    """Legacy HTML waiting and no content yet (neither a snapshot nor pending sync updates)."""
+    return bool(page["legacyHtml"]) and not page["hasContent"] and not db_page_has_content(page["id"])
 
 
 def _body(page: dict, user: dict) -> dict:
@@ -178,6 +181,8 @@ async def update_page(page_id: str, data: dict, user: dict = Depends(require_aut
         if archived is not None and archived != (page["archivedAt"] is not None):
             page = db_set_archived(page_id, archived)
             changes.append("archived" if archived else "restored")
+            if archived:
+                await close_unavailable_rooms()
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -193,6 +198,7 @@ async def delete_page(page_id: str, user: dict = Depends(require_auth)):
     if page["archivedAt"] is None:
         raise HTTPException(status_code=409, detail="Archive the page before deleting it")
     db_delete_page(page_id)
+    await close_unavailable_rooms()
     await _notify(page, "deleted")
     return {"success": True}
 

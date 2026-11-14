@@ -18,6 +18,8 @@ import re
 import uuid
 import shutil
 import asyncio
+from api.pagesync import start_snapshot_job, stop_snapshot_job
+from api.routes.pagesync import router as pagesync_router
 import secrets
 import json
 from datetime import datetime, timedelta
@@ -155,6 +157,9 @@ load_data_from_db()
 db_init_admin_user()
 
 
+# Must come before the catch-all "/ws/{session_id}/{user_id}" below, which would swallow /ws/pages/{id}
+app.include_router(pagesync_router)
+
 @app.on_event("startup")
 async def startup_event():
     """Start background workers on server startup."""
@@ -162,6 +167,7 @@ async def startup_event():
     print(f"Upload cleanup worker started (interval: {UPLOAD_CLEANUP_INTERVAL_HOURS}h, max age: {UPLOAD_FILE_MAX_AGE_HOURS}h)")
     asyncio.create_task(backfill_html_previews())
     asyncio.create_task(end_idle_logins())
+    start_snapshot_job()
 
 
 async def end_idle_logins():
@@ -203,7 +209,8 @@ async def backfill_html_previews():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Nothing to flush: every change is already in the database when it is made."""
+    """Write open pages to the database; everything else is already saved when it is made."""
+    await stop_snapshot_job()
     print("Shutting down")
 
 def get_user_state(session_id: str, user_id: str) -> Optional[dict]:

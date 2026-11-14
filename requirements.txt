@@ -6,3 +6,4 @@ bcrypt==4.1.2
 Pillow>=10.0.0
 psycopg2-binary==2.9.9
 playwright==1.49.1
+pycrdt==0.14.13
