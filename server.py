@@ -71,12 +71,14 @@ from api.auth import (
     get_current_user,
     get_principal,
     has_permission,
+    media_principals,
     principal_from_token,
     record_comment_attempt,
     require_permission,
     require_project_access,
     require_project_viewer,
     resolve_project_id,
+    set_guest_media_cookie,
     verify_jwt_token,
 )
 from api.config import (
@@ -1335,7 +1337,7 @@ async def get_share_link_info(link_id: str):
 
 
 @app.post("/api/share/{link_id}/access")
-async def validate_share_link_access(link_id: str, data: dict = {}):
+async def validate_share_link_access(link_id: str, request: Request, response: Response, data: dict = {}):
     """Validate access to a share link (check password if required)."""
     link = db_get_share_link(link_id)
 
@@ -1370,6 +1372,7 @@ async def validate_share_link_access(link_id: str, data: dict = {}):
         role="guest",
         extra_claims={"scope": "share", "project_id": project_id, "share_link_id": link_id},
     )
+    set_guest_media_cookie(response, request, project_id, guest_token)
     return {
         "valid": True,
         "projectId": project_id,
@@ -1892,8 +1895,43 @@ async def serve_html_page(filename: str, t: str = Query(...)):
 
 # ============ Video/Image and Thumbnail Serving ============
 
+_media_owner: Dict[str, str] = {}  # media file name -> project id
+
+
+def _media_project(name: str) -> Optional[str]:
+    """The project a clip file, proxy or thumbnail belongs to."""
+    project_id = _media_owner.get(name)
+    if project_id in projects:
+        return project_id
+    # Unknown (or its project is gone): look again, clips may have been added since
+    _media_owner.clear()
+    for pid, project in projects.items():
+        for clip in project.get("clips", {}).values():
+            for version in clip.get("versions", []):
+                names = [version.get("filename"), version.get("thumbnail"), *(version.get("proxies") or {}).values()]
+                for media_name in names:
+                    if media_name:
+                        _media_owner[media_name] = pid
+    return _media_owner.get(name)
+
+
+def require_media_access(request: Request, name: str, token: Optional[str]) -> None:
+    """Media is for people who can open the project it belongs to (members and its share-link guests)."""
+    principals = media_principals(request, token)
+    if not principals:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    project_id = _media_project(name)
+    if not project_id:
+        raise HTTPException(status_code=404, detail="Media not found")
+    if not any(can_view_project(p, project_id) for p in principals):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+
+MEDIA_HEADERS = {"Cache-Control": "private, max-age=3600"}
+
+
 @app.get("/video/{filename}")
-async def serve_media(filename: str):
+async def serve_media(filename: str, request: Request, token: Optional[str] = Query(None)):
     """Serve transcoded video or processed image."""
     # Sanitize filename to prevent path traversal attacks
     safe_filename = Path(filename).name
@@ -1903,6 +1941,8 @@ async def serve_media(filename: str):
     # HTML pages must never be served from Cutline's own origin.
     if Path(safe_filename).suffix.lower() in {'.html', '.htm'}:
         raise HTTPException(status_code=404, detail="Media not found")
+
+    require_media_access(request, safe_filename, token)
 
     # Detect media type from file extension
     ext = Path(safe_filename).suffix.lower()
@@ -1920,18 +1960,18 @@ async def serve_media(filename: str):
     # Check transcoded directory first
     transcoded_path = os.path.join(TRANSCODED_DIR, safe_filename)
     if os.path.exists(transcoded_path):
-        return FileResponse(transcoded_path, media_type=media_type)
+        return FileResponse(transcoded_path, media_type=media_type, headers=MEDIA_HEADERS)
 
     # Fall back to uploads directory
     upload_path = os.path.join(UPLOAD_DIR, safe_filename)
     if os.path.exists(upload_path):
-        return FileResponse(upload_path, media_type=media_type)
+        return FileResponse(upload_path, media_type=media_type, headers=MEDIA_HEADERS)
 
     raise HTTPException(status_code=404, detail="Media not found")
 
 
 @app.get("/thumbnail/{clip_id}")
-async def serve_thumbnail(clip_id: str):
+async def serve_thumbnail(clip_id: str, request: Request, token: Optional[str] = Query(None)):
     """Serve clip thumbnail."""
     # Sanitize clip_id to prevent path traversal attacks
     safe_clip_id = Path(clip_id).name
@@ -1942,13 +1982,13 @@ async def serve_thumbnail(clip_id: str):
     if not safe_clip_id.endswith('.jpg'):
         safe_clip_id = f"{safe_clip_id}.jpg"
 
+    require_media_access(request, safe_clip_id, token)
+
     path = os.path.join(THUMBNAILS_DIR, safe_clip_id)
-
     if os.path.exists(path):
-        return FileResponse(path, media_type="image/jpeg")
+        return FileResponse(path, media_type="image/jpeg", headers=MEDIA_HEADERS)
 
-    # Return placeholder
-    return FileResponse("static/placeholder-thumb.jpg", media_type="image/jpeg")
+    raise HTTPException(status_code=404, detail="Thumbnail not found")
 
 
 # ============ Comments API ============

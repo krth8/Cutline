@@ -7,6 +7,7 @@ from fastapi import (
     File,
     HTTPException,
     Request,
+    Response,
     UploadFile,
 )
 from cache import cache_manager
@@ -38,12 +39,14 @@ from api.auth import (
     check_rate_limit,
     clean_email,
     clear_login_attempts,
+    clear_media_cookie,
     get_role_permissions,
     issue_login_token,
     record_login_attempt,
     require_admin,
     require_auth,
     revoke_token_subs,
+    set_media_cookie,
 )
 from api.config import PROFILES_DIR, UPLOAD_DIR
 from api.media import process_image, safe_upload_name
@@ -55,12 +58,14 @@ MIN_PASSWORD_LENGTH = 12
 router = APIRouter()
 
 
-def login_response(user: dict, **extra) -> dict:
+def login_response(request: Request, response: Response, user: dict, **extra) -> dict:
     """Start a login session and build the body every login-like endpoint returns."""
+    token = issue_login_token(user)
+    set_media_cookie(response, request, token)
     return {
         **extra,
         "user": user,
-        "token": issue_login_token(user),
+        "token": token,
         "idleTimeout": auth_sessions.IDLE_TIMEOUT,
         "idleWarning": auth_sessions.IDLE_WARNING,
     }
@@ -76,7 +81,7 @@ async def setup_status():
 
 
 @router.post("/api/setup/complete")
-async def setup_complete(data: dict):
+async def setup_complete(data: dict, request: Request, response: Response):
     """Complete initial setup by creating the first admin user."""
     # Only allow if no users exist
     if db_has_users():
@@ -97,13 +102,13 @@ async def setup_complete(data: dict):
     # Create the first admin user
     new_user = db_create_user(username, password, is_admin=True)
 
-    return login_response(new_user, success=True)
+    return login_response(request, response, new_user, success=True)
 
 
 # ============ Auth API ============
 
 @router.post("/api/auth/login")
-async def auth_login(data: dict, request: Request):
+async def auth_login(data: dict, request: Request, response: Response):
     """Validate user credentials and return JWT token."""
     username = data.get("username", "")
     password = data.get("password", "")
@@ -127,7 +132,7 @@ async def auth_login(data: dict, request: Request):
         # Clear rate limit on successful login
         clear_login_attempts(rate_limit_key)
 
-        return login_response(user, valid=True)
+        return login_response(request, response, user, valid=True)
     else:
         # Record failed attempt
         record_login_attempt(rate_limit_key)
@@ -135,8 +140,9 @@ async def auth_login(data: dict, request: Request):
 
 
 @router.post("/api/auth/logout")
-async def auth_logout(user: dict = Depends(require_auth)):
+async def auth_logout(response: Response, user: dict = Depends(require_auth)):
     """End this login session: the token stops working everywhere it is used."""
+    clear_media_cookie(response)
     auth_sessions.end(user["sid"])
     await close_session_sockets([user["sid"]])
     return {"success": True}
@@ -149,8 +155,10 @@ async def auth_ping(user: dict = Depends(require_auth)):
 
 
 @router.get("/api/auth/me")
-async def auth_me(user: dict = Depends(require_auth)):
+async def auth_me(request: Request, response: Response, user: dict = Depends(require_auth)):
     """Get current authenticated user info."""
+    # Called on every page load: keeps the media cookie in step with the login in use
+    set_media_cookie(response, request, request.headers["authorization"][7:])
     # Fetch full user info from database to include profileImage
     full_user = db_get_user_by_id(user["id"])
     if full_user:
@@ -395,7 +403,7 @@ async def get_invite_info(invite_id: str):
 
 
 @router.post("/api/auth/register/{invite_id}")
-async def register_with_invite(invite_id: str, data: dict):
+async def register_with_invite(invite_id: str, data: dict, request: Request, response: Response):
     """Register a new user with an invite link.
 
     The invite determines:
@@ -461,7 +469,7 @@ async def register_with_invite(invite_id: str, data: dict):
     # Mark invite as used
     db_use_invite_link(invite_id)
 
-    return login_response(new_user, success=True)
+    return login_response(request, response, new_user, success=True)
 
 
 # ============ User Profile API ============

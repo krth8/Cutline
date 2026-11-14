@@ -9,7 +9,7 @@ import secrets
 import time
 from collections import defaultdict
 from datetime import timedelta
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from typing import Dict, List, Optional
 from database import (
@@ -291,6 +291,49 @@ def principal_from_token(token: Optional[str], touch: bool = True) -> Optional[d
         "is_guest": False,
         "sid": sid,
     }
+
+
+# ============ Media cookies ============
+# <video> and <img> requests cannot send an Authorization header, so the
+# browser also gets the token in an HttpOnly cookie. Only the media routes
+# read these cookies; the API itself keeps requiring the header.
+MEDIA_COOKIE = "cutline_media"            # the login token of a user
+GUEST_MEDIA_COOKIE = "cutline_guest_"     # + project id: a share-link guest's token
+
+
+def _set_cookie(response: Response, request: Request, name: str, token: str, max_age: int) -> None:
+    response.set_cookie(
+        name, token, max_age=max_age, httponly=True, samesite="lax",
+        secure=request.url.scheme == "https", path="/",
+    )
+
+
+def set_media_cookie(response: Response, request: Request, token: str) -> None:
+    _set_cookie(response, request, MEDIA_COOKIE, token, auth_sessions.MAX_AGE)
+
+
+def set_guest_media_cookie(response: Response, request: Request, project_id: str, token: str) -> None:
+    _set_cookie(response, request, GUEST_MEDIA_COOKIE + project_id, token, JWT_EXPIRATION_HOURS * 3600)
+
+
+def clear_media_cookie(response: Response) -> None:
+    response.delete_cookie(MEDIA_COOKIE, path="/")
+
+
+def media_principals(request: Request, token: Optional[str] = None) -> List[dict]:
+    """Everyone this media request speaks for: header or ?token=, the login cookie, guest cookies.
+
+    Fetching media is never counted as user activity.
+    """
+    tokens = [token]
+    header = request.headers.get("authorization", "")
+    if header.lower().startswith("bearer "):
+        tokens.append(header[7:])
+    for name, value in request.cookies.items():
+        if name == MEDIA_COOKIE or name.startswith(GUEST_MEDIA_COOKIE):
+            tokens.append(value)
+    principals = [principal_from_token(t, touch=False) for t in tokens if t]
+    return [p for p in principals if p]
 
 
 async def get_principal(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Optional[dict]:
