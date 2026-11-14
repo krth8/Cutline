@@ -1,6 +1,9 @@
 """The tasks table source: ``tasks:<projectId>`` and ``tasks:*``.
 
-Builtin columns are mapped from the task fields. Reads come from the in-memory task
+Builtin columns are mapped from the task fields. Custom columns (WP T2, api/tables/columns.py)
+belong to one project: ``tasks:<projectId>`` lists them in its schema and queries on them;
+``tasks:*`` leaves them out of the schema (they differ per project), but its rows' ``values``
+still carry them. Reads come from the in-memory task
 state (kept in step with the database by the task API); every write goes through the
 shared functions in api/routes/tasks.py, so validation, persistence, in-memory state
 and the live events are exactly those of the task endpoints.
@@ -27,6 +30,7 @@ from database import (
     db_list_statuses,
 )
 
+from . import columns as custom
 from .query import run_query
 from .source import TableSource, custom_columns_for
 
@@ -151,7 +155,11 @@ class TasksSource(TableSource):
                             "readonly": True,
                             "options": [{"value": pid, "label": projects[pid].get("name", pid)}
                                         for pid in project_ids]})
-        return columns + custom_columns_for(self.ref)
+        extra = custom_columns_for(self.ref)
+        for column in extra:
+            if column["type"] in ("person", "people"):
+                column["options"] = people
+        return columns + extra
 
     def _scoped_tasks(self, project_ids: List[str]) -> List[dict]:
         order = {pid: i for i, pid in enumerate(project_ids)}
@@ -177,7 +185,7 @@ class TasksSource(TableSource):
 
     # ------------------------------------------------------------ rows
 
-    def _row(self, task: dict, can_edit: bool) -> dict:
+    def _row(self, task: dict, can_edit: bool, custom_cols: Optional[List[dict]] = None) -> dict:
         clip = {"id": task["clipId"], "name": task.get("clipName")} if task.get("clipId") is not None else None
         values = {
             "name": task.get("name"),
@@ -194,6 +202,9 @@ class TasksSource(TableSource):
         }
         if self.all_projects:
             values["project"] = task["projectId"]
+        if custom_cols is None:
+            custom_cols = custom_columns_for(f"tasks:{task['projectId']}")
+        values.update(custom.row_values(task, custom_cols))
         return {
             "id": task["id"],
             "tableRef": f"tasks:{task['projectId']}",
@@ -205,12 +216,14 @@ class TasksSource(TableSource):
 
     def _rows(self, principal: dict, tasks_list: List[dict]) -> List[dict]:
         editable: Dict[str, bool] = {}
+        project_columns: Dict[str, List[dict]] = {}
         rows = []
         for task in tasks_list:
             pid = task["projectId"]
             if pid not in editable:
                 editable[pid] = task_api.can_edit_tasks(principal, pid)
-            rows.append(self._row(task, editable[pid]))
+                project_columns[pid] = custom_columns_for(f"tasks:{pid}")
+            rows.append(self._row(task, editable[pid], project_columns[pid]))
         return rows
 
     def query(self, principal: dict, query: Optional[dict], today: Optional[date] = None) -> dict:
@@ -225,17 +238,20 @@ class TasksSource(TableSource):
 
     # ------------------------------------------------------------ writes
 
-    def _to_task_fields(self, values: Any, project_id: str, for_create: bool) -> dict:
+    def _to_task_fields(self, values: Any, project_id: str, for_create: bool, base: Optional[dict] = None) -> dict:
         """Row values (by column key) -> fields of the task API, validated."""
         if not isinstance(values, dict):
             raise _bad("values must be an object of column key -> value")
         fields: Dict[str, Any] = {}
+        values, custom_values = custom.split_values(values)
         for key, value in values.items():
             if key in READONLY_KEYS:
                 raise _bad(f"Column '{key}' is read-only")
             if key not in WRITABLE:
-                raise _bad(f"Unknown column '{key}'. Writable columns: {', '.join(WRITABLE)}")
+                raise _bad(f"Unknown column '{key}'. Writable columns: {', '.join(WRITABLE)}, plus the custom columns of the project")
             fields[WRITABLE[key]] = self._check_value(key, value, project_id)
+        if custom_values:
+            fields["customFields"] = custom.checked_custom_values(project_id, custom_values, base)
         if for_create and fields.get("priority") is None:
             fields.pop("priority", None)  # the task API default (medium)
         return fields
@@ -297,7 +313,8 @@ class TasksSource(TableSource):
     async def update_row(self, principal: dict, row_id: str, values: dict) -> dict:
         task = self._task_in_scope(principal, row_id)
         self._need_edit(principal, task["projectId"])
-        fields = self._to_task_fields(values, task["projectId"], for_create=False)
+        fields = self._to_task_fields(values, task["projectId"], for_create=False,
+                                      base=task.get("customFields"))
         await task_api.update_task_record(task, fields)
         return self._one_row(principal, row_id)
 
