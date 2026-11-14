@@ -187,6 +187,9 @@ const Auth = (function () {
         AppState.adminUser = null;
         AppState.isAdmin = false;
         AppState.permissions = [];
+        // A login that timed out: after the next login the user returns to where they were.
+        // Only the URL is kept (in this tab's sessionStorage); the login itself is gone.
+        if (reason && typeof Routes !== 'undefined') Routes.remember();
         window.location.replace('/');
     }
 
