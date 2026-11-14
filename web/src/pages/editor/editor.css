@@ -1,0 +1,310 @@
+/* Page editor. Colours come from the theme variables of static/css/main.css, so
+   light, dark and custom themes all work. */
+
+.cl-editor {
+  position: relative;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.65;
+}
+.cl-editor__prose {
+  min-height: 12em;
+  padding: 4px 0 96px 0;
+  outline: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.cl-editor__prose > * + * { margin-top: 0.5em; }
+.cl-editor[data-editable='false'] .cl-editor__prose { cursor: default; }
+
+/* ---- typography ---- */
+.cl-editor__prose p { margin: 0; }
+.cl-editor__prose h1,
+.cl-editor__prose h2,
+.cl-editor__prose h3 { margin: 1.2em 0 0.25em; line-height: 1.25; font-weight: 650; letter-spacing: -0.01em; }
+.cl-editor__prose h1 { font-size: 2em; }
+.cl-editor__prose h2 { font-size: 1.5em; }
+.cl-editor__prose h3 { font-size: 1.2em; }
+.cl-editor__prose > :first-child { margin-top: 0; }
+.cl-editor__prose ul,
+.cl-editor__prose ol { margin: 0; padding-left: 1.5em; }
+.cl-editor__prose li > p { margin: 0; }
+.cl-editor__prose li > ul,
+.cl-editor__prose li > ol { margin-top: 0.15em; }
+.cl-editor__prose blockquote {
+  margin: 0;
+  padding: 2px 0 2px 1em;
+  border-left: 3px solid var(--border-medium);
+  color: var(--text-secondary);
+}
+.cl-editor__prose hr { border: 0; border-top: 1px solid var(--border-medium); margin: 1.2em 0; }
+.cl-editor__prose hr.ProseMirror-selectednode { border-top-color: var(--accent); }
+.cl-editor__prose a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.cl-editor__prose mark { background: var(--warning-bg); color: inherit; border-radius: 2px; padding: 0 1px; }
+.cl-editor__prose code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.88em;
+  padding: 0.1em 0.35em;
+  background: var(--bg-hover);
+  border-radius: var(--radius-xs);
+}
+.cl-editor__prose pre {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-size: 0.88em;
+  line-height: 1.5;
+}
+.cl-editor__prose pre code { padding: 0; background: none; font-size: inherit; }
+.cl-editor__prose img { display: block; max-width: 100%; height: auto; border-radius: var(--radius-sm); }
+.cl-editor__prose img.ProseMirror-selectednode { outline: 2px solid var(--accent); }
+.cl-editor__prose .ProseMirror-selectednode { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-sm); }
+.ProseMirror-gapcursor:after { border-top-color: var(--text); }
+.cl-editor__prose ::selection { background: var(--accent-bg-strong); }
+
+/* ---- task list ---- */
+.cl-editor__prose ul[data-type='taskList'] { list-style: none; padding-left: 0.2em; }
+.cl-editor__prose ul[data-type='taskList'] ul[data-type='taskList'] { padding-left: 1.4em; }
+.cl-editor__prose li[data-type='taskItem'] { display: flex; align-items: flex-start; gap: 8px; }
+.cl-editor__prose li[data-type='taskItem'] > label { flex: none; margin-top: 0.3em; user-select: none; }
+.cl-editor__prose li[data-type='taskItem'] > label input { accent-color: var(--accent); width: 1em; height: 1em; cursor: pointer; }
+.cl-editor__prose li[data-type='taskItem'] > div { flex: 1; min-width: 0; }
+.cl-editor__prose li[data-type='taskItem'][data-checked='true'] > div { color: var(--text-muted); text-decoration: line-through; }
+
+/* ---- placeholder ---- */
+.cl-editor__prose .is-empty::before,
+.cl-editor__prose .is-editor-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--text-muted);
+}
+
+/* ---- callout ---- */
+.cl-callout {
+  --cl-callout-bg: var(--info-bg);
+  --cl-callout-line: var(--info);
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--cl-callout-bg);
+  border-left: 3px solid var(--cl-callout-line);
+  border-radius: var(--radius-md);
+}
+.cl-callout--success { --cl-callout-bg: var(--success-bg); --cl-callout-line: var(--success); }
+.cl-callout--warning { --cl-callout-bg: var(--warning-bg); --cl-callout-line: var(--warning); }
+.cl-callout--danger { --cl-callout-bg: var(--danger-bg); --cl-callout-line: var(--danger); }
+.cl-callout__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  padding: 0;
+  font: 600 12px/22px inherit;
+  text-align: center;
+  color: var(--white);
+  background: var(--cl-callout-line);
+  border: 0;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+.cl-callout__icon:disabled { cursor: default; }
+.cl-callout__body { flex: 1; min-width: 0; }
+.cl-callout__body > * + * { margin-top: 0.4em; }
+
+/* ---- unsupported blocks ---- */
+.cl-unsupported {
+  padding: 8px 12px;
+  border: 1px dashed var(--border-medium);
+  border-radius: var(--radius-md);
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+span.cl-unsupported { display: inline-block; padding: 0 6px; }
+.cl-unsupported__label { display: block; user-select: none; }
+span.cl-unsupported .cl-unsupported__label { display: inline; }
+.cl-unsupported__content { margin-top: 4px; color: var(--text-secondary); }
+
+/* ---- remote carets (the extension ships no CSS) ---- */
+.cl-caret {
+  position: relative;
+  margin-left: -1px;
+  margin-right: -1px;
+  border-left: 2px solid var(--cl-caret-color);
+  word-break: normal;
+  pointer-events: none;
+}
+.cl-caret__label {
+  position: absolute;
+  top: -1.5em;
+  left: -2px;
+  padding: 1px 6px;
+  font: 600 11px/1.4 Inter, sans-serif;
+  white-space: nowrap;
+  color: #fff;
+  background: var(--cl-caret-color);
+  border-radius: 4px 4px 4px 0;
+  user-select: none;
+  opacity: 0.95;
+}
+.ProseMirror-yjs-selection { border-radius: 2px; }
+
+/* ---- slash menu ---- */
+.cl-slash {
+  position: fixed;
+  z-index: 1000;
+  width: 280px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--modal-bg);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-heavy);
+  font-size: 14px;
+  line-height: 1.3;
+}
+.cl-slash__group { padding: 8px 8px 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.cl-slash__empty { padding: 10px; color: var(--text-muted); }
+.cl-slash__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.cl-slash__item.is-active { background: var(--bg-hover); }
+.cl-slash__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.cl-slash__text { display: flex; flex-direction: column; min-width: 0; }
+.cl-slash__title { font-weight: 500; }
+.cl-slash__desc { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- floating toolbar ---- */
+.cl-toolbar { position: absolute; z-index: 900; }
+.cl-toolbar__inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--modal-bg);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-medium);
+  font-size: 13px;
+}
+.cl-toolbar__btn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.cl-toolbar__btn:hover { background: var(--bg-hover); }
+.cl-toolbar__btn.is-active { background: var(--accent-bg-strong); color: var(--accent); }
+.cl-toolbar__btn.is-bold { font-weight: 700; }
+.cl-toolbar__btn.is-italic { font-style: italic; }
+.cl-toolbar__btn.is-underline { text-decoration: underline; }
+.cl-toolbar__btn.is-strike { text-decoration: line-through; }
+.cl-toolbar__btn--wide { min-width: 96px; text-align: left; }
+.cl-toolbar__sep { width: 1px; height: 18px; margin: 0 3px; background: var(--border-medium); }
+.cl-toolbar__turn { position: relative; }
+.cl-toolbar__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1;
+  min-width: 160px;
+  padding: 4px;
+  background: var(--modal-bg);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-medium);
+}
+.cl-toolbar__menuitem {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.cl-toolbar__menuitem:hover,
+.cl-toolbar__menuitem.is-active { background: var(--bg-hover); }
+.cl-toolbar__link { display: flex; align-items: center; gap: 4px; }
+.cl-toolbar__input {
+  width: 220px;
+  height: 28px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--text);
+  background: var(--modal-field);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+}
+.cl-toolbar__input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+/* ---- block drag handle ---- */
+.cl-handle { z-index: 800; padding-right: 6px; }
+.cl-handle__grip {
+  width: 22px;
+  height: 26px;
+  padding: 0;
+  font-size: 12px;
+  letter-spacing: -3px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: grab;
+}
+.cl-handle__grip:hover { background: var(--bg-hover); color: var(--text); }
+.cl-handle__grip:active { cursor: grabbing; }
+.cl-editor__prose .ProseMirror-dropcursor,
+.ProseMirror-dropcursor { background: var(--accent) !important; }
+
+/* ---- demo ---- */
+.cl-editor-demo { display: grid; gap: 16px; }
+.cl-editor-demo__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; font-size: 14px; color: var(--text-secondary); }
+.cl-editor-demo__panes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.cl-editor-demo__pane { padding: 12px 16px 12px 40px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.cl-editor-demo__who { display: flex; align-items: center; gap: 8px; margin: 0 0 8px -24px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.cl-editor-demo__dot { width: 10px; height: 10px; border-radius: 50%; }
+
+@media (max-width: 600px) {
+  .cl-editor__prose { font-size: 16px; }
+  .cl-handle { display: none; }
+}
