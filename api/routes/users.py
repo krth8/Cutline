@@ -382,13 +382,6 @@ async def admin_cache_stats(user: dict = Depends(require_admin)):
     return stats
 
 
-@router.post("/api/admin/cache/flush")
-async def admin_cache_flush(user: dict = Depends(require_admin)):
-    """Force flush all dirty cache data to database (admin only)."""
-    await cache_manager._flush_all_dirty()
-    return {"success": True, "message": "Cache flushed to database"}
-
-
 @router.get("/api/invite/{invite_id}")
 async def get_invite_info(invite_id: str):
     """Get invite link info (public endpoint for registration page)."""

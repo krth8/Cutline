@@ -7,7 +7,6 @@ from fastapi import (
     Request,
 )
 from typing import List, Optional
-from cache import cache_manager
 from database import (
     db_check_project_access,
     db_list_statuses,
@@ -15,6 +14,9 @@ from database import (
     db_delete_task,
     db_get_task,
     db_get_untagged_clips,
+    db_get_user_by_id,
+    db_reorder_tasks,
+    db_update_task,
 )
 from api.auth import Permission, has_permission, require_auth
 from api.events import live
@@ -27,6 +29,37 @@ router = APIRouter()
 async def task_changed(task: dict, what: str) -> None:
     """Tell open task views that a task's comments, checklist or linked clips changed."""
     await live.to_project(task["projectId"], {"type": f"task_{what}_changed", "taskId": task["id"]}, tasks_only=True)
+
+
+def reload_task(task_id: str) -> Optional[dict]:
+    """Replace the in-memory copy of a task with what the database holds."""
+    fresh = db_get_task(task_id)
+    if fresh:
+        tasks[task_id] = fresh
+    else:
+        tasks.pop(task_id, None)
+    return fresh
+
+
+def check_parent(project_id: str, parent_id: Optional[str], task_id: Optional[str] = None) -> None:
+    """A parent must be a task of the same project and must not be the task itself or below it."""
+    if not parent_id:
+        return
+    parent = tasks.get(parent_id)
+    if not parent or parent["projectId"] != project_id:
+        raise HTTPException(status_code=400, detail="Parent task not found in this project")
+    seen = set()
+    while parent and parent["id"] not in seen:
+        if parent["id"] == task_id:
+            raise HTTPException(status_code=400, detail="A task cannot be moved below itself")
+        seen.add(parent["id"])
+        parent = tasks.get(parent.get("parentId"))
+
+
+def check_assignees(user_ids: List[str]) -> None:
+    for uid in user_ids:
+        if uid and not db_get_user_by_id(uid):
+            raise HTTPException(status_code=400, detail="Unknown assignee")
 
 
 def can_edit_tasks(user: dict, project_id: str) -> bool:
@@ -132,12 +165,16 @@ async def create_task(project_id: str, data: dict, user: dict = Depends(require_
     if not name:
         raise HTTPException(status_code=400, detail="Task name is required")
 
-    # Create task in DB (needed to get ID and setup assignees)
+    parent_id = data.get("parentId")
+    check_parent(project_id, parent_id)
+    check_assignees(data.get("assigneeIds") or [data.get("assigneeId")])
+
+    # Written to the database first; the in-memory copy is read back from it
     task = db_create_task(
         project_id=project_id,
         name=name,
         created_by=user.get("id"),
-        parent_id=data.get("parentId"),
+        parent_id=parent_id,
         clip_id=data.get("clipId"),
         section_id=data.get("sectionId"),
         stage_tag=data.get("stageTag"),
@@ -150,15 +187,9 @@ async def create_task(project_id: str, data: dict, user: dict = Depends(require_
         custom_fields=data.get("customFields")
     )
 
-    # Add to in-memory cache (fetch full task with assignees)
-    full_task = db_get_task(task["id"])
-    if full_task:
-        tasks[task["id"]] = full_task
-
-    # Update parent's childCount in cache if this is a subtask
-    parent_id = data.get("parentId")
-    if parent_id and parent_id in tasks:
-        tasks[parent_id]["childCount"] = tasks[parent_id].get("childCount", 0) + 1
+    full_task = reload_task(task["id"])
+    if parent_id:
+        reload_task(parent_id)
 
     await live.to_project(project_id, {"type": "task_created", "task": full_task or task}, tasks_only=True)
     return {"task": full_task or task}
@@ -191,43 +222,41 @@ async def update_task(task_id: str, data: dict, user: dict = Depends(require_aut
     if not can_edit_tasks(user, task["projectId"]):
         raise HTTPException(status_code=403, detail="Task access denied for this project")
 
-    # Update in-memory task (direct field mapping)
+    # API field -> database column
     field_mapping = {
         "name": "name",
         "description": "description",
-        "parentId": "parentId",
-        "sectionId": "sectionId",
-        "stageTag": "stageTag",
-        "statusId": "statusId",
+        "parentId": "parent_id",
+        "sectionId": "section_id",
+        "stageTag": "stage_tag",
+        "statusId": "status_id",
         "priority": "priority",
-        "dueDate": "dueDate",
-        "customFields": "customFields",
-        "sortOrder": "sortOrder"
+        "dueDate": "due_date",
+        "customFields": "custom_fields",
+        "sortOrder": "sort_order",
     }
+    updates = {col: data[field] for field, col in field_mapping.items() if field in data}
 
-    for api_field, task_field in field_mapping.items():
-        if api_field in data:
-            task[task_field] = data[api_field]
-
-    # Keep the embedded status object in sync with statusId (the list view reads it)
-    if "statusId" in data:
-        status_id = data["statusId"]
-        match = next((st for st in db_list_statuses() if st["id"] == status_id), None) if status_id else None
-        task["status"] = {"id": match["id"], "name": match["name"], "color": match["color"]} if match else None
-
-    # Handle assignees specially (need to update junction table and fetch user info)
+    if "name" in updates and not updates["name"]:
+        raise HTTPException(status_code=400, detail="Task name is required")
+    if "parentId" in data:
+        check_parent(task["projectId"], data["parentId"], task_id)
+    if data.get("statusId") and not any(st["id"] == data["statusId"] for st in db_list_statuses()):
+        raise HTTPException(status_code=400, detail="Unknown status")
     if "assigneeIds" in data or "assigneeId" in data:
-        from database.tasks import db_set_task_assignees, db_get_task_assignees
         assignee_ids = data.get("assigneeIds") or ([data.get("assigneeId")] if data.get("assigneeId") else [])
-        db_set_task_assignees(task_id, assignee_ids)
-        task["assignees"] = db_get_task_assignees(task_id)
-        if task["assignees"]:
-            task["assignee"] = task["assignees"][0]
-        else:
-            task.pop("assignee", None)
+        check_assignees(assignee_ids)
+        updates["assignee_ids"] = [a for a in assignee_ids if a]
 
-    # Mark for write-back persistence
-    cache_manager.mark_task_dirty(task_id)
+    old_parent = task.get("parentId")
+    if updates:
+        db_update_task(task_id, **updates)
+
+    # Saved: bring the in-memory copy (and the child counts of the parents involved) in step
+    task = reload_task(task_id) or task
+    for pid in {old_parent, task.get("parentId")}:
+        if pid and pid != task_id:
+            reload_task(pid)
 
     await live.to_project(task["projectId"], {"type": "task_updated", "task": task}, tasks_only=True)
     return {"task": task}
@@ -267,9 +296,8 @@ async def delete_task(task_id: str, user: dict = Depends(require_auth)):
     for tid in ids_to_remove:
         tasks.pop(tid, None)
 
-    # Decrement parent's childCount after successful deletion
-    if parent_id and parent_id in tasks:
-        tasks[parent_id]["childCount"] = max(0, tasks[parent_id].get("childCount", 1) - 1)
+    if parent_id:
+        reload_task(parent_id)
 
     await live.to_project(task["projectId"], {"type": "task_deleted", "taskId": task_id, "parentId": parent_id}, tasks_only=True)
     return {"success": True}
@@ -290,11 +318,11 @@ async def reorder_tasks_endpoint(project_id: str, data: dict, user: dict = Depen
     if not task_ids:
         raise HTTPException(status_code=400, detail="taskIds array is required")
 
-    # Update sortOrder in memory
-    for i, task_id in enumerate(task_ids):
-        if task_id in tasks:
-            tasks[task_id]["sortOrder"] = i
-            cache_manager.mark_task_dirty(task_id)
+    # Only tasks of this project can be reordered
+    task_ids = [tid for tid in task_ids if tid in tasks and tasks[tid]["projectId"] == project_id]
+    db_reorder_tasks(task_ids)
+    for i, tid in enumerate(task_ids):
+        tasks[tid]["sortOrder"] = i
 
     await live.to_project(project_id, {"type": "tasks_reordered"}, tasks_only=True)
     return {"success": True}
