@@ -428,6 +428,51 @@ def can_view_project(principal: Optional[dict], project_id: str) -> bool:
     return db_check_project_access(principal["id"], project_id)
 
 
+def can_edit_tasks(user: dict, project_id: str) -> bool:
+    """Task access on the project and a role that may change things (viewers are read-only)."""
+    return has_permission(user.get("role", "guest"), Permission.PROJECT_UPDATE) and         db_check_project_access(user["id"], project_id, require_tasks=True)
+
+
+# ============ Pages (PLAN.md 5.5) ============
+
+def can_access_space(principal: Optional[dict], space: str, write: bool = False) -> bool:
+    """May the principal read (or, with write, create pages in) a space: 'me' or 'p:<projectId>'?
+
+    'me' is the caller's own personal space (admins are no exception). A project space is readable
+    with any access to the project, writable with can_edit_tasks. Share-link guests never get in.
+    """
+    if not principal or principal.get("is_guest"):
+        return False
+    if space == "me":
+        return True
+    if not (isinstance(space, str) and space.startswith("p:") and len(space) > 2):
+        return False
+    project_id = space[2:]
+    if write:
+        return can_edit_tasks(principal, project_id)
+    return db_check_project_access(principal["id"], project_id)
+
+
+def can_read_page(principal: Optional[dict], page: dict) -> bool:
+    """Personal pages: the owner only. Project pages: any project access. Task pages: task access."""
+    if not principal or principal.get("is_guest"):
+        return False
+    if page["spaceType"] == "personal":
+        return page["ownerId"] == principal["id"]
+    if page["kind"] == "task":
+        return db_check_project_access(principal["id"], page["projectId"], require_tasks=True)
+    return db_check_project_access(principal["id"], page["projectId"])
+
+
+def can_edit_page(principal: Optional[dict], page: dict) -> bool:
+    """Personal pages: the owner only. Project pages (and task pages): can_edit_tasks on the project."""
+    if not principal or principal.get("is_guest"):
+        return False
+    if page["spaceType"] == "personal":
+        return page["ownerId"] == principal["id"]
+    return can_edit_tasks(principal, page["projectId"])
+
+
 def require_project_viewer(principal: Optional[dict], project_id: str) -> dict:
     """Raise 401/403 unless principal may view project_id."""
     if principal is None:

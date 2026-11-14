@@ -18,7 +18,7 @@ from database import (
     db_reorder_tasks,
     db_update_task,
 )
-from api.auth import Permission, has_permission, require_auth
+from api.auth import Permission, can_edit_tasks, has_permission, require_auth
 from api.events import live
 from api.state import projects, tasks
 
@@ -60,12 +60,6 @@ def check_assignees(user_ids: List[str]) -> None:
     for uid in user_ids:
         if uid and not db_get_user_by_id(uid):
             raise HTTPException(status_code=400, detail="Unknown assignee")
-
-
-def can_edit_tasks(user: dict, project_id: str) -> bool:
-    """Task access on the project and a role that may change things (viewers are read-only)."""
-    return has_permission(user.get("role", "guest"), Permission.PROJECT_UPDATE) and \
-        db_check_project_access(user["id"], project_id, require_tasks=True)
 
 
 # ============ Untagged Clips API ============
