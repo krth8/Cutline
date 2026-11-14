@@ -144,6 +144,7 @@ def test_task_changes_reach_members_with_task_access(client, admin, make_project
                            headers=auth(admin["token"])).json()
         event = with_tasks.receive_json()
         assert event["type"] == "task_created"
+        assert with_tasks.receive_json()["type"] == "rows_changed"
         assert nothing_pending(without)
 
         task_id = event["task"]["id"]

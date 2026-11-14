@@ -2,8 +2,8 @@
 
 from fastapi import APIRouter
 
-from . import access, chat, documents, live, notifications, pages, settings, tasks, users
+from . import access, chat, documents, live, notifications, pages, settings, tables, tasks, users
 
 router = APIRouter()
-for _module in (access, notifications, pages, users, settings, tasks, documents, chat, live):
+for _module in (access, notifications, pages, users, settings, tables, tasks, documents, chat, live):
     router.include_router(_module.router)
