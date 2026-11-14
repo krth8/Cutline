@@ -66,6 +66,25 @@ call venv\Scripts\activate.bat
 pip install --upgrade pip -q
 pip install -r requirements.txt -q
 
+REM ========== Build the web interface ==========
+echo.
+echo [web] Building the web interface...
+where node >nul 2>&1
+if errorlevel 1 (
+    echo       [WARN] Node.js not found - the new web interface will not be available.
+    echo              Install Node.js 20+ from https://nodejs.org and run install.bat again.
+) else (
+    pushd web
+    call npm ci --no-audit --no-fund
+    if errorlevel 1 (
+        echo       [WARN] npm ci failed - the new web interface will not be available.
+    ) else (
+        call npm run build
+        if errorlevel 1 echo       [WARN] The web build failed - the new web interface will not be available.
+    )
+    popd
+)
+
 echo.
 echo ╔════════════════════════════════════════════╗
 echo ║         Installation Complete!             ║

@@ -1,0 +1,14 @@
+.cl-tooltip {
+  position: fixed;
+  z-index: 21000;
+  max-width: 260px;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text);
+  background: var(--modal-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 14px var(--shadow-medium);
+  pointer-events: none;
+}

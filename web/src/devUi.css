@@ -1,0 +1,8 @@
+.cl-demo { max-width: 860px; margin: 0 auto; padding: 24px 20px 64px; }
+.cl-demo h1 { font-size: 20px; margin: 0 0 4px; }
+.cl-demo__hint { color: var(--text-muted); margin: 0 0 20px; font-size: 13px; }
+.cl-demo__section { padding: 14px 0; border-top: 1px solid var(--border); }
+.cl-demo__section h2 { margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.cl-demo__row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.cl-demo__muted { color: var(--text-muted); font-size: 12px; }
+.cl-demo__inline { background: var(--modal-elevated); border: 1px solid var(--border-medium); border-radius: var(--radius-md); }

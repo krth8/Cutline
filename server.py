@@ -1419,6 +1419,12 @@ async def invite_link_page(invite_id: str):
     return index_response()
 
 
+@app.get("/dev/ui")
+async def dev_ui_page():
+    """Serve the main page for the UI component demo (the bundle shows it to admins only)."""
+    return index_response()
+
+
 @app.post("/api/guests/track")
 async def track_guest(data: dict, principal: Optional[dict] = Depends(get_principal)):
     """Track a guest joining via share link (requires the share-link guest token)."""

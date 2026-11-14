@@ -1,0 +1,25 @@
+.cl-shell { padding: 16px; color: var(--text); font-size: 13px; }
+.cl-shell__card {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-solid);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+}
+.cl-shell__title { font-size: 15px; font-weight: 600; }
+.cl-shell__sub { color: var(--text-muted); margin-top: 2px; }
+.cl-shell__sub code { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+/* The /dev/ui demo covers the whole legacy page */
+.cl-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 15000;
+  overflow: auto;
+  background: var(--bg-dark);
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+  user-select: text;
+}

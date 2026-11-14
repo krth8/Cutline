@@ -1,3 +1,11 @@
+# Build the web bundle (static/dist/pages.js and pages.css)
+FROM node:22-slim AS web
+WORKDIR /app/web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build
+
 FROM python:3.12-slim-bookworm
 
 # ffmpeg/ffprobe for transcoding and thumbnails
@@ -27,6 +35,7 @@ RUN playwright install --with-deps --only-shell chromium \
     && rm -rf /var/lib/apt/lists/*
 
 COPY . .
+COPY --from=web /app/static/dist ./static/dist
 
 RUN useradd --create-home --uid 1000 cutline \
     && mkdir -p /data \
