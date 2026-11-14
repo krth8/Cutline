@@ -35,10 +35,12 @@ def test_document_edits_reach_other_people_and_other_tabs(client, team, ticket):
             assert tab1.receive_json()["user_id"] == ben["user"]["id"]
             assert tab2.receive_json()["user_id"] == ben["user"]["id"]
 
-            tab1.send_json({"type": "content_update", "content": "<p>Hello</p>"})
+            tab1.send_json({"type": "content_update", "content": "<p>Hello</p>", "baseVersion": 0})
+            assert tab1.receive_json() == {"type": "content_saved", "version": 1}
             for other in (tab2, bens):
                 update = other.receive_json()
-                assert update == {"type": "content_update", "user_id": anna["user"]["id"], "content": "<p>Hello</p>"}
+                assert update == {"type": "content_update", "user_id": anna["user"]["id"],
+                                  "content": "<p>Hello</p>", "version": 1}
 
         # Anna's second tab and Ben left; only Ben is announced as gone
         assert tab1.receive_json() == {"type": "user_left", "user_id": ben["user"]["id"]}
@@ -88,3 +90,57 @@ def test_chat_socket_is_only_for_yourself(client, team, ticket):
     with pytest.raises(WebSocketDisconnect):
         with client.websocket_connect(f"/ws/chat/{room['id']}/{ben['user']['id']}?ticket={ticket(anna['token'])}") as ws:
             ws.receive_json()
+
+
+def test_a_stale_document_edit_is_not_saved(client, team, ticket):
+    """Two people edit the same version: the second save must not overwrite the first."""
+    project_id, anna, ben = team
+    doc = client.post(f"/api/projects/{project_id}/documents", json={"title": "Notes"}, headers=auth(anna["token"])).json()
+    url = f"/ws/docs/{doc['id']}/x"
+
+    with client.websocket_connect(f"{url}?ticket={ticket(anna['token'])}") as annas, \
+            client.websocket_connect(f"{url}?ticket={ticket(ben['token'])}") as bens:
+        assert annas.receive_json()["version"] == 0
+        annas.receive_json()  # Ben joined
+        assert bens.receive_json()["version"] == 0
+
+        annas.send_json({"type": "content_update", "content": "<p>Anna</p>", "baseVersion": 0})
+        assert annas.receive_json() == {"type": "content_saved", "version": 1}
+
+        # Ben had not seen Anna's change when he sent his
+        bens.send_json({"type": "content_update", "content": "<p>Ben</p>", "baseVersion": 0})
+        assert bens.receive_json()["type"] == "content_update"  # Anna's change arriving
+        conflict = bens.receive_json()
+        assert conflict == {"type": "content_conflict", "content": "<p>Anna</p>", "version": 1}
+
+        # He merges and sends again on top of the current version
+        bens.send_json({"type": "content_update", "content": "<p>Anna</p><p>Ben</p>", "baseVersion": 1})
+        assert bens.receive_json() == {"type": "content_saved", "version": 2}
+        assert annas.receive_json()["content"] == "<p>Anna</p><p>Ben</p>"
+
+    saved = client.get(f"/api/documents/{doc['id']}", headers=auth(anna["token"])).json()
+    assert saved["content"] == "<p>Anna</p><p>Ben</p>" and saved["version"] == 2
+
+
+def test_document_save_over_http_checks_the_version_too(client, team, ticket):
+    project_id, anna, ben = team
+    doc = client.post(f"/api/projects/{project_id}/documents", json={"title": "Notes"}, headers=auth(anna["token"])).json()
+    path = f"/api/documents/{doc['id']}"
+
+    first = client.patch(path, json={"content": "<p>One</p>", "baseVersion": 0}, headers=auth(anna["token"]))
+    assert first.status_code == 200 and first.json()["version"] == 1
+
+    stale = client.patch(path, json={"content": "<p>Two</p>", "baseVersion": 0}, headers=auth(ben["token"]))
+    assert stale.status_code == 409
+    assert stale.json()["content"] == "<p>One</p>" and stale.json()["version"] == 1
+
+    # A rename does not touch the content or its version
+    renamed = client.patch(path, json={"title": "Plan"}, headers=auth(ben["token"])).json()
+    assert renamed["title"] == "Plan" and renamed["content"] == "<p>One</p>" and renamed["version"] == 1
+
+    # People with the document open are told about a save made over HTTP
+    with client.websocket_connect(f"/ws/docs/{doc['id']}/x?ticket={ticket(anna['token'])}") as ws:
+        ws.receive_json()
+        client.patch(path, json={"content": "<p>Three</p>", "baseVersion": 1}, headers=auth(ben["token"]))
+        update = ws.receive_json()
+        assert update["type"] == "content_update" and update["content"] == "<p>Three</p>" and update["version"] == 2

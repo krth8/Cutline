@@ -17,7 +17,7 @@
 - [ ] Create a task straight from a review comment / timecode
 
 ## Docs
-- [ ] Replace whole-document sync with real CRDT sync (Yjs; `yjs_state` column is already there) so simultaneous edits don't overwrite each other
+- [ ] Simultaneous edits are merged per block (paragraph, heading, to-do); two people typing in the *same* block still end with one of the two texts. Character-level merging needs a CRDT (Yjs; `yjs_state` column is already there)
 - [ ] Move off `document.execCommand` (deprecated) to an editor library (e.g. Tiptap)
 - [ ] Link docs to tasks and clips; mention tasks inside docs
 - [ ] Version history
@@ -26,9 +26,7 @@
 - [ ] HTML previews: move Chromium out of the Cutline image into a separate Playwright container (`mcr.microsoft.com/playwright`, `playwright run-server`) that `html_preview.py` connects to; then drop the bookworm pin in the Dockerfile
 - [ ] App layout is not usable on phones (sidebar takes most of the width)
 - [ ] In-memory project/task state: single process only. Clip status and task edits are still written back every 30 s (comments, annotations and new clips are saved at once)
-- [ ] Login token lives in `localStorage` (readable by any script on the page); move to an HttpOnly cookie + CSRF protection
-- [ ] Tokens still travel in WebSocket URLs (`?token=`); use a short-lived ticket instead
-- [ ] Share-link guests: 24 h token, no idle timeout, and they re-enter their name after a reload
+- [ ] Share-link guests keep their token in `sessionStorage` (scoped to one project, ends with the tab)
 - [ ] Continue splitting `server.py` (sessions, clips/transcoding, comments, websocket)
 - [ ] More tests: tasks, documents, uploads/transcoding (auth, access, comments, live updates and media are covered; run `pytest`)
 - [ ] Run `pytest` in GitHub Actions (needs a push with the `workflow` scope)

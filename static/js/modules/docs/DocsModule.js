@@ -24,6 +24,9 @@ const DocsModule = {
     userName: null,
     collaborators: [],
     isRemoteUpdate: false,
+    // Content sync (see docMerge.js): `base` is the last content this editor got
+    // from or saved to the server, `version` its version, `inFlight` a save on its way.
+    sync: { docId: null, base: '', version: 0, inFlight: null },
     reconnectAttempts: 0,
     maxReconnectAttempts: 5,
     heartbeatInterval: null,
@@ -242,7 +245,7 @@ const DocsModule = {
                 </main>
             </div>
         `;
-        this.restoreTodoState(document.getElementById('docsEditorContent'));
+        this.editorRendered();
     },
 
     /**
@@ -972,6 +975,11 @@ const DocsModule = {
             if (this.ws !== socket) return; // closed on purpose or replaced
             this.ws = null;
             this.stopHeartbeat();
+            // A save that was on its way may not have arrived; it is sent again (over HTTP until the line is back)
+            if (this.sync.docId === docId && this.sync.inFlight !== null) {
+                this.sync.inFlight = null;
+                this.scheduleSync(1000);
+            }
             this.tryReconnect(docId);
         };
 
@@ -1035,17 +1043,9 @@ const DocsModule = {
             case 'init':
                 this.collaborators = data.users || [];
                 this.updateCollaboratorsUI();
-                // Sync content if server has newer version
-                if (data.content && !this.currentDoc.content) {
-                    this.currentDoc.content = data.content;
-                    const editor = document.getElementById('docsEditorContent');
-                    if (editor) {
-                        this.isRemoteUpdate = true;
-                        editor.innerHTML = this.sanitizeHtml(data.content);
-                        this.restoreTodoState(editor);
-                        this.isRemoteUpdate = false;
-                    }
-                }
+                // The document may have changed since it was loaded (or while the line was down)
+                this.syncRemote(data.content, data.version);
+                this.syncFlush();
                 break;
 
             case 'user_joined':
@@ -1062,7 +1062,16 @@ const DocsModule = {
                 break;
 
             case 'content_update':
-                this.applyRemoteContentUpdate(data.content, data.user_id);
+                this.syncRemote(data.content, data.version);
+                break;
+
+            case 'content_saved':
+                this.syncSaved(data.version);
+                break;
+
+            case 'content_conflict':
+                // Someone saved before us: merge their version in and send ours again
+                this.syncRemote(data.content, data.version, true);
                 break;
 
             case 'title_update':
@@ -1117,27 +1126,147 @@ const DocsModule = {
         });
     },
 
-    applyRemoteContentUpdate(content, userId) {
+    // ============ Content sync ============
+
+    /**
+     * The editor was (re)drawn. For a newly opened document this is the
+     * server's content: remember it as the base everything is merged against.
+     */
+    editorRendered() {
         const editor = document.getElementById('docsEditorContent');
         if (!editor) return;
+        this.restoreTodoState(editor);
+        if (!this.currentDocId) return;
 
-        // Save cursor position
-        const selection = window.getSelection();
-        let cursorOffset = 0;
-        if (selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            cursorOffset = this.getCaretOffset(editor);
+        if (this.sync.docId !== this.currentDocId) {
+            DocMerge.stamp(editor, true);
+            DocMerge.apply(editor, DocMerge.blocks(editor)); // one canonical form to compare against
+            this.sync = {
+                docId: this.currentDocId,
+                base: editor.innerHTML,
+                version: this.currentDoc?.version || 0,
+                inFlight: null
+            };
+            // A later redraw of the editor must come out with the same block ids
+            this.currentDoc.content = editor.innerHTML;
+        } else {
+            // Redrawn from currentDoc.content. Ids derived from content, so they
+            // match what everyone else derives for blocks that have none yet.
+            DocMerge.stamp(editor, true);
+        }
+    },
+
+    /**
+     * The server has a newer version (someone else's edit, or the answer to a
+     * save of ours that came too late). Merge it with what is in the editor.
+     */
+    syncRemote(content, version, isConflict = false) {
+        const editor = document.getElementById('docsEditorContent');
+        if (!editor || this.sync.docId !== this.currentDocId) return;
+        if (isConflict) this.sync.inFlight = null;
+        if (typeof version !== 'number' || version <= this.sync.version) {
+            if (isConflict) this.syncFlush();
+            return;
         }
 
-        // Apply update
+        DocMerge.stamp(editor, false);
+        const remote = DocMerge.parse(this.sanitizeHtml(content || ''));
+        const hasLocalChanges = editor.innerHTML !== this.sync.base;
+        const merged = hasLocalChanges
+            ? DocMerge.merge(DocMerge.parse(this.sync.base), DocMerge.blocks(editor), remote)
+            : remote;
+
+        const hadFocus = editor.contains(document.activeElement) || document.activeElement === editor;
+        const caret = hadFocus ? this.getCaretOffset(editor) : null;
+
         this.isRemoteUpdate = true;
-        editor.innerHTML = this.sanitizeHtml(content);
+        DocMerge.apply(editor, merged);
         this.restoreTodoState(editor);
-        this.currentDoc.content = content;
         this.isRemoteUpdate = false;
 
-        // Restore cursor position
-        this.setCaretOffset(editor, cursorOffset);
+        // The block being typed in keeps its node (and caret); only if it had to be replaced, put the caret back
+        const selection = window.getSelection();
+        if (caret !== null && (!selection.rangeCount || !editor.contains(selection.anchorNode))) {
+            this.setCaretOffset(editor, caret);
+        }
+
+        this.sync.base = DocMerge.serialize(remote);
+        this.sync.version = version;
+        this.currentDoc.content = editor.innerHTML;
+        this.currentDoc.version = version;
+
+        // Anything of ours that the server does not have yet goes out on top of the new version
+        if (editor.innerHTML !== this.sync.base) {
+            if (isConflict) this.syncFlush();
+            else this.scheduleSync();
+        }
+    },
+
+    /** The server accepted our save. */
+    syncSaved(version) {
+        if (this.sync.inFlight === null) return;
+        this.sync.base = this.sync.inFlight;
+        this.sync.version = version;
+        this.sync.inFlight = null;
+        if (this.currentDoc) this.currentDoc.version = version;
+        // More was typed while the save was on its way
+        const editor = document.getElementById('docsEditorContent');
+        if (editor && editor.innerHTML !== this.sync.base) this.scheduleSync();
+    },
+
+    scheduleSync(delay = 400) {
+        clearTimeout(this.saveTimeout);
+        this.saveTimeout = setTimeout(() => this.syncFlush(), delay);
+    },
+
+    /**
+     * Send what changed in the editor to the server, as an edit on top of the
+     * version we have. One save at a time; the next goes when it is answered.
+     */
+    syncFlush() {
+        clearTimeout(this.saveTimeout);
+        this.saveTimeout = null;
+        const editor = document.getElementById('docsEditorContent');
+        if (!editor || !this.currentDocId || this.sync.docId !== this.currentDocId) return;
+        if (this.sync.inFlight !== null) return;
+
+        DocMerge.stamp(editor, false);
+        const content = editor.innerHTML;
+        this.currentDoc.content = content;
+        if (content === this.sync.base) return;
+
+        this.sync.inFlight = content;
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'content_update', content, baseVersion: this.sync.version }));
+        } else {
+            this.syncOverHttp(this.currentDocId, content, this.sync.version);
+        }
+    },
+
+    /** Same save, without the live connection (it is down or not up yet). */
+    async syncOverHttp(docId, content, baseVersion) {
+        try {
+            const res = await fetch(`/api/documents/${docId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content, baseVersion })
+            });
+            if (this.sync.docId !== docId) return;
+            if (res.ok) {
+                this.syncSaved((await res.json()).version);
+            } else if (res.status === 409) {
+                const current = await res.json();
+                this.syncRemote(current.content, current.version, true);
+            } else {
+                throw new Error(`HTTP ${res.status}`);
+            }
+        } catch (err) {
+            console.error('Failed to save document:', err);
+            if (this.sync.docId === docId) {
+                this.sync.inFlight = null;
+                this.scheduleSync(5000); // try again in a while
+            }
+        }
     },
 
     /**
@@ -1242,10 +1371,13 @@ const DocsModule = {
      */
     async openDocument(docId) {
         try {
+            // Unsaved typing in the document being left goes out first
+            if (this.currentDocId && this.currentDocId !== docId) this.saveContent();
             const res = await API.request(`/documents/${docId}`);
             if (res.error) throw new Error(res.error);
             this.currentDocId = docId;
             this.currentDoc = res.data;
+            this.sync.docId = null; // freshly loaded: start from the server's content and version
             this.render();
 
             // Connect to WebSocket for collaboration
@@ -1306,7 +1438,7 @@ const DocsModule = {
             const editorArea = document.querySelector('.docs-editor-area');
             if (editorArea) {
                 editorArea.innerHTML = this.renderEditor();
-                this.restoreTodoState(document.getElementById('docsEditorContent'));
+                this.editorRendered();
             }
 
             // Connect to WebSocket
@@ -1501,50 +1633,17 @@ const DocsModule = {
         const editor = document.getElementById('docsEditorContent');
         if (!editor) return;
 
-        const content = editor.innerHTML;
-
-        // Broadcast to collaborators immediately
-        this.sendWsMessage({
-            type: 'content_update',
-            content
-        });
-
-        // Debounce local save
-        if (this.saveTimeout) {
-            clearTimeout(this.saveTimeout);
-        }
-
-        this.saveTimeout = setTimeout(() => {
-            this.saveContent();
-        }, 2000);
+        // New blocks need their own id before anyone else sees them
+        DocMerge.stamp(editor, false);
+        if (this.currentDoc) this.currentDoc.content = editor.innerHTML;
+        this.scheduleSync();
     },
 
     /**
-     * Save document content to server
+     * Save the document now (Ctrl+S, leaving the document)
      */
-    async saveContent() {
-        if (!this.currentDocId) return;
-
-        const editor = document.getElementById('docsEditorContent');
-        if (!editor) return;
-
-        const content = editor.innerHTML;
-        this.currentDoc.content = content;
-
-        // Persist to server via API (with auth headers)
-        try {
-            const headers = { 'Content-Type': 'application/json' };
-            if (typeof getAuthHeaders === 'function') {
-                Object.assign(headers, getAuthHeaders());
-            }
-            await fetch(`/api/documents/${this.currentDocId}`, {
-                method: 'PATCH',
-                headers,
-                body: JSON.stringify({ content })
-            });
-        } catch (err) {
-            console.error('Failed to save document:', err);
-        }
+    saveContent() {
+        this.syncFlush();
     },
 
     // ============ Formatting Commands ============
@@ -1883,6 +1982,7 @@ const DocsModule = {
         this.disconnectWebSocket();
         this.currentDocId = null;
         this.currentDoc = null;
+        this.sync.docId = null;
     },
 
     /**

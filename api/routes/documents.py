@@ -9,11 +9,13 @@ from fastapi import (
     WebSocket,
     WebSocketDisconnect,
 )
+from fastapi.responses import JSONResponse
 from typing import Dict, Optional
 from database import db_check_project_access
 from database.documents import (
     db_create_folder, db_get_folders, db_update_folder, db_delete_folder,
     db_create_document, db_get_documents, db_get_document, db_update_document, db_delete_document,
+    db_save_document_content,
 )
 from api.auth import can_view_project, principal_from_ticket, require_auth
 from api.state import WS_ACCESS_REMOVED, SocketRooms, track_socket, untrack_socket
@@ -136,19 +138,36 @@ async def update_document(doc_id: str, request: Request, user: dict = Depends(re
         raise HTTPException(status_code=403, detail="Access denied")
 
     data = await request.json()
+
+    # Content: saved on top of the version the editor started from ("baseVersion").
+    # If someone else saved in between, nothing is written and the editor gets
+    # the current content back to merge with (409).
+    if "content" in data:
+        content = data["content"] if isinstance(data["content"], str) else ""
+        base_version = data.get("baseVersion")
+        version = db_save_document_content(doc_id, content, base_version if isinstance(base_version, int) else None)
+        if version is None:
+            current = db_get_document(doc_id)
+            return JSONResponse(status_code=409, content={
+                "detail": "The document was changed by someone else",
+                "content": current["content"], "version": current["version"],
+            })
+        await doc_manager.broadcast(doc_id, {
+            "type": "content_update", "user_id": user["id"], "content": content, "version": version,
+        })
+
     # Convert camelCase to snake_case
     updates = {}
     if "title" in data:
         updates["title"] = data["title"]
-    if "content" in data:
-        updates["content"] = data["content"]
     if "folderId" in data:
         updates["folder_id"] = data["folderId"]
     if "sortOrder" in data:
         updates["sort_order"] = data["sortOrder"]
 
-    updated = db_update_document(doc_id, updates)
-    return updated
+    if updates:
+        db_update_document(doc_id, updates)
+    return db_get_document(doc_id)
 
 
 @router.delete("/api/documents/{doc_id}")
@@ -230,7 +249,8 @@ async def doc_websocket_endpoint(
     await websocket.send_json({
         "type": "init",
         "users": doc_manager.get_users(doc_id),
-        "content": doc.get("content") if doc else None
+        "content": doc.get("content"),
+        "version": doc.get("version", 0),
     })
 
     # Notify others about new user
@@ -263,17 +283,32 @@ async def doc_websocket_endpoint(
                 }, exclude=websocket)
 
             elif data["type"] == "content_update":
-                # Broadcast content update to all other users
+                # An edit made on top of version `baseVersion`. It is only accepted if
+                # that is still the current version; otherwise the editor gets the
+                # current content back, merges its change into it and sends again.
+                # This is what stops two people from overwriting each other.
                 content = data.get("content")
+                base_version = data.get("baseVersion")
+                if not isinstance(content, str) or not isinstance(base_version, int):
+                    continue
+                version = db_save_document_content(doc_id, content, base_version)
+                if version is None:
+                    current = db_get_document(doc_id)
+                    if not current:
+                        break  # the document was deleted
+                    await websocket.send_json({
+                        "type": "content_conflict",
+                        "content": current["content"],
+                        "version": current["version"],
+                    })
+                    continue
+                await websocket.send_json({"type": "content_saved", "version": version})
                 await doc_manager.broadcast(doc_id, {
                     "type": "content_update",
                     "user_id": user_id,
-                    "content": content
+                    "content": content,
+                    "version": version,
                 }, exclude=websocket)
-
-                # Save to database (debounced on client, so this is safe)
-                if content is not None:
-                    db_update_document(doc_id, {"content": content})
 
             elif data["type"] == "title_update":
                 # Broadcast title update

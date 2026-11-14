@@ -188,7 +188,7 @@ def db_get_document(doc_id: str) -> Optional[dict]:
     """Get a single document with content."""
     with get_db() as conn:
         cursor = execute(conn,
-            """SELECT id, project_id, folder_id, title, content, yjs_state, created_by, sort_order, created_at, updated_at
+            """SELECT id, project_id, folder_id, title, content, version, created_by, sort_order, created_at, updated_at
                FROM documents WHERE id = ?""",
             (doc_id,)
         )
@@ -203,7 +203,7 @@ def db_get_document(doc_id: str) -> Optional[dict]:
         "folderId": row["folder_id"],
         "title": row["title"],
         "content": row["content"],
-        "yjsState": row["yjs_state"],
+        "version": int(row["version"] or 0),
         "createdBy": row["created_by"],
         "sortOrder": row["sort_order"],
         "createdAt": row["created_at"],
@@ -211,9 +211,34 @@ def db_get_document(doc_id: str) -> Optional[dict]:
     }
 
 
+def db_save_document_content(doc_id: str, content: str, base_version: Optional[int] = None) -> Optional[int]:
+    """Save new content and return the new version.
+
+    With base_version the save only happens if that is still the current
+    version (nobody else saved in between); otherwise None is returned and
+    nothing changes. The check and the write are one statement, so two
+    simultaneous saves cannot both win.
+    """
+    now = datetime.now().isoformat()
+    with get_db() as conn:
+        if base_version is None:
+            cursor = execute(conn,
+                "UPDATE documents SET content = ?, version = COALESCE(version, 0) + 1, updated_at = ? WHERE id = ?",
+                (content, now, doc_id))
+        else:
+            cursor = execute(conn,
+                """UPDATE documents SET content = ?, version = COALESCE(version, 0) + 1, updated_at = ?
+                   WHERE id = ? AND COALESCE(version, 0) = ?""",
+                (content, now, doc_id, base_version))
+        if cursor.rowcount != 1:
+            return None
+        row = fetchone(execute(conn, "SELECT version FROM documents WHERE id = ?", (doc_id,)))
+        return int(row["version"])
+
+
 def db_update_document(doc_id: str, updates: dict) -> Optional[dict]:
-    """Update a document."""
-    allowed = {"title", "content", "yjs_state", "folder_id", "sort_order"}
+    """Update a document's title or place (content goes through db_save_document_content)."""
+    allowed = {"title", "yjs_state", "folder_id", "sort_order"}
     filtered = {k: v for k, v in updates.items() if k in allowed}
 
     if not filtered:

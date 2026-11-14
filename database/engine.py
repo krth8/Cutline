@@ -758,6 +758,9 @@ def init_schema(conn):
         )
     """)
 
+    # Documents: every saved change of the content bumps the version (see db_save_document_content)
+    add_column_if_not_exists(conn, "documents", "version", "INTEGER DEFAULT 0")
+
     # Login sessions: one row per login, ended by logout, idle timeout or max age.
     # Times are unix seconds.
     execute(conn, """
