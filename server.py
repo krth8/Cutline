@@ -18,6 +18,8 @@ import re
 import uuid
 import shutil
 import asyncio
+from api.pagesync import start_snapshot_job, stop_snapshot_job
+from api.routes.pagesync import router as pagesync_router
 import secrets
 import json
 from datetime import datetime, timedelta
@@ -156,6 +158,9 @@ load_data_from_db()
 db_init_admin_user()
 
 
+# Must come before the catch-all "/ws/{session_id}/{user_id}" below, which would swallow /ws/pages/{id}
+app.include_router(pagesync_router)
+
 @app.on_event("startup")
 async def startup_event():
     """Start background workers on server startup."""
@@ -165,6 +170,7 @@ async def startup_event():
     print("Cache manager started (write-back persistence enabled)")
     asyncio.create_task(backfill_html_previews())
     asyncio.create_task(end_idle_logins())
+    start_snapshot_job()
 
 
 async def end_idle_logins():
@@ -201,6 +207,7 @@ async def backfill_html_previews():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Gracefully shutdown background workers and flush cache."""
+    await stop_snapshot_job()
     print("Shutting down - flushing cache to database...")
     await cache_manager.stop()
     print("Cache flushed successfully")
