@@ -140,7 +140,7 @@ const Live = (function () {
             return;
         }
         sendWatch();
-    }, 2000);
+    }, 500);
     setInterval(() => {
         if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
     }, PING_EVERY);
@@ -246,6 +246,17 @@ window.Live = Live;
     function loadUserData() {
         if (typeof loadNotifications === 'function') loadNotifications();
     }
+
+    // The server only sends changes made after it was told to watch a project. Opening a
+    // project loads it first and starts watching a moment later, so fetch it once more when
+    // the watch is confirmed: nothing that happened in between is missed.
+    let watchedReviewProject = null;
+    Live.on('watching', (msg) => {
+        const projectId = AppState.projectId;
+        const watching = !!projectId && (msg.projects || []).includes(projectId);
+        if (watching && watchedReviewProject !== projectId) resyncReview();
+        watchedReviewProject = watching ? projectId : null;
+    });
 
     Live.on('connected', loadUserData);
     Live.on('resync', () => {
