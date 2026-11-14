@@ -722,25 +722,25 @@ Risks:
 
 | WP | State | Branch / PR | Notes |
 |---|---|---|---|
-| F1 | reviewed, waiting for merge | PR #2 | Migration numbers are assigned centrally (002 = P1). PostgreSQL path not run. |
-| F2 | reviewed, waiting for merge | PR #3 | Also fixed: clip saves dropped task links; reorder and parentId accepted other projects' tasks. `db_batch_upsert_tasks` is now unused and should be deleted. |
-| F3 | in progress | wp/F3-e2e-tests | |
-| F4 | in progress | wp/F4-web-bundle | |
-| F5 | not started | | |
-| F6 | done: GO | PR #4 | See the addendum in 5.7. Not covered: auth on the socket, latency, lists and custom nodes, two-user undo. |
-| P1 | in progress | wp/P1-pages-data | Based on F1. |
-| P2 | not started | | |
-| P3 | not started | | |
+| F1 | done | main | Merged. |
+| F2 | done | main | Merged. |
+| F3 | done | main | Merged. 33 browser tests; run with `pytest -m e2e`. CI workflow not added (needs the workflow token scope). |
+| F4 | done | main | Merged. Docker build verified in GitHub Actions; `.bat` scripts not run. |
+| F5 | done | main | Merged. Scope changed: legacy tabs stay, a new Pages tab hosts the shell. P5 plugs in through `web/src/shell/registry.ts`. |
+| F6 | done | main | Merged. GO; see the addendum in 5.7. |
+| P1 | done | main | Merged. Adds `import_claimed_by`; `sort_order` is double precision; change `restored` exists; task pages are not in the tree. |
+| P2 | done | main | Merged. Router is included in server.py before the legacy `/ws/{session}/{user}` catch-all. Client notes are in the P2 commit and api/pagesync.py. |
+| P3 | done | main | Merged. Not imported by the bundle yet (about 230 KB gzip: lazy-load it). Image slash entry is left to P6. |
 | P4 | not started | | |
 | P5 | not started | | |
 | P6 | not started | | |
 | P7 | not started | | |
 | P8 | not started | | |
-| T1 | in progress | wp/T1-table-api | Based on F1 + F2. |
+| T1 | done | main | Merged. Open: moving a row to another parent through the table API (proposed: `parentId` on PATCH). |
 | T2 | not started | | |
 | T3 | not started | | |
 | T4 | not started | | |
-| T5 | not started | | |
+| T5 | done | main | Merged. Value shapes in web/src/tables/cells/README.md. |
 | T6 | not started | | |
 | T7 | not started | | |
 | T8 | not started | | |
