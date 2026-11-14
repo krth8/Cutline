@@ -154,19 +154,15 @@ def db_batch_upsert_clips(project_id: str, clips: List[Tuple[str, dict]]) -> int
             status_id = clip_data.get("statusId") or (clip_data.get("status", {}).get("id") if clip_data.get("status") else None)
 
             # Upsert clip record
-            if DB_TYPE == DatabaseType.POSTGRESQL:
-                execute(conn, """
-                    INSERT INTO clips (project_id, base_name, active_version, status_id)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (project_id, base_name) DO UPDATE SET
-                        active_version = EXCLUDED.active_version,
-                        status_id = EXCLUDED.status_id
-                """, (project_id, base_name, clip_data.get("activeVersion", 1), status_id))
-            else:
-                execute(conn, """
-                    INSERT OR REPLACE INTO clips (project_id, base_name, active_version, status_id)
-                    VALUES (?, ?, ?, ?)
-                """, (project_id, base_name, clip_data.get("activeVersion", 1), status_id))
+            # An upsert, not INSERT OR REPLACE: replacing would delete the row, and with it
+            # the clip's versions and its task links (foreign keys cascade)
+            execute(conn, """
+                INSERT INTO clips (project_id, base_name, active_version, status_id)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (project_id, base_name) DO UPDATE SET
+                    active_version = EXCLUDED.active_version,
+                    status_id = EXCLUDED.status_id
+            """, (project_id, base_name, clip_data.get("activeVersion", 1), status_id))
 
             # Get clip ID
             cursor = execute(conn,

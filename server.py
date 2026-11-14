@@ -27,6 +27,7 @@ from urllib.parse import quote
 from PIL import Image
 
 # Database module for persistence
+from database.batch import db_batch_upsert_clips
 from database import (
     load_all_projects_to_memory,
     load_all_tasks_to_memory,
@@ -51,13 +52,13 @@ from database import (
     db_init_admin_user,
     db_get_user,
     db_list_statuses,
+    db_update_clip_status,
     db_delete_clip,
     db_check_project_access,
     db_list_accessible_projects,
 )
 
 # Cache manager for write-back persistence
-from cache import cache_manager
 import html_preview
 from html_preview import render_html_preview
 
@@ -144,8 +145,6 @@ def load_data_from_db():
     projects.update(load_all_projects_to_memory())
     tasks.clear()
     tasks.update(load_all_tasks_to_memory())
-    cache_manager.set_projects_ref(projects)
-    cache_manager.set_tasks_ref(tasks)
     print(f"Loaded {len(projects)} projects and {len(tasks)} tasks from database")
 
 
@@ -161,8 +160,6 @@ async def startup_event():
     """Start background workers on server startup."""
     await ensure_upload_cleanup_worker()
     print(f"Upload cleanup worker started (interval: {UPLOAD_CLEANUP_INTERVAL_HOURS}h, max age: {UPLOAD_FILE_MAX_AGE_HOURS}h)")
-    cache_manager.start()
-    print("Cache manager started (write-back persistence enabled)")
     asyncio.create_task(backfill_html_previews())
     asyncio.create_task(end_idle_logins())
 
@@ -175,6 +172,12 @@ async def end_idle_logins():
             await close_session_sockets(auth_sessions.end_expired())
         except Exception as e:
             print(f"Idle logout check failed: {e}")
+
+
+async def save_clip(project_id: str, base_name: str) -> None:
+    """Write a clip and its versions from memory to the database now."""
+    clip = projects[project_id]["clips"][base_name]
+    await asyncio.to_thread(db_batch_upsert_clips, project_id, [(base_name, clip)])
 
 
 async def backfill_html_previews():
@@ -194,16 +197,14 @@ async def backfill_html_previews():
                         continue
                     return
                 version['thumbnail'] = thumbnail
-                cache_manager.mark_clip_dirty(project_id, base_name)
+                await save_clip(project_id, base_name)
                 print(f"HTML preview made for {base_name} v{version.get('version')}")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Gracefully shutdown background workers and flush cache."""
-    print("Shutting down - flushing cache to database...")
-    await cache_manager.stop()
-    print("Cache flushed successfully")
+    """Nothing to flush: every change is already in the database when it is made."""
+    print("Shutting down")
 
 def get_user_state(session_id: str, user_id: str) -> Optional[dict]:
     """Safely get user state, returning None if session or user doesn't exist."""
@@ -459,8 +460,7 @@ async def add_clip_to_project(project_id: str, filename: str, thumbnail: str = N
 
         # Save now: an upload must survive a crash, and deleting or linking the
         # clip needs it in the database
-        cache_manager.mark_clip_dirty(project_id, base_name)
-        await cache_manager.persist_now()
+        await save_clip(project_id, base_name)
 
         # Show the new version to everyone looking at the project (the uploader too)
         await live.to_project(project_id, {"type": "clip_updated", "baseName": base_name, "clip": clip_entry}, echo=True)
@@ -1449,21 +1449,22 @@ async def update_clip_status(project_id: str, base_name: str, data: dict, user: 
 
     status_id = data.get("statusId")  # Can be None to clear status
 
-    # Update in-memory data
+    clip = projects[project_id]["clips"][base_name]
+    status = None
     if status_id:
-        # Get status info
-        statuses = db_list_statuses()
-        status = next((s for s in statuses if s["id"] == status_id), None)
-        if status:
-            projects[project_id]["clips"][base_name]["status"] = status
-            projects[project_id]["clips"][base_name]["statusId"] = status_id
-    else:
-        # Remove status
-        projects[project_id]["clips"][base_name].pop("status", None)
-        projects[project_id]["clips"][base_name].pop("statusId", None)
+        status = next((s for s in db_list_statuses() if s["id"] == status_id), None)
+        if not status:
+            raise HTTPException(status_code=400, detail="Unknown status")
 
-    # Mark for write-back persistence
-    cache_manager.mark_clip_dirty(project_id, base_name)
+    # Saved first; the in-memory copy follows
+    if not db_update_clip_status(project_id, base_name, status_id or None):
+        raise HTTPException(status_code=500, detail="Failed to save clip status")
+    if status:
+        clip["status"] = status
+        clip["statusId"] = status_id
+    else:
+        clip.pop("status", None)
+        clip.pop("statusId", None)
 
     await live.to_project(project_id, {
         "type": "clip_updated", "baseName": base_name, "clip": projects[project_id]["clips"][base_name]
