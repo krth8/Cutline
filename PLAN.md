@@ -447,6 +447,23 @@ Snapshot job: when a page has had no update for 30 s, or has more than 200
 pending rows in `page_updates`, merge them into `pages.ydoc`, refresh
 `pages.text` and `page_refs`, delete the merged rows. Also runs at shutdown.
 
+Confirmed by the F6 spike (`spikes/collab/RESULT.md`, binding for P2, P3, P4):
+
+- Versions: Tiptap 3 (`@tiptap/extension-collaboration`, `@tiptap/extension-collaboration-caret`,
+  `@tiptap/y-tiptap`), `yjs`, `y-protocols`, `pycrdt` 0.14. Disable Tiptap's own history
+  (`StarterKit.configure({ undoRedo: false })`).
+- The editor content is the Yjs XmlFragment named `default`. The server derives `pages.text`
+  by walking it (`diff()` for text nodes; `str()` includes formatting tags).
+- Type `3` is optional: after type `0` the client can compute what the server lacks from the
+  received state and send it as one type `1`. A client that already has local state sends `3`
+  first to get only the difference.
+- Awareness: the server remembers which awareness client ids each socket announced and, when the
+  socket closes, relays a removal for them. Clients throttle outgoing awareness (frames are about
+  30 times larger than a keystroke) and drop remote states when their own socket closes.
+- An update is stored only after it applied cleanly, and not at all if it changed nothing.
+- The provider must ignore updates it applied from the network, or it echoes them back.
+- All access to a pycrdt `Doc` stays on the event-loop thread.
+
 Legacy import: a page with `legacy_html` and an empty document reports
 `needsImport`. The first editor to get `granted: true` from `claim-import`
 parses the HTML with Tiptap and writes the result into the Yjs document.
@@ -705,13 +722,13 @@ Risks:
 
 | WP | State | Branch / PR | Notes |
 |---|---|---|---|
-| F1 | not started | | |
-| F2 | not started | | |
-| F3 | not started | | |
-| F4 | not started | | |
+| F1 | reviewed, waiting for merge | PR #2 | Migration numbers are assigned centrally (002 = P1). PostgreSQL path not run. |
+| F2 | reviewed, waiting for merge | PR #3 | Also fixed: clip saves dropped task links; reorder and parentId accepted other projects' tasks. `db_batch_upsert_tasks` is now unused and should be deleted. |
+| F3 | in progress | wp/F3-e2e-tests | |
+| F4 | in progress | wp/F4-web-bundle | |
 | F5 | not started | | |
-| F6 | not started | | |
-| P1 | not started | | |
+| F6 | done: GO | PR #4 | See the addendum in 5.7. Not covered: auth on the socket, latency, lists and custom nodes, two-user undo. |
+| P1 | in progress | wp/P1-pages-data | Based on F1. |
 | P2 | not started | | |
 | P3 | not started | | |
 | P4 | not started | | |
@@ -719,7 +736,7 @@ Risks:
 | P6 | not started | | |
 | P7 | not started | | |
 | P8 | not started | | |
-| T1 | not started | | |
+| T1 | in progress | wp/T1-table-api | Based on F1 + F2. |
 | T2 | not started | | |
 | T3 | not started | | |
 | T4 | not started | | |
