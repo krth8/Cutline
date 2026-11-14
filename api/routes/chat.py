@@ -33,6 +33,7 @@ from database.chat import (
     db_update_message,
     db_update_presence,
 )
+from api.state import WS_ACCESS_REMOVED, SocketRooms, track_socket, untrack_socket
 from api.auth import (
     can_view_project,
     get_current_user,
@@ -52,53 +53,38 @@ os.makedirs(CHAT_UPLOADS_DIR, exist_ok=True)
 
 
 class ChatConnectionManager:
-    """Manages WebSocket connections for chat rooms."""
+    """Who is in which chat room (a user may have it open in several tabs)."""
 
     def __init__(self):
-        self.active_connections: Dict[str, Dict[str, WebSocket]] = {}  # room_id -> {user_id -> ws}
+        self.sockets = SocketRooms()
         self.user_info: Dict[str, Dict[str, dict]] = {}  # room_id -> {user_id -> info}
 
     async def connect(self, websocket: WebSocket, room_id: str, user_id: str, user_name: str, user_image: str = None):
         await websocket.accept()
-        if room_id not in self.active_connections:
-            self.active_connections[room_id] = {}
-            self.user_info[room_id] = {}
+        if self.sockets.add(room_id, user_id, websocket):
+            self.user_info.setdefault(room_id, {})[user_id] = {
+                "id": user_id,
+                "name": user_name,
+                "image": user_image,
+                "joinedAt": datetime.now().isoformat()
+            }
+            db_update_presence(user_id, room_id, "online")
 
-        self.active_connections[room_id][user_id] = websocket
-        self.user_info[room_id][user_id] = {
-            "id": user_id,
-            "name": user_name,
-            "image": user_image,
-            "joinedAt": datetime.now().isoformat()
-        }
-
-        # Update presence in database
-        db_update_presence(user_id, room_id, "online")
-
-    def disconnect(self, room_id: str, user_id: str):
-        if room_id in self.active_connections:
-            self.active_connections[room_id].pop(user_id, None)
-            self.user_info[room_id].pop(user_id, None)
-            if not self.active_connections[room_id]:
-                del self.active_connections[room_id]
-                del self.user_info[room_id]
-
-        # Update presence
+    def disconnect(self, room_id: str, user_id: str, websocket: WebSocket) -> bool:
+        """Returns True if the user has no tab left in the room."""
+        if not self.sockets.remove(room_id, user_id, websocket):
+            return False
+        self.user_info.get(room_id, {}).pop(user_id, None)
+        if self.sockets.is_empty(room_id):
+            self.user_info.pop(room_id, None)
         db_update_presence(user_id, None, "offline")
+        return True
 
-    async def broadcast(self, room_id: str, message: dict, exclude_user: str = None):
-        if room_id in self.active_connections:
-            for user_id, ws in list(self.active_connections[room_id].items()):
-                if user_id != exclude_user:
-                    try:
-                        await ws.send_json(message)
-                    except Exception:
-                        self.disconnect(room_id, user_id)
+    async def broadcast(self, room_id: str, message: dict, exclude: WebSocket = None):
+        await self.sockets.broadcast(room_id, message, exclude=exclude)
 
     def get_online_users(self, room_id: str) -> List[dict]:
-        if room_id not in self.user_info:
-            return []
-        return list(self.user_info[room_id].values())
+        return list(self.user_info.get(room_id, {}).values())
 
 
 chat_manager = ChatConnectionManager()
@@ -313,10 +299,11 @@ async def chat_websocket_endpoint(
         and (not room.get("projectId") or can_view_project(principal, room["projectId"]))
     )
     if not allowed:
-        await websocket.close(code=4403)
+        await websocket.close(code=WS_ACCESS_REMOVED)
         return
-    user_name = name or f"User {user_id[:4]}"
+    user_name = principal["username"]
     await chat_manager.connect(websocket, room_id, user_id, user_name, image)
+    live_socket = track_socket(principal, websocket, room.get("projectId"))
 
     # Send initial state
     await websocket.send_json({
@@ -327,8 +314,8 @@ async def chat_websocket_endpoint(
     # Notify others
     await chat_manager.broadcast(room_id, {
         "type": "user_joined",
-        "user": chat_manager.user_info[room_id].get(user_id, {})
-    }, exclude_user=user_id)
+        "user": chat_manager.user_info.get(room_id, {}).get(user_id, {})
+    }, exclude=websocket)
 
     try:
         while True:
@@ -341,7 +328,7 @@ async def chat_websocket_endpoint(
                     "userId": user_id,
                     "userName": user_name,
                     "isTyping": data.get("isTyping", False)
-                }, exclude_user=user_id)
+                }, exclude=websocket)
                 db_update_presence(user_id, room_id, "online", data.get("isTyping", False))
 
             elif data["type"] == "ping":
@@ -353,12 +340,15 @@ async def chat_websocket_endpoint(
                 if message_id:
                     db_mark_as_read(user_id, room_id, message_id)
 
-    except WebSocketDisconnect:
-        chat_manager.disconnect(room_id, user_id)
-        await chat_manager.broadcast(room_id, {
-            "type": "user_left",
-            "userId": user_id
-        })
+    except (WebSocketDisconnect, ValueError, RuntimeError, KeyError):
+        pass
+    finally:
+        untrack_socket(principal, live_socket)
+        if chat_manager.disconnect(room_id, user_id, websocket):
+            await chat_manager.broadcast(room_id, {
+                "type": "user_left",
+                "userId": user_id
+            })
 
 
 # Serve chat uploads

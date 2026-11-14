@@ -16,6 +16,7 @@ from database.documents import (
     db_create_document, db_get_documents, db_get_document, db_update_document, db_delete_document,
 )
 from api.auth import can_view_project, principal_from_token, require_auth
+from api.state import WS_ACCESS_REMOVED, SocketRooms, track_socket, untrack_socket
 
 
 router = APIRouter()
@@ -168,49 +169,38 @@ async def delete_document(doc_id: str, user: dict = Depends(require_auth)):
 # ============ Document Collaboration WebSocket ============
 
 class DocConnectionManager:
-    """Manages WebSocket connections for document collaboration."""
+    """Who has which document open (a user may have it open in several tabs)."""
     def __init__(self):
-        self.active_connections: Dict[str, Dict[str, WebSocket]] = {}  # doc_id -> {user_id -> ws}
+        self.sockets = SocketRooms()
         self.user_info: Dict[str, Dict[str, dict]] = {}  # doc_id -> {user_id -> {name, color}}
         self.colors = ["#5f5de5", "#e55d5d", "#5de58a", "#e5c35d", "#5dc3e5", "#c35de5", "#e5875d", "#75e55d"]
 
     async def connect(self, websocket: WebSocket, doc_id: str, user_id: str, user_name: str = None):
         await websocket.accept()
-        if doc_id not in self.active_connections:
-            self.active_connections[doc_id] = {}
-            self.user_info[doc_id] = {}
+        if self.sockets.add(doc_id, user_id, websocket):
+            users = self.user_info.setdefault(doc_id, {})
+            users[user_id] = {
+                "name": user_name or f"User {user_id[:4]}",
+                "color": self.colors[len(users) % len(self.colors)]
+            }
 
-        self.active_connections[doc_id][user_id] = websocket
-
-        # Assign color based on user count
-        color_index = len(self.user_info[doc_id]) % len(self.colors)
-        self.user_info[doc_id][user_id] = {
-            "name": user_name or f"User {user_id[:4]}",
-            "color": self.colors[color_index]
-        }
-
-    def disconnect(self, doc_id: str, user_id: str):
-        if doc_id in self.active_connections:
-            self.active_connections[doc_id].pop(user_id, None)
-            self.user_info[doc_id].pop(user_id, None)
-            if not self.active_connections[doc_id]:
-                del self.active_connections[doc_id]
-                del self.user_info[doc_id]
+    def disconnect(self, doc_id: str, user_id: str, websocket: WebSocket) -> bool:
+        """Returns True if the user has no tab left on the document."""
+        if not self.sockets.remove(doc_id, user_id, websocket):
+            return False
+        self.user_info.get(doc_id, {}).pop(user_id, None)
+        if self.sockets.is_empty(doc_id):
+            self.user_info.pop(doc_id, None)
+        return True
 
     def get_users(self, doc_id: str) -> list:
-        if doc_id not in self.user_info:
-            return []
-        return [{"id": uid, **info} for uid, info in self.user_info[doc_id].items()]
+        return [{"id": uid, **info} for uid, info in self.user_info.get(doc_id, {}).items()]
 
-    async def broadcast(self, doc_id: str, message: dict, exclude_user: str = None):
-        if doc_id not in self.active_connections:
-            return
-        for user_id, ws in list(self.active_connections[doc_id].items()):
-            if user_id != exclude_user:
-                try:
-                    await ws.send_json(message)
-                except Exception:
-                    self.disconnect(doc_id, user_id)
+    def info(self, doc_id: str, user_id: str) -> dict:
+        return self.user_info.get(doc_id, {}).get(user_id, {})
+
+    async def broadcast(self, doc_id: str, message: dict, exclude: WebSocket = None):
+        await self.sockets.broadcast(doc_id, message, exclude=exclude)
 
 
 doc_manager = DocConnectionManager()
@@ -228,10 +218,13 @@ async def doc_websocket_endpoint(
     principal = principal_from_token(token)
     doc = db_get_document(doc_id)
     if not principal or principal.get("is_guest") or not doc or not can_view_project(principal, doc.get("projectId")):
-        await websocket.close(code=4403)
+        await websocket.close(code=WS_ACCESS_REMOVED)
         return
 
-    await doc_manager.connect(websocket, doc_id, user_id, name)
+    # Who this is comes from the token; the id and name in the URL are ignored
+    user_id = principal["id"]
+    await doc_manager.connect(websocket, doc_id, user_id, principal["username"])
+    live_socket = track_socket(principal, websocket, doc.get("projectId"))
 
     # Send initial state to new user
     await websocket.send_json({
@@ -244,8 +237,8 @@ async def doc_websocket_endpoint(
     await doc_manager.broadcast(doc_id, {
         "type": "user_joined",
         "user_id": user_id,
-        "user": doc_manager.user_info[doc_id].get(user_id, {})
-    }, exclude_user=user_id)
+        "user": doc_manager.info(doc_id, user_id)
+    }, exclude=websocket)
 
     try:
         while True:
@@ -257,8 +250,8 @@ async def doc_websocket_endpoint(
                     "type": "cursor",
                     "user_id": user_id,
                     "position": data.get("position"),
-                    "color": doc_manager.user_info[doc_id].get(user_id, {}).get("color", "#5f5de5")
-                }, exclude_user=user_id)
+                    "color": doc_manager.info(doc_id, user_id).get("color", "#5f5de5")
+                }, exclude=websocket)
 
             elif data["type"] == "selection":
                 # Broadcast text selection
@@ -266,8 +259,8 @@ async def doc_websocket_endpoint(
                     "type": "selection",
                     "user_id": user_id,
                     "range": data.get("range"),
-                    "color": doc_manager.user_info[doc_id].get(user_id, {}).get("color", "#5f5de5")
-                }, exclude_user=user_id)
+                    "color": doc_manager.info(doc_id, user_id).get("color", "#5f5de5")
+                }, exclude=websocket)
 
             elif data["type"] == "content_update":
                 # Broadcast content update to all other users
@@ -276,7 +269,7 @@ async def doc_websocket_endpoint(
                     "type": "content_update",
                     "user_id": user_id,
                     "content": content
-                }, exclude_user=user_id)
+                }, exclude=websocket)
 
                 # Save to database (debounced on client, so this is safe)
                 if content is not None:
@@ -289,15 +282,18 @@ async def doc_websocket_endpoint(
                     "type": "title_update",
                     "user_id": user_id,
                     "title": title
-                }, exclude_user=user_id)
+                }, exclude=websocket)
 
             elif data["type"] == "pong":
                 # Heartbeat response
                 pass
 
-    except WebSocketDisconnect:
-        doc_manager.disconnect(doc_id, user_id)
-        await doc_manager.broadcast(doc_id, {
-            "type": "user_left",
-            "user_id": user_id
-        })
+    except (WebSocketDisconnect, ValueError, RuntimeError, KeyError):
+        pass
+    finally:
+        untrack_socket(principal, live_socket)
+        if doc_manager.disconnect(doc_id, user_id, websocket):
+            await doc_manager.broadcast(doc_id, {
+                "type": "user_left",
+                "user_id": user_id
+            })

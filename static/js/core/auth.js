@@ -137,7 +137,11 @@ const Auth = (function () {
     // ============ Logging out ============
 
     /** The user asked to log out. */
+    let loggingOut = false;
     async function logout() {
+        loggingOut = true;
+        // Other tabs follow at once (storage event), before the server starts closing connections
+        store(AUTH_KEY, null);
         if (isLoggedIn()) {
             try {
                 await fetch('/api/auth/logout', { method: 'POST' });
@@ -154,8 +158,9 @@ const Auth = (function () {
         if (ending) return;
         ending = true;
         clearInterval(ticker);
+        if (loggingOut) reason = null; // the user chose to leave: nothing to explain
         // The server may notice the timeout a moment before this tab does
-        if (reason === 'expired' && idleSeconds() >= idleTimeout - 60) reason = 'idle';
+        if (reason === 'expired' && idleSeconds() >= idleTimeout - Math.min(60, idleWarning)) reason = 'idle';
         if (reason && REASONS[reason]) store(REASON_KEY, reason);
         store(AUTH_KEY, null);
         AppState.authToken = null;

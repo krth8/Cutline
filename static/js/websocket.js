@@ -17,13 +17,20 @@ function connectWebSocket() {
 
     AppState.ws = new WebSocket(withAuthToken(`${protocol}//${location.host}/ws/${AppState.sessionId}/${AppState.userId}?name=${encodeURIComponent(userName)}`));
 
-    AppState.ws.onopen = () => {
+    const socket = AppState.ws;
+    let keepAlive = null;
+    socket.onopen = () => {
         console.log('Connected to session');
         AppState._wsReconnectAttempts = 0;
         updateSessionBadgeState(true);
+        // Proxies drop sockets that stay silent
+        keepAlive = setInterval(() => {
+            if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'pong' }));
+        }, 25000);
     };
     AppState.ws.onmessage = (e) => handleMessage(JSON.parse(e.data));
     AppState.ws.onclose = (event) => {
+        clearInterval(keepAlive);
         updateSessionBadgeState(false);
 
         // 4403: access to this project was removed. 4401: the login ended. Don't keep retrying;

@@ -68,3 +68,48 @@ async def close_session_sockets(session_ids) -> None:
                     await entry[0].close(code=WS_SESSION_ENDED)
                 except Exception:
                     pass
+
+
+class SocketRooms:
+    """WebSockets grouped by room (a document, a chat room) and user.
+
+    A user can have the same room open in several tabs: each tab gets the
+    messages, and the user only "leaves" when the last one closes.
+    """
+
+    def __init__(self):
+        self.rooms: Dict[str, Dict[str, set]] = {}  # room id -> {user id -> {websockets}}
+
+    def add(self, room_id: str, user_id: str, websocket) -> bool:
+        """Returns True if this is the user's first socket in the room."""
+        sockets = self.rooms.setdefault(room_id, {}).setdefault(user_id, set())
+        sockets.add(websocket)
+        return len(sockets) == 1
+
+    def remove(self, room_id: str, user_id: str, websocket) -> bool:
+        """Returns True if that was the user's last socket in the room."""
+        users = self.rooms.get(room_id, {})
+        sockets = users.get(user_id)
+        if sockets is None:
+            return False
+        sockets.discard(websocket)
+        if sockets:
+            return False
+        del users[user_id]
+        if not users:
+            self.rooms.pop(room_id, None)
+        return True
+
+    def is_empty(self, room_id: str) -> bool:
+        return room_id not in self.rooms
+
+    async def broadcast(self, room_id: str, message: dict, exclude=None) -> None:
+        """Send to every socket in the room except the socket `exclude`."""
+        for sockets in list(self.rooms.get(room_id, {}).values()):
+            for websocket in list(sockets):
+                if websocket is exclude:
+                    continue
+                try:
+                    await websocket.send_json(message)
+                except Exception:
+                    pass  # its own handler cleans up when the socket closes

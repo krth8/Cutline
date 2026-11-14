@@ -24,9 +24,12 @@
 
 ## Tech debt
 - [ ] HTML previews: move Chromium out of the Cutline image into a separate Playwright container (`mcr.microsoft.com/playwright`, `playwright run-server`) that `html_preview.py` connects to; then drop the bookworm pin in the Dockerfile
-- [ ] `core/TaskQuery.js` is unused (reads wrong fields); remove or merge into `taskFilters.js`
 - [ ] App layout is not usable on phones (sidebar takes most of the width)
-- [ ] Media (`/video`, `/thumbnail`) is served without auth; use signed URLs
-- [ ] In-memory project/task state with periodic write-back: single process only, recent changes can be lost on crash
+- [ ] In-memory project/task state: single process only. Clip status and task edits are still written back every 30 s (comments, annotations and new clips are saved at once)
+- [ ] Login token lives in `localStorage` (readable by any script on the page); move to an HttpOnly cookie + CSRF protection
+- [ ] Tokens still travel in WebSocket URLs (`?token=`); use a short-lived ticket instead
+- [ ] Share-link guests: 24 h token, no idle timeout, and they re-enter their name after a reload
 - [ ] Continue splitting `server.py` (sessions, clips/transcoding, comments, websocket)
-- [ ] Add automated tests (auth/access rules first)
+- [ ] More tests: tasks, documents, uploads/transcoding (auth, access, comments, live updates and media are covered; run `pytest`)
+- [ ] Run `pytest` in GitHub Actions (needs a push with the `workflow` scope)
+- [ ] Live updates for docs lists, clip uploads in progress and the sessions list (still polled / reload)

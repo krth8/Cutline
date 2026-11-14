@@ -32,8 +32,9 @@ const DocsModule = {
      * Initialize the docs module (with optional project)
      */
     async init(projectId = null) {
-        this.userId = this.getOrCreateUserId();
-        this.userName = localStorage.getItem('userName') || `User ${this.userId.slice(0, 4)}`;
+        // The server knows us by our account, so use the same id to tell ourselves from others
+        this.userId = AppState.adminUser?.id || this.getOrCreateUserId();
+        this.userName = AppState.adminUser?.username || `User ${this.userId.slice(0, 4)}`;
 
         // Try to restore project from: parameter > AppState > localStorage
         let targetProjectId = projectId;
