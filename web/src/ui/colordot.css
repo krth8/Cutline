@@ -1,0 +1,12 @@
+.cl-colordot {
+  display: inline-block;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
+  vertical-align: middle;
+}
+.cl-colordot--button { cursor: pointer; }
+.cl-colordot--button:hover { transform: scale(1.15); }
+.cl-colordot--button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cl-colordot.is-selected { box-shadow: 0 0 0 2px var(--modal-bg, transparent), 0 0 0 4px var(--accent); }

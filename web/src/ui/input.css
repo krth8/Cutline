@@ -1,0 +1,16 @@
+.cl-input {
+  height: 32px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg-solid);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition-fast);
+}
+.cl-input::placeholder { color: var(--text-muted); }
+.cl-input:hover:not(:disabled) { border-color: var(--accent-light); }
+.cl-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.cl-input:disabled { opacity: 0.5; cursor: not-allowed; }
+.cl-input--invalid { border-color: var(--danger); }

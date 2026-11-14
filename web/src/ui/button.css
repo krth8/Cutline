@@ -1,0 +1,32 @@
+.cl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: inherit;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast);
+}
+.cl-btn--md { height: 32px; padding: 0 14px; font-size: 13px; }
+.cl-btn--sm { height: 26px; padding: 0 10px; font-size: 12px; }
+
+.cl-btn--primary { background: var(--accent); color: #fff; }
+.cl-btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+.cl-btn--secondary { background: var(--bg-hover); color: var(--text); border-color: var(--border-medium); }
+.cl-btn--secondary:hover:not(:disabled) { border-color: var(--accent); }
+
+.cl-btn--ghost { background: transparent; color: var(--text-secondary); }
+.cl-btn--ghost:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
+
+.cl-btn--danger { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
+.cl-btn--danger:hover:not(:disabled) { background: var(--danger-bg-strong); }
+
+.cl-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cl-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.cl-btn--loading { cursor: progress; }

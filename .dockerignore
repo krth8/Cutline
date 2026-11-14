@@ -18,3 +18,5 @@ profiles
 chat_uploads
 *.bat
 TODO.md
+web/node_modules
+static/dist

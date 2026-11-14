@@ -1,0 +1,39 @@
+.cl-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 19000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--bg-overlay-dark);
+}
+.cl-dialog {
+  width: min(480px, 100%);
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  color: var(--text);
+  background: var(--modal-bg);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 48px var(--shadow-heavy);
+}
+.cl-dialog:focus { outline: none; }
+.cl-dialog__header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; }
+.cl-dialog__title { margin: 0; font-size: 16px; font-weight: 600; }
+.cl-dialog__close {
+  width: 28px;
+  height: 28px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.cl-dialog__close:hover { background: var(--bg-hover); color: var(--text); }
+.cl-dialog__close:focus-visible { outline: 2px solid var(--accent); }
+.cl-dialog__body { padding: 8px 16px 16px; overflow: auto; font-size: 13px; color: var(--text-secondary); }
+.cl-dialog__footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }

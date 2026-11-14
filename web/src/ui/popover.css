@@ -1,0 +1,14 @@
+.cl-popover {
+  position: fixed;
+  z-index: 20000;
+  min-width: 120px;
+  max-width: calc(100vw - 16px);
+  padding: 4px;
+  color: var(--text);
+  background: var(--modal-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 28px var(--shadow-medium);
+  font-size: 13px;
+}
+.cl-popover:focus { outline: none; }
