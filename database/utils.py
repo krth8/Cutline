@@ -5,6 +5,7 @@ Database utility functions
 from contextlib import contextmanager
 from typing import Dict
 from .engine import get_connection, init_schema
+from .migrate import run_migrations
 
 
 @contextmanager
@@ -18,6 +19,7 @@ def init_database():
     """Initialize the database schema and built-in data."""
     with get_db() as conn:
         init_schema(conn)
+    run_migrations()
 
     # Initialize built-in presets
     from .settings import db_init_builtin_priority_presets, db_init_builtin_status_presets, db_init_builtin_stage_presets
