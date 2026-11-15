@@ -49,14 +49,14 @@ def load_all_projects_to_memory() -> Dict[str, dict]:
 
 
 def load_all_tasks_to_memory() -> Dict[str, dict]:
-    """Load all tasks from database into memory for fast access."""
+    """Load all live tasks from database into memory for fast access. Tasks in the trash are not loaded."""
     from .tasks import db_get_task
     from .engine import execute, fetchall
 
     tasks = {}
 
     with get_db() as conn:
-        cursor = execute(conn, "SELECT id FROM tasks")
+        cursor = execute(conn, "SELECT id FROM tasks WHERE deleted_at IS NULL")
 
         for row in fetchall(cursor):
             task = db_get_task(row["id"])

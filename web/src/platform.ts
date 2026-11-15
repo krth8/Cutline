@@ -7,6 +7,13 @@
  * replace the implementation with `setPlatform(fake)`.
  */
 
+/** Optional extras of a toast: one action button (for example "Undo") and how long the toast stays. */
+export interface ToastOptions {
+  actionLabel?: string;
+  onAction?: () => void;
+  durationMs?: number;
+}
+
 export interface Platform {
   user(): { id: string; username: string; role: 'admin' | 'editor' | 'viewer'; profileImage?: string } | null;
   fetch(path: string, init?: RequestInit): Promise<Response>; // adds auth, CSRF, idle headers; handles 401
@@ -15,7 +22,7 @@ export interface Platform {
     on(type: string, handler: (msg: any) => void): () => void; // returns unsubscribe
     watch(slot: string, target: { projects?: string[]; allTasks?: boolean } | null): void;
   };
-  toast(kind: 'info' | 'success' | 'error', message: string): void;
+  toast(kind: 'info' | 'success' | 'error', message: string, opts?: ToastOptions): void;
   confirm(message: string, opts?: { danger?: boolean; confirmLabel?: string }): Promise<boolean>;
   navigate(route: string): void;
   projects(): Array<{ id: string; name: string; canTasks: boolean; isOwner: boolean }>;
@@ -40,7 +47,10 @@ interface LegacyGlobals {
     watch(slot: string, projectId: string | null): void;
     watchAllTasks?(slot: string, on: boolean): void;
   };
-  Toast?: Record<'info' | 'success' | 'error', (message: string) => unknown>;
+  Toast?: Record<
+    'info' | 'success' | 'error',
+    (message: string, options?: { duration?: number; action?: { label: string; onClick: () => void } }) => unknown
+  >;
   Confirm?: { show(options: { message: string; type?: string; confirmText?: string }): Promise<boolean> };
   openSocket?: (path: string) => Promise<WebSocket>;
 }
@@ -133,9 +143,19 @@ export function createLegacyPlatform(): Platform {
       },
     },
 
-    toast(kind, message) {
+    toast(kind, message, opts) {
       const toast = legacy().Toast;
-      if (toast) toast[kind](message);
+      if (toast) {
+        // The legacy Toast already knows `duration` and `action`; callers without options are unchanged
+        if (!opts) toast[kind](message);
+        else {
+          const { actionLabel, onAction, durationMs } = opts;
+          toast[kind](message, {
+            ...(durationMs ? { duration: durationMs } : {}),
+            ...(actionLabel && onAction ? { action: { label: actionLabel, onClick: onAction } } : {}),
+          });
+        }
+      }
       else console[kind === 'error' ? 'error' : 'log'](`[toast:${kind}] ${message}`);
     },
 

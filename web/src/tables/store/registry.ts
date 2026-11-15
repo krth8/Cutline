@@ -11,7 +11,7 @@
  */
 import * as api from '../../api/tables';
 import { getPlatform } from '../../platform';
-import type { Query, QueryResult, TableSchema } from '../types';
+import type { Query, QueryResult, Row, TableSchema } from '../types';
 import { applyOp, type Op } from './ops';
 
 export const STORE_CONFIG = {
@@ -80,6 +80,16 @@ let lastWatch: string | null = null;
 
 function allQueries(): QueryEntry[] {
   return [...tables.values()].flatMap((t) => [...t.queries.values()]);
+}
+
+/** The rows with these ids as the cached server results hold them (for putting them back on undo). */
+export function cachedRows(ids: string[]): Row[] {
+  const wanted = new Set(ids);
+  const found = new Map<string, Row>();
+  for (const q of allQueries()) {
+    for (const row of q.base?.rows ?? []) if (wanted.has(row.id) && !found.has(row.id)) found.set(row.id, row);
+  }
+  return ids.flatMap((id) => (found.has(id) ? [found.get(id)!] : []));
 }
 
 export function addOp(op: Op): void {

@@ -20,6 +20,13 @@ from database import (
     db_reorder_tasks,
     db_update_task,
 )
+from database.pages import db_get_task_page
+from database.task_trash import (
+    db_get_trashed_task,
+    db_restore_tasks,
+    db_soft_delete_tasks,
+    db_trashed_descendants,
+)
 from api.auth import Permission, can_edit_tasks, has_permission, require_auth
 from api.events import live
 from api.state import projects, tasks
@@ -190,11 +197,12 @@ async def update_task_record(task: dict, data: dict) -> dict:
     return task
 
 
-async def delete_task_record(task: dict) -> None:
-    """Delete a task and its children."""
+async def delete_task_record(task: dict, user: Optional[dict] = None) -> None:
+    """Move a task and its subtasks to the trash. Nothing is destroyed: they only leave the in-memory state
+    and every read path until they are restored (or deleted for good, see purge_task_records)."""
     task_id = task["id"]
 
-    # Find and remove all children recursively from memory
+    # Find the children recursively in memory
     def find_children(parent_id: str) -> List[str]:
         child_ids = [t["id"] for t in tasks.values() if t.get("parentId") == parent_id]
         all_ids = list(child_ids)
@@ -207,9 +215,8 @@ async def delete_task_record(task: dict) -> None:
     # Update parent's childCount if this is a subtask
     parent_id = task.get("parentId")
 
-    # Delete from database (cascade delete handles children)
-    success = db_delete_task(task_id)
-    if not success:
+    # All of them get the same deleted_at, so a restore of the parent brings exactly these back
+    if not db_soft_delete_tasks(ids_to_remove, (user or {}).get("id")):
         raise HTTPException(status_code=500, detail="Failed to delete task")
 
     # Remove from in-memory cache
@@ -222,8 +229,51 @@ async def delete_task_record(task: dict) -> None:
     from api.routes.comment_tasks import forget_deleted_tasks  # imported here: that module imports this one
     await forget_deleted_tasks(task["projectId"], ids_to_remove)
 
+    # Open editors of the task's page are disconnected (its page is hidden while the task is in the trash)
+    from api.pagesync import close_unavailable_rooms
+    await close_unavailable_rooms()
+
     await live.to_project(task["projectId"], {"type": "task_deleted", "taskId": task_id, "parentId": parent_id}, tasks_only=True)
     await rows_changed(task["projectId"], ids_to_remove, "deleted")
+
+
+async def restore_task_record(task_id: str) -> List[str]:
+    """Bring a task back from the trash with everything attached and the subtasks that were deleted with it.
+    A subtask whose parent is still in the trash returns at the top level; a review comment that got another
+    task meanwhile loses its link to this one. Returns the restored ids (the task first)."""
+    row = db_get_trashed_task(task_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Task not found in the trash")
+    below = db_trashed_descendants(task_id, row["deleted_at"])
+    db_restore_tasks(task_id, row["deleted_at"], below)
+    ids = [task_id] + below
+    restored = [t for t in (reload_task(tid) for tid in ids) if t]
+    if restored and restored[0].get("parentId"):
+        reload_task(restored[0]["parentId"])  # its child count
+
+    from api.routes.comment_tasks import relink_restored_tasks
+    await relink_restored_tasks(row["project_id"], restored)
+
+    project_id = row["project_id"]
+    for task in restored:
+        await live.to_project(project_id, {"type": "task_created", "task": task}, tasks_only=True)
+    await rows_changed(project_id, [t["id"] for t in restored], "created")
+    return [t["id"] for t in restored]
+
+
+async def purge_task_records(task_ids: List[str]) -> int:
+    """Delete tasks in the trash for good, with everything attached (checklist, comments, clip links, custom
+    values, their page and its files). Subtasks go with their parent. Returns how many tasks were removed."""
+    from api.routes.page_files import delete_files_of_page_tree
+    removed = 0
+    for tid in task_ids:
+        if not db_get_trashed_task(tid):
+            continue  # not in the trash (or already gone with its parent): live tasks are never purged here
+        page = db_get_task_page(tid)
+        if page:
+            delete_files_of_page_tree(page["id"])
+        removed += 1 if db_delete_task(tid) else 0
+    return removed
 
 
 async def reorder_task_records(project_id: str, task_ids: List[str]) -> List[str]:
@@ -369,7 +419,7 @@ async def update_task(task_id: str, data: dict, user: dict = Depends(require_aut
 
 @router.delete("/api/tasks/{task_id}")
 async def delete_task(task_id: str, user: dict = Depends(require_auth)):
-    """Delete a task and its children."""
+    """Delete a task and its children (they go to the trash)."""
     # Read from in-memory cache
     task = tasks.get(task_id)
     if not task:
@@ -379,7 +429,7 @@ async def delete_task(task_id: str, user: dict = Depends(require_auth)):
     if not can_edit_tasks(user, task["projectId"]):
         raise HTTPException(status_code=403, detail="Task access denied for this project")
 
-    await delete_task_record(task)
+    await delete_task_record(task, user)
     return {"success": True}
 
 

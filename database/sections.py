@@ -39,7 +39,7 @@ def db_list_sections(project_id: str) -> List[dict]:
     with get_db() as conn:
         cursor = execute(conn, """
             SELECT ts.*,
-                   (SELECT COUNT(*) FROM tasks WHERE section_id = ts.id) as task_count
+                   (SELECT COUNT(*) FROM tasks WHERE section_id = ts.id AND deleted_at IS NULL) as task_count
             FROM task_sections ts
             WHERE ts.project_id = ?
             ORDER BY ts.sort_order ASC
@@ -63,7 +63,7 @@ def db_get_section(section_id: str) -> Optional[dict]:
     with get_db() as conn:
         cursor = execute(conn, """
             SELECT ts.*,
-                   (SELECT COUNT(*) FROM tasks WHERE section_id = ts.id) as task_count
+                   (SELECT COUNT(*) FROM tasks WHERE section_id = ts.id AND deleted_at IS NULL) as task_count
             FROM task_sections ts
             WHERE ts.id = ?
         """, (section_id,))

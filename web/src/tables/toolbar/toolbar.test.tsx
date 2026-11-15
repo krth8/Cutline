@@ -114,6 +114,23 @@ describe('ViewShell', () => {
     expect(screen.getByTestId('view-toolbar')).toBeTruthy();
   });
 
+  it('opens the Trash dialog from the More menu of a tasks table', async () => {
+    backend.on('GET /api/tables/tasks:p1/trash', () => ({ body: { items: [] } }));
+    render(<ViewShell viewId="v1" />);
+    await screen.findByText('Alpha');
+    fireEvent.click(screen.getByTestId('toolbar-more'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Trash' }));
+    expect(await screen.findByRole('dialog', { name: 'Trash' })).toBeTruthy();
+    expect(await screen.findByText('The trash is empty.')).toBeTruthy();
+  });
+
+  it('has no Trash entry for a viewer', async () => {
+    fake.data.user = { id: 'u9', username: 'Vi', role: 'viewer' };
+    render(<ViewShell viewId="v1" />);
+    await screen.findByText('Alpha');
+    expect(screen.queryByTestId('toolbar-more')).toBeNull();
+  });
+
   it('saves sort and group in the view config', async () => {
     render(<ViewShell viewId="v1" />);
     await screen.findByText('Alpha');

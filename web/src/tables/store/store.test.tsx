@@ -530,7 +530,60 @@ describe('optimistic mutations', () => {
     await flush();
     await done;
     expect(hook.result.current.result?.rows.map((r) => r.id)).toEqual(['t2', 't3']); // t1 gone for good, t2 restored
-    expect(fake.toasts).toEqual([{ kind: 'error', message: 'Task access denied' }]);
+    expect(fake.toasts[0]).toEqual({ kind: 'error', message: 'Task access denied' });
+    expect(fake.toasts[1]).toMatchObject({ kind: 'success', message: 'Deleted 1 task', actionLabel: 'Undo' }); // only t1 went
+  });
+
+  describe('undo of a delete', () => {
+    it('offers Undo for 8 seconds; Undo shows the rows again at once, restores them and refetches', async () => {
+      const state = serve([rowOf('t1', 'One'), rowOf('t2', 'Two'), rowOf('t3', 'Three')]);
+      const hook = await mount();
+      backend.on('DELETE /api/tables/tasks:p1/rows/', () => ({ body: { success: true } }));
+      await act(async () => {
+        await hook.result.current.actions.deleteRows(['t1', 't2']);
+      });
+      state.rows = [rowOf('t3', 'Three')];
+      await flush(STORE_CONFIG.refetchDelayMs);
+      expect(hook.result.current.result?.rows.map((r) => r.id)).toEqual(['t3']);
+      expect(fake.toasts).toEqual([
+        { kind: 'success', message: 'Deleted 2 tasks', actionLabel: 'Undo', durationMs: 8000, onAction: expect.any(Function) },
+      ]);
+
+      const gate = deferred<{ body: unknown }>();
+      backend.on('POST /api/tables/tasks:p1/rows/restore', () => gate.promise);
+      act(() => fake.toasts[0]!.onAction!());
+      // re-inserted before the server has answered
+      expect(hook.result.current.result?.rows.map((r) => r.id).sort()).toEqual(['t1', 't2', 't3']);
+      state.rows = [rowOf('t1', 'One'), rowOf('t2', 'Two'), rowOf('t3', 'Three')];
+      gate.resolve({ body: { restored: ['t1', 't2'] } });
+      await flush(STORE_CONFIG.refetchDelayMs);
+      const restore = backend.calls.find((c) => c.path === '/api/tables/tasks:p1/rows/restore');
+      expect(restore?.body).toEqual({ ids: ['t1', 't2'] });
+      expect(hook.result.current.result?.rows.map((r) => r.id)).toEqual(['t1', 't2', 't3']); // no duplicates after the refetch
+      expect(fake.toasts).toHaveLength(1);
+    });
+
+    it('takes the rows out again and says so when the restore fails', async () => {
+      serve([rowOf('t1', 'One'), rowOf('t2', 'Two')]);
+      const hook = await mount();
+      backend.on('DELETE /api/tables/tasks:p1/rows/t1', () => ({ body: { success: true } }));
+      backend.on('POST /api/tables/tasks:p1/rows/restore', () => ({ status: 404, body: { detail: 'Row not found in the trash' } }));
+      await act(async () => {
+        await hook.result.current.actions.deleteRows(['t1']);
+      });
+      await act(async () => fake.toasts[0]!.onAction!());
+      expect(fake.toasts[1]).toEqual({ kind: 'error', message: 'Row not found in the trash' });
+    });
+
+    it('shows no Undo when nothing was deleted', async () => {
+      serve([rowOf('t1', 'One')]);
+      const hook = await mount();
+      backend.on('DELETE /api/tables/tasks:p1/rows/t1', () => ({ status: 403, body: { detail: 'No' } }));
+      await act(async () => {
+        await hook.result.current.actions.deleteRows(['t1']);
+      });
+      expect(fake.toasts.map((t) => t.kind)).toEqual(['error']);
+    });
   });
 
   it('reorder moves at once and rolls back on failure', async () => {

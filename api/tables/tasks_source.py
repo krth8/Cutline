@@ -31,6 +31,8 @@ from database import (
     db_list_statuses,
 )
 
+from database.task_trash import db_get_trashed_task, db_list_trash, db_trash_ids
+
 from . import columns as custom
 from .query import run_query
 from .source import UNSET, TableSource, custom_columns_for
@@ -347,9 +349,69 @@ class TasksSource(TableSource):
         return self._one_row(principal, row_id)
 
     async def delete_row(self, principal: dict, row_id: str) -> None:
+        """Moves the task and its subtasks to the trash."""
         task = self._task_in_scope(principal, row_id)
         self._need_edit(principal, task["projectId"])
-        await task_api.delete_task_record(task)
+        await task_api.delete_task_record(task, principal)
+
+    # ------------------------------------------------------------ trash
+
+    supports_trash = True
+
+    def _trash_projects(self, principal: dict) -> List[str]:
+        """Projects of this table whose trash the principal may use: those where they can edit tasks."""
+        ids = self.project_ids(principal)
+        if self.all_projects:
+            return [pid for pid in ids if task_api.can_edit_tasks(principal, pid)]
+        self._need_edit(principal, self.scope)
+        return ids
+
+    def list_trash(self, principal: dict) -> List[dict]:
+        entries = db_list_trash(self._trash_projects(principal))
+        for entry in entries:
+            entry["tableRef"] = f"tasks:{entry['projectId']}"
+            entry["projectName"] = projects.get(entry["projectId"], {}).get("name")
+        return entries
+
+    def _trashed_in_scope(self, principal: dict, ids: Any) -> List[dict]:
+        """The trashed tasks among `ids` that belong to this table; 403 when one is in a project the
+        principal may not edit. Ids that are not in the trash are left out."""
+        if not isinstance(ids, list) or not ids or not all(isinstance(i, str) for i in ids):
+            raise _bad("ids must be a non-empty list of row ids")
+        allowed = set(self.project_ids(principal))
+        found = []
+        for tid in dict.fromkeys(ids):
+            row = db_get_trashed_task(tid)
+            if not row or row["project_id"] not in allowed or (not self.all_projects and row["project_id"] != self.scope):
+                continue
+            self._need_edit(principal, row["project_id"])
+            found.append(row)
+        return found
+
+    async def restore_rows(self, principal: dict, ids: List[str]) -> List[str]:
+        rows = self._trashed_in_scope(principal, ids)
+        wanted = {r["id"] for r in rows}
+        # A parent comes back before its subtasks, so a subtask asked for with its parent stays below it
+        rows.sort(key=lambda r: r["parent_id"] in wanted)
+        restored: List[str] = []
+        for row in rows:
+            if row["id"] in restored or not db_get_trashed_task(row["id"]):
+                continue  # already back with its parent
+            restored.extend(await task_api.restore_task_record(row["id"]))
+        return restored
+
+    async def purge_rows(self, principal: dict, ids: List[str]) -> int:
+        rows = self._trashed_in_scope(principal, ids)
+        return await task_api.purge_task_records([r["id"] for r in rows])
+
+    async def empty_trash(self, principal: dict) -> int:
+        if self.all_projects:
+            raise _bad("Empty the trash of one project: use tasks:<projectId>")
+        self.project_ids(principal)
+        access = db_get_project_access(principal["id"], self.scope)
+        if not (principal.get("role") == "admin" or principal.get("is_admin") or (access and access["isOwner"])):
+            raise HTTPException(status_code=403, detail="Only the project owner or an admin can empty the trash")
+        return await task_api.purge_task_records(db_trash_ids(self.scope))
 
     async def reorder(self, principal: dict, ids: List[str], before: Optional[str] = None) -> None:
         if not isinstance(ids, list) or not ids or not all(isinstance(i, str) for i in ids):

@@ -76,9 +76,12 @@ def _page(row: dict) -> dict:
 
 
 def db_get_page(page_id: str) -> Optional[dict]:
-    """The page without its payloads (ydoc, text); hasContent tells whether the document has content."""
+    """The page without its payloads (ydoc, text); hasContent tells whether the document has content.
+    The page of a task in the trash does not exist until the task is restored (its content is kept)."""
     with get_db() as conn:
-        row = fetchone(execute(conn, f"SELECT {_META_COLUMNS} FROM pages WHERE id = ?", (page_id,)))
+        row = fetchone(execute(conn, f"SELECT {_META_COLUMNS} FROM pages WHERE id = ? AND NOT "
+                                     "(kind = 'task' AND task_id IN (SELECT id FROM tasks WHERE deleted_at IS NOT NULL))",
+                               (page_id,)))
     return _page(row) if row else None
 
 

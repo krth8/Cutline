@@ -59,6 +59,43 @@ async def delete_row(ref: str, row_id: str, user: dict = Depends(require_auth)):
     return {"success": True}
 
 
+# ---- Trash (sources without one answer 400) ----
+
+@router.get("/api/tables/{ref}/trash")
+async def list_trash(ref: str, user: dict = Depends(require_auth)):
+    """Deleted rows of the table the caller may restore, newest first."""
+    return {"items": resolve_source(ref).list_trash(user)}
+
+
+@router.post("/api/tables/{ref}/rows/restore")
+async def restore_rows(ref: str, data: dict = Body(...), user: dict = Depends(require_auth)):
+    """Restore several rows: {ids}. Ids that are not in the trash are skipped. Returns {restored: [ids]}."""
+    return {"restored": await resolve_source(ref).restore_rows(user, data.get("ids"))}
+
+
+@router.post("/api/tables/{ref}/rows/{row_id}/restore")
+async def restore_row(ref: str, row_id: str, user: dict = Depends(require_auth)):
+    """Restore one row (and the subtasks deleted with it). Returns the Row."""
+    source = resolve_source(ref)
+    if not await source.restore_rows(user, [row_id]):
+        raise HTTPException(status_code=404, detail="Row not found in the trash")
+    return source.get_row(user, row_id)
+
+
+@router.delete("/api/tables/{ref}/trash/{row_id}")
+async def purge_row(ref: str, row_id: str, user: dict = Depends(require_auth)):
+    """Delete one row in the trash for good."""
+    if not await resolve_source(ref).purge_rows(user, [row_id]):
+        raise HTTPException(status_code=404, detail="Row not found in the trash")
+    return {"success": True}
+
+
+@router.delete("/api/tables/{ref}/trash")
+async def empty_trash(ref: str, user: dict = Depends(require_auth)):
+    """Delete everything in the table's trash for good (project owner or admin)."""
+    return {"removed": await resolve_source(ref).empty_trash(user)}
+
+
 def _column_project(ref: str) -> str:
     """The project id of a ``tasks:<projectId>`` ref; other refs have no custom columns here."""
     resolve_source(ref)  # unknown or malformed refs: 404
