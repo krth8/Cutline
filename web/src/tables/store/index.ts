@@ -1,4 +1,4 @@
-export { useTableSchema, useViewQuery, useView, toLayoutProps, type ViewQueryData } from './hooks';
+export { useTableSchema, useViewQuery, useView, useRow, toLayoutProps, type ViewQueryData, type RowState } from './hooks';
 export {
   createMemoryViewSource,
   getViewSource,
@@ -8,7 +8,7 @@ export {
   type ViewPatch,
   type ViewSource,
 } from './viewSource';
-export { projectsForCreate } from './mutations';
+export { projectsForCreate, updateRow, deleteRows } from './mutations';
 export { STORE_CONFIG, type QueryState, type SchemaState } from './registry';
 export { StoreDemo } from './StoreDemo';
 

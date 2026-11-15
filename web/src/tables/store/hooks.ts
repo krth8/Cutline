@@ -6,6 +6,7 @@
  *   useView(viewId)              the same, with the view loaded from / saved to the ViewSource
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import * as api from '../../api/tables';
 import { getPlatform } from '../../platform';
 import { buildRoute, parseRoute } from '../../router';
 import type { LayoutProps, Query, QueryResult, Row, TableSchema, View } from '../types';
@@ -50,6 +51,48 @@ function useQueryState(ref: string | null, query: Query): QueryState {
     [ref, key],
   );
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+// ---- single row ----
+
+export interface RowState {
+  /** The row with pending optimistic changes applied; null before the first answer and after a delete. */
+  row: Row | null;
+  /** No answer yet. */
+  loading: boolean;
+  /** The last request failed (an ApiError with status 403 or 404 means the row is gone or not readable). */
+  error: Error | null;
+}
+
+/** An empty-looking query that never accepts optimistic creates (a limit stops them) and keys the entry. */
+const ROW_QUERY: Query = { limit: 1, offset: 0 };
+
+/**
+ * One row of a table by id. It lives in the same registry as view queries: optimistic edits show at
+ * once, `rows_changed` and `schema_changed` refetch it, and the live watch follows the mounted table.
+ */
+export function useRow(ref: string | null, rowId: string | null): RowState {
+  const active = ref !== null && rowId !== null;
+  const key = `row:${rowId}`;
+  const fetcher = useCallback(
+    async (): Promise<QueryResult> => ({ rows: [await api.getRow(ref!, rowId!)], total: 1 }),
+    [ref, rowId],
+  );
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
+  const subscribe = useCallback(
+    (cb: () => void) => (active ? getTable(ref!).getQuery(ROW_QUERY, key, () => fetcherRef.current()).subscribe(cb) : () => {}),
+    [active, ref, key],
+  );
+  const getSnapshot = useCallback(
+    () => (active ? (peekTable(ref!)?.queries.get(key)?.state ?? INITIAL_QUERY_STATE) : INITIAL_QUERY_STATE),
+    [active, ref, key],
+  );
+  const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  return useMemo(
+    () => ({ row: state.result?.rows[0] ?? null, loading: active && state.result === null && state.error === null, error: state.error }),
+    [state, active],
+  );
 }
 
 export interface ViewQueryData {

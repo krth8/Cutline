@@ -142,7 +142,8 @@ class TasksSource(TableSource):
         columns = [
             {"key": "name", "name": "Name", "type": "text", "builtin": True},
             {"key": "status", "name": "Status", "type": "status", "builtin": True,
-             "options": [{"value": s["id"], "label": s["name"], "color": s["color"]} for s in db_list_statuses()]},
+             "options": [{"value": s["id"], "label": s["name"], "color": s["color"],
+                         "done": bool(s.get("isDone"))} for s in db_list_statuses()]},
             {"key": "assignees", "name": "Assignees", "type": "people", "builtin": True, "options": people},
             {"key": "priority", "name": "Priority", "type": "priority", "builtin": True,
              "options": self._priority_options()},
@@ -243,6 +244,11 @@ class TasksSource(TableSource):
 
     def _one_row(self, principal: dict, task_id: str) -> dict:
         return self._rows(principal, [tasks[task_id]])[0]
+
+    def get_row(self, principal: dict, row_id: str) -> dict:
+        """One row (404 when it does not exist or the principal may not read it)."""
+        self._task_in_scope(principal, row_id)
+        return self._one_row(principal, row_id)
 
     # ------------------------------------------------------------ writes
 

@@ -28,6 +28,12 @@ async def table_query(ref: str, query: dict = Body(default_factory=dict), user: 
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/api/tables/{ref}/rows/{row_id}")
+async def get_row(ref: str, row_id: str, user: dict = Depends(require_auth)):
+    """One row; used by the task panel to open a task by id (also through ``tasks:*``)."""
+    return resolve_source(ref).get_row(user, row_id)
+
+
 @router.post("/api/tables/{ref}/rows")
 async def create_row(ref: str, data: dict = Body(...), user: dict = Depends(require_auth)):
     source = resolve_source(ref)

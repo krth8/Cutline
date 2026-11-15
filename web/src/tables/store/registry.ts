@@ -214,6 +214,8 @@ export class QueryEntry {
     readonly table: TableEntry,
     readonly query: Query,
     readonly key: string,
+    /** Replaces the table query request (single-row entries, see useRow). */
+    private readonly fetcher?: () => Promise<QueryResult>,
   ) {}
 
   subscribe(cb: () => void): () => void {
@@ -292,7 +294,7 @@ export class QueryEntry {
     let result: QueryResult | undefined;
     let error: Error | null = null;
     try {
-      result = await api.query(this.table.ref, this.query);
+      result = await (this.fetcher ? this.fetcher() : api.query(this.table.ref, this.query));
     } catch (e) {
       error = toError(e);
     }
@@ -363,9 +365,9 @@ export class TableEntry {
     else syncWatch();
   }
 
-  getQuery(query: Query, key: string): QueryEntry {
+  getQuery(query: Query, key: string, fetcher?: () => Promise<QueryResult>): QueryEntry {
     let q = this.queries.get(key);
-    if (!q) this.queries.set(key, (q = new QueryEntry(this, query, key)));
+    if (!q) this.queries.set(key, (q = new QueryEntry(this, query, key, fetcher)));
     return q;
   }
 

@@ -2,7 +2,7 @@ import type { Column, Row, TableSchema, View } from '../../types';
 import { getCell } from '../../cells';
 import { visibleColumns } from '../../viewColumns';
 
-/** Option labels or values that count as "done". The schema has no done flag, so this is a name match. */
+/** Option labels or values that count as "done" when the schema carries no `done` flags (a name match). */
 const DONE_NAME = /^(done|completed?|finished|closed)$/i;
 
 export interface DoneModel {
@@ -15,26 +15,38 @@ export interface DoneModel {
   isDone(row: Row): boolean;
 }
 
-function isDoneOption(o: { value: string; label: string }): boolean {
+function isDoneName(o: { value: string; label: string }): boolean {
   return DONE_NAME.test(o.label.trim()) || DONE_NAME.test(o.value.trim());
 }
 
+type Option = NonNullable<Column['options']>[number];
+
 /**
- * How the checkbox maps to data: the status column's "done" option (found by name) and the first option
+ * The options that count as done. The server flags them (`done: true` or `false` on every option of the
+ * status column); a schema without any flag falls back to the name guess.
+ */
+export function doneOptions(options: Option[]): Option[] {
+  return options.some((o) => typeof o.done === 'boolean') ? options.filter((o) => o.done === true) : options.filter(isDoneName);
+}
+
+/**
+ * How the checkbox maps to data: the status column's done option (by flag, else by name) and the first option
  * that is not done; else the first editable checkbox column; else undefined (the checkbox is disabled).
  */
 export function doneModel(schema: TableSchema): DoneModel | undefined {
   const status = schema.columns.find((c) => c.key === 'status' && c.type === 'status') ?? schema.columns.find((c) => c.type === 'status');
   if (status) {
     const options = status.options ?? [];
-    const done = options.find(isDoneOption);
-    const open = options.find((o) => !isDoneOption(o));
+    const doneList = doneOptions(options);
+    const doneValues = new Set(doneList.map((o) => o.value));
+    const done = doneList[0];
+    const open = options.find((o) => !doneValues.has(o.value));
     if (done) {
       return {
         column: status,
         doneValue: done.value,
         openValue: open ? open.value : null,
-        isDone: (row) => row.values[status.key] === done.value,
+        isDone: (row) => doneValues.has(row.values[status.key] as string),
       };
     }
   }

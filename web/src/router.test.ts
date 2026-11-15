@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRoute, parseRoute, routeProjectId, type Route } from './router';
+import { buildRoute, parseRoute, routeProjectId, taskIdOfUrl, withTaskParam, type Route } from './router';
 
 const samples: Array<[string, Route]> = [
   ['/', { kind: 'home' }],
@@ -60,5 +60,21 @@ describe('router', () => {
   it('routeProjectId', () => {
     expect(routeProjectId({ kind: 'review', projectId: 'p' })).toBe('p');
     expect(routeProjectId({ kind: 'me' })).toBeNull();
+  });
+});
+
+describe('task param helpers', () => {
+  it('reads ?task= from any path, including unknown ones', () => {
+    expect(taskIdOfUrl('/p/p1/pages?task=t1')).toBe('t1');
+    expect(taskIdOfUrl('/dev/view/v1?task=t%201&x=2')).toBe('t 1');
+    expect(taskIdOfUrl('/me')).toBeNull();
+    expect(taskIdOfUrl('/me?task=')).toBeNull();
+  });
+
+  it('sets and removes the param and keeps the rest of the URL', () => {
+    expect(withTaskParam('/p/p1/review?clip=7', 't9')).toBe('/p/p1/review?clip=7&task=t9');
+    expect(withTaskParam('/p/p1/review?clip=7&task=t9', null)).toBe('/p/p1/review?clip=7');
+    expect(withTaskParam('/dev/view/v1?task=a', 'b')).toBe('/dev/view/v1?task=b');
+    expect(withTaskParam('/me?task=a', null)).toBe('/me');
   });
 });

@@ -129,8 +129,13 @@ def db_delete_clip(project_id: str, base_name: str) -> dict:
 
 # ============ Status Operations ============
 
-def db_create_status(name: str, color: str = '#6366f1') -> dict:
-    """Create a new clip status."""
+DONE_STATUS_NAMES = ("done", "complete", "completed", "finished", "closed")
+
+
+def db_create_status(name: str, color: str = '#6366f1', is_done: Optional[bool] = None) -> dict:
+    """Create a new clip status. `is_done` defaults to whether the name is one of DONE_STATUS_NAMES."""
+    if is_done is None:
+        is_done = name.strip().lower() in DONE_STATUS_NAMES
     status_id = secrets.token_urlsafe(8)
     created_at = datetime.now().isoformat()
 
@@ -139,16 +144,17 @@ def db_create_status(name: str, color: str = '#6366f1') -> dict:
         sort_order = fetchone(cursor)["next_order"]
 
         execute(conn, """
-            INSERT INTO clip_statuses (id, name, color, sort_order, created_at)
-            VALUES (?, ?, ?, ?, ?)
-        """, (status_id, name, color, sort_order, created_at))
+            INSERT INTO clip_statuses (id, name, color, sort_order, created_at, is_done)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (status_id, name, color, sort_order, created_at, 1 if is_done else 0))
 
     return {
         "id": status_id,
         "name": name,
         "color": color,
         "sortOrder": sort_order,
-        "createdAt": created_at
+        "createdAt": created_at,
+        "isDone": bool(is_done)
     }
 
 
@@ -162,11 +168,12 @@ def db_list_statuses() -> List[dict]:
             "name": row["name"],
             "color": row["color"],
             "sortOrder": row["sort_order"],
-            "createdAt": row["created_at"]
+            "createdAt": row["created_at"],
+            "isDone": bool(row.get("is_done"))
         } for row in fetchall(cursor)]
 
 
-def db_update_status(status_id: str, name: str = None, color: str = None) -> bool:
+def db_update_status(status_id: str, name: str = None, color: str = None, is_done: Optional[bool] = None) -> bool:
     """Update a clip status."""
     updates = []
     params = []
@@ -177,6 +184,9 @@ def db_update_status(status_id: str, name: str = None, color: str = None) -> boo
     if color is not None:
         updates.append("color = ?")
         params.append(color)
+    if is_done is not None:
+        updates.append("is_done = ?")
+        params.append(1 if is_done else 0)
 
     if not updates:
         return False
