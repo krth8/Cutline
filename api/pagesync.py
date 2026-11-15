@@ -138,9 +138,11 @@ class PageRoom:
     def apply(self, update: bytes) -> bool:
         """Apply a client update. True if it changed the document (then it is queued for storing).
         Raises ValueError for an update that cannot be decoded; the Doc is untouched then."""
-        before = self.doc.get_state()
+        # Compare the whole encoded document, not the state vector: an update that only deletes
+        # leaves the state vector as it was, and must still be stored and passed on.
+        before = self.doc.get_update()
         self.doc.apply_update(update)
-        if self.doc.get_state() == before:
+        if self.doc.get_update() == before:
             return False
         self.queue.append(update)
         self.pending_rows += 1

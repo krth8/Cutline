@@ -147,6 +147,21 @@ def test_two_clients_converge_both_ways_and_on_concurrent_edits(connect_page, te
         assert a.text() == b.text() == "AAA Hello, world BBB"
 
 
+def test_a_deletion_reaches_the_other_client_and_is_stored(connect_page, team, page):
+    with connect_page(team["member"], page) as wa, connect_page(team["member"], page) as wb:
+        a, b = Peer(wa), Peer(wb)
+        a.edit(lambda: paragraph(a.frag, "Hello world"))
+        a.sync(), b.sync()
+        assert b.text() == "Hello world"
+        # Deleting adds nothing new, so the state vector stays the same; it must still go through
+        a.edit(lambda: first_text(a).__delitem__(slice(5, 11)))
+        a.sync(), b.sync()
+        assert a.text() == b.text() == "Hello"
+    registry.forget()
+    with connect_page(team["member"], page) as wc:
+        assert Peer(wc).text() == "Hello"
+
+
 def test_late_joiner_gets_the_full_state_in_type_0(connect_page, team, page):
     with connect_page(team["member"], page) as wa:
         a = Peer(wa)
