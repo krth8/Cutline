@@ -7,6 +7,7 @@ import type { Editor, Range } from '@tiptap/core';
 import { registerBlock, registerSlashItem } from '../registry';
 import { FileNode } from './file';
 import { INLINE_IMAGE_TYPES } from './pageFiles';
+import './viewBlock'; // the view block (its node lives in this chunk, its content in the main bundle)
 import { PageFileUploads, pickFiles, startUpload } from './uploads';
 
 /** Remove the typed "/query", open the file picker and upload what was chosen at that place. */

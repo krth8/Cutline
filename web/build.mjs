@@ -12,6 +12,8 @@ import { fileURLToPath } from 'node:url';
 const watch = process.argv.includes('--watch');
 const here = path.dirname(fileURLToPath(import.meta.url));
 const registryFile = path.join(here, 'src/pages/editor/registry');
+// The part of the view block that needs main-bundle code (React content, API, platform): see viewBlock/host.ts
+const viewBlockHostFile = path.join(here, 'src/pages/editor/blocks/viewBlock/host');
 
 const EDITOR_CHUNK_URL = '/static/dist/pages-editor.js';
 const SHARED = new Set(['react', 'react/jsx-runtime', 'react/jsx-dev-runtime', 'react-dom', 'yjs', 'y-protocols/awareness']);
@@ -33,6 +35,10 @@ const sharedFromMainBundle = {
       // The block registry is state (blocks other packages registered): one instance, in the main bundle
       if (args.path.startsWith('.') && path.resolve(args.resolveDir, args.path) === registryFile) {
         return { path: 'editor-registry', namespace: 'cl-shared' };
+      }
+      // Same for the view block's host: its React content, the row store and the layouts exist once, in the main bundle
+      if (args.path.startsWith('.') && path.resolve(args.resolveDir, args.path) === viewBlockHostFile) {
+        return { path: 'view-block-host', namespace: 'cl-shared' };
       }
       return undefined;
     });

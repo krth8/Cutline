@@ -10,6 +10,8 @@ Share-link guests get 403 everywhere (``require_auth``).
 
 import json
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.auth import can_edit_page, can_edit_tasks, can_read_page, require_auth
@@ -18,7 +20,7 @@ from api.state import projects
 from api.tables.source import resolve_source
 from database import db_check_project_access
 from database.pages import db_get_page
-from database.views import db_create_view, db_delete_view, db_get_view, db_update_view
+from database.views import db_create_view, db_delete_view, db_get_view, db_list_views, db_update_view
 
 router = APIRouter()
 
@@ -109,6 +111,29 @@ async def _notify(view: dict) -> None:
 
 
 # ============ Endpoints ============
+
+@router.get("/api/views")
+async def list_views(tableRef: Optional[str] = None, ownerPageId: Optional[str] = None,
+                     user: dict = Depends(require_auth)):
+    """Views the caller can open, newest change first: ``{"views": [{id, tableRef, name, layout, ownerPageId, canEdit}]}``.
+
+    Optional filters: ``tableRef`` and ``ownerPageId``. A view is listed only when the caller may read it
+    and may read the rows of its table (task access on the project), so the list never shows a view
+    that would open to an error.
+    """
+    out = []
+    for view in db_list_views(tableRef, ownerPageId):
+        if not _may(user, view, False):
+            continue
+        project_id = _project_of(view["tableRef"])
+        if project_id and not db_check_project_access(user["id"], project_id, require_tasks=True):
+            continue
+        out.append({
+            "id": view["id"], "tableRef": view["tableRef"], "name": view["name"], "layout": view["layout"],
+            "ownerPageId": view["ownerPageId"], "canEdit": _may(user, view, True),
+        })
+    return {"views": out}
+
 
 @router.get("/api/views/{view_id}")
 async def get_view(view_id: str, user: dict = Depends(require_auth)):

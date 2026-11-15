@@ -1,0 +1,76 @@
+/* The view block in a page: a frame with a header around a ViewShell */
+.cl-viewblock {
+  margin: 12px 0;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary, transparent);
+  overflow: hidden;
+}
+.ProseMirror-selectednode > .cl-viewblock,
+.cl-viewblock:focus-within { border-color: var(--accent); }
+
+.cl-viewblock__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-medium);
+}
+.cl-viewblock__name { flex: 1; min-width: 0; font-weight: 600; }
+.cl-viewblock__open { font-size: 12px; color: var(--text-muted); text-decoration: none; white-space: nowrap; }
+.cl-viewblock__open:hover { color: var(--text); text-decoration: underline; }
+
+/* The block has its own header with the name: hide the shell's */
+.cl-viewblock .cl-viewshell__head { display: none; }
+
+.cl-viewblock__bodywrap { position: relative; }
+.cl-viewblock__body { min-height: 0; }
+.cl-viewblock__resize {
+  height: 8px;
+  cursor: ns-resize;
+  background: transparent;
+  border-top: 1px solid transparent;
+}
+.cl-viewblock:hover .cl-viewblock__resize,
+.cl-viewblock__resize:focus-visible { background: var(--bg-hover); border-top-color: var(--border-medium); outline: none; }
+
+.cl-viewblock__state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 18px 14px;
+  color: var(--text-muted);
+}
+.cl-viewblock__state p { margin: 0; }
+
+/* The picker dialog */
+.cl-viewpicker { width: min(460px, 94vw); }
+.cl-viewpicker__search {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+}
+.cl-viewpicker__list { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; }
+.cl-viewpicker__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.cl-viewpicker__item:hover,
+.cl-viewpicker__item:focus-visible { background: var(--bg-hover); }
+.cl-viewpicker__meta { font-size: 12px; color: var(--text-muted); }
+.cl-viewpicker__state { color: var(--text-muted); margin: 8px 0; }
