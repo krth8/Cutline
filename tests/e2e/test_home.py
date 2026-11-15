@@ -162,13 +162,17 @@ def test_deep_links_and_project_links_still_open_what_they_opened(scene, server,
     ben.goto(f"{server.base_url}/me")
     expect(ben.locator("[data-testid=space-overview]")).to_be_visible(timeout=15000)
 
-    # a saved tab still wins on the bare "/": Projects stays Projects
-    ben.evaluate("localStorage.setItem('activeTab', 'projects')")
+    # the bare "/" opens the route the user was last on (here the personal space) ...
     ben.goto(server.base_url + "/")
-    wait_js(ben, "AppState.activeTab === 'projects'", 15000)
-    assert ben.evaluate("location.pathname") == "/"
+    expect(ben.locator("[data-testid=space-overview]")).to_be_visible(timeout=15000)
+    assert ben.evaluate("location.pathname") == "/me"
+    # ... or Home when nothing (usable) is remembered
+    ben.evaluate("localStorage.setItem('lastRoute', '/p/gone/review')")
+    ben.goto(server.base_url + "/")
+    ben.wait_for_url("**/home", timeout=15000)
 
-    # the Home button of the top bar opens the dashboard
-    ben.click("#mainTabHome")
+    # Home in the sidebar opens the dashboard
+    ben.goto(f"{server.base_url}/me")
+    ben.click("[data-testid=nav-home]")
     ben.wait_for_url("**/home", timeout=15000)
     expect(ben.locator(".cl-page__title")).to_have_value("My dashboard", timeout=15000)

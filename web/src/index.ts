@@ -1,4 +1,4 @@
-import { mountApp, unmountApp } from './app';
+import { mountApp, mountNav, unmountApp, unmountNav } from './app';
 import { getPlatform } from './platform';
 import './pages/tree/register'; // sidebar tree and page views for the shell
 import './pages/home/register'; // the Home route (S4)
@@ -13,10 +13,13 @@ export interface CutlinePagesApi {
   /** Render the Pages app into `element` (the route is read from the URL). Calling it again is harmless. */
   mount(element: Element, route?: string): void;
   unmount(element: Element): void;
+  /** Render the sidebar into `element` (the legacy page does this once for every logged-in user). */
+  mountNav(element: Element): void;
+  unmountNav(element: Element): void;
   version: string;
 }
 
-const api: CutlinePagesApi = { mount: mountApp, unmount: unmountApp, version };
+const api: CutlinePagesApi = { mount: mountApp, unmount: unmountApp, mountNav, unmountNav, version };
 
 declare global {
   interface Window {

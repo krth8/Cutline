@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/main.css?v=197">
     <link rel="stylesheet" href="/static/css/comment-tasks.css?v=1">
+    <link rel="stylesheet" href="/static/css/nav-layout.css?v=1">
     <link rel="stylesheet" href="/static/dist/pages.css">
 </head>
 <body>
@@ -336,6 +337,10 @@
                                 Reset to defaults
                             </button>
                         </div>
+                    </div>
+                    <div class="settings-section">
+                        <label class="settings-label">Tasks</label>
+                        <a href="#" id="tasksListToggle" data-testid="use-old-tasks" onclick="Routes.toggleLegacyTasks(); return false;">Use the old task list</a>
                     </div>
                     <div class="settings-section settings-section-footer">
                         <button class="btn btn-ghost" onclick="logout()">
@@ -711,30 +716,24 @@
     <!-- Sync Overlay Flash -->
     <div class="sync-overlay-flash" id="syncOverlayFlash"></div>
 
-    <!-- Main App -->
+    <!-- Main App: the sidebar column (React bundle, logged-in users) and the content area -->
+    <div class="cl-layout" id="clLayout">
+    <div class="cl-nav-host" id="clNavHost"></div>
+    <div class="cl-nav-backdrop" id="clNavBackdrop" onclick="document.getElementById('clLayout').classList.remove('nav-open')"></div>
     <div class="app" data-view="projects">
         <!-- Row 1: Global Navigation -->
         <header class="header-global">
-            <div class="logo" onclick="goHome()" style="cursor: pointer;" title="Go to Projects">
+            <button class="notifications-btn nav-menu-btn" id="navMenuBtn" aria-label="Menu" title="Menu" onclick="document.getElementById('clLayout').classList.toggle('nav-open')">
+                <svg class="icon"><use href="/static/icons.svg#icon-list"/></svg>
+            </button>
+            <div class="logo" onclick="goHome()" style="cursor: pointer;" title="Home">
                 <img src="/static/logo.png" alt="Cutline" class="logo-img">
             </div>
-
-            <nav class="main-tabs">
-                <div class="tab-indicator"></div>
-                <!-- Home: shown by routes.js for logged-in users only; opens /home (the Pages tab) -->
-                <button class="main-tab hidden" data-tab="home" id="mainTabHome">Home</button>
-                <button class="main-tab active" data-tab="projects">Projects</button>
-                <button class="main-tab" data-tab="review">Review</button>
-                <button class="main-tab" data-tab="docs">Docs</button>
-                <button class="main-tab" data-tab="lounge">Lounge</button>
-                <!-- Shown by routes.js for logged-in users only (never for share-link guests) -->
-                <button class="main-tab hidden" data-tab="pages" id="mainTabPages">Pages</button>
-            </nav>
 
             <div class="header-actions">
                 <!-- Search and commands (Ctrl+K): shown by routes.js for logged-in users; the palette itself is in the React bundle -->
                 <button class="notifications-btn hidden" id="searchBtn" style="width:auto;gap:6px;padding:0 10px;font-size:12px" title="Search and commands" onclick="window.dispatchEvent(new CustomEvent('cutline:open-search'))">
-                    <svg class="icon" style="width:16px;height:16px"><use href="/static/icons.svg#icon-search"/></svg><span>Search</span> <kbd id="searchBtnKey" style="font:inherit;opacity:.7">Ctrl+K</kbd>
+                    <svg class="icon" style="width:16px;height:16px"><use href="/static/icons.svg#icon-search"/></svg><span class="header-search-label">Search</span> <kbd id="searchBtnKey" style="font:inherit;opacity:.7">Ctrl+K</kbd>
                 </button>
                 <!-- Notifications -->
                 <div class="notifications-menu" id="notificationsMenu">
@@ -766,7 +765,7 @@
         <div class="context-toolbar" id="contextToolbar">
             <div class="toolbar-review" id="toolbarReview">
                 <div class="panel-toggles">
-                    <button class="btn-icon panel-toggle active" id="toggleProjectsBtn" title="Toggle projects panel" onclick="togglePanel('projects')"><svg class="icon"><use href="/static/icons.svg#icon-folder"/></svg></button>
+                    <button class="btn-icon panel-toggle active" id="toggleProjectsBtn" title="Toggle project clips panel" onclick="togglePanel('projects')"><svg class="icon"><use href="/static/icons.svg#icon-folder"/></svg></button>
                     <button class="btn-icon panel-toggle active" id="toggleCommentsBtn" title="Toggle comments panel" onclick="togglePanel('comments')"><svg class="icon"><use href="/static/icons.svg#icon-chat-circle"/></svg></button>
                     <button class="btn-icon panel-toggle active" id="toggleClipsBtn" title="Toggle clips panel" onclick="togglePanel('clips')"><svg class="icon"><use href="/static/icons.svg#icon-film-strip"/></svg></button>
                 </div>
@@ -815,9 +814,9 @@
         <!-- Left Sidebar - Projects (all views) -->
         <aside class="sidebar-left">
             <div class="sidebar-header">
-                <span class="sidebar-title">Projects</span>
+                <span class="sidebar-title" id="reviewPanelTitle">Clips</span>
                 <div class="sidebar-header-actions">
-                    <button class="btn-icon" id="expandProjectsBtn" title="Expand view"><svg class="icon"><use href="/static/icons.svg#icon-grid-four"/></svg></button>
+                    <button class="btn-icon hidden" id="expandProjectsBtn" title="Expand view"><svg class="icon"><use href="/static/icons.svg#icon-grid-four"/></svg></button>
                 </div>
             </div>
             <div class="projects-list" id="projectsList">
@@ -981,7 +980,7 @@
                         <div class="projects-sidebar-list" id="projectsSidebarList">
                             <!-- Project items rendered by JS -->
                         </div>
-                        <a href="#" class="projects-sidebar-switch" id="tasksListToggle" style="display:block;padding:8px 12px;font-size:12px;color:var(--text-muted)" onclick="Routes.toggleLegacyTasks(); return false;">Use the old task list</a>
+                        
                     </aside>
 
                     <!-- Projects Main Content -->
@@ -1151,6 +1150,7 @@
         <!-- Mobile bottom sheet overlay (closes sheets when tapped) -->
         <div class="mobile-sheet-overlay" id="mobileSheetOverlay" onclick="closeMobileSheets()"></div>
     </div>
+    </div><!-- /cl-layout -->
 
     <!-- Hidden file input for multi-upload -->
     <input type="file" id="fileInput" accept="video/*,image/*,.html,.htm,text/html" multiple style="display:none">
@@ -1200,11 +1200,11 @@
     <script src="/static/js/modules/lounge/LoungeModule.js?v=6"></script>
     <!-- Feature modules -->
     <script src="/static/js/features/settingsUI.js?v=2"></script>
-    <script src="/static/js/features/routes.js?v=4"></script>
-    <script src="/static/js/features/navigation.js?v=20"></script>
+    <script src="/static/js/features/routes.js?v=5"></script>
+    <script src="/static/js/features/navigation.js?v=21"></script>
     <script src="/static/js/features/usersAdmin.js?v=1"></script>
     <!-- Main application -->
-    <script src="/static/js/app.js?v=79"></script>
+    <script src="/static/js/app.js?v=80"></script>
     <script src="/static/js/video-player.js?v=31"></script>
     <script src="/static/js/websocket.js?v=23"></script>
     <script src="/static/js/html-review.js?v=2"></script>

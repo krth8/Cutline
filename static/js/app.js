@@ -783,9 +783,10 @@ async function createProject() {
         }
         loadProjects();
 
-        // Also refresh the projects grid if on Projects tab
-        if (typeof loadProjectsGrid === 'function') {
-            loadProjectsGrid();
+        // Open the new project in the sidebar's navigation (its overview page)
+        if (!AppState.isShareLinkGuest) {
+            history.pushState({}, '', `/p/${encodeURIComponent(data.project_id)}/pages`);
+            window.dispatchEvent(new CustomEvent('cutline:navigate'));
         }
 
     } catch (e) {
@@ -1415,13 +1416,13 @@ function renderProjectsSidebar() {
         appContainer.classList.toggle('projects-expanded', AppState.expandedProjectsView);
     }
 
-    // Add project placeholder (shown for users with create permission)
-    const addProjectPlaceholder = canCreateProject() ? `
-        <div class="project-add" onclick="showCreateProject()">
-            <div class="project-add-icon"><svg class="icon icon-lg"><use href="/static/icons.svg#icon-plus"/></svg></div>
-            <div class="project-add-text">New project</div>
-        </div>
-    ` : '';
+    // The sidebar (React) picks the project; this panel lists only the clips of the open project
+    const title = document.getElementById('reviewPanelTitle');
+    if (title) title.textContent = (AppState.projects.find(p => p.id === AppState.projectId) || {}).name || 'Clips';
+    window.dispatchEvent(new CustomEvent('cutline:projects-changed'));
+
+    // "New project" lives in the sidebar now, not in this panel
+    const addProjectPlaceholder = '';
 
     // Grid placeholder for grid view
     const addProjectGridPlaceholder = canCreateProject() ? `
@@ -1484,7 +1485,7 @@ function renderProjectsSidebar() {
     }
 
     // Normal list view
-    const projectItems = AppState.projects.map(p => {
+    const projectItems = AppState.projects.filter(p => p.id === AppState.projectId).map(p => {
         const isActive = p.id === AppState.projectId;
         const clipCount = p.clipCount || 0;
         const coverStyle = p.coverImage ? `background-image: url('${p.coverImage}')` : '';

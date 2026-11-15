@@ -3,6 +3,7 @@ import { DevUi } from './devUi';
 import { CollabEditor } from './pages/sync';
 import { getPlatform } from './platform';
 import { useRoute } from './router';
+import { NavApp } from './shell/NavApp';
 import { Shell } from './shell/Shell';
 import { RowPanelHost, TaskPanelHost } from './task';
 import { DevView } from './tables/DevView';
@@ -52,4 +53,21 @@ export function mountApp(element: Element, _route?: string): void {
 export function unmountApp(element: Element): void {
   roots.get(element)?.unmount();
   roots.delete(element);
+}
+
+const navRoots = new WeakMap<Element, Root>();
+
+/** Render the sidebar (the app's whole navigation) into `element`; it stays mounted on every screen. */
+export function mountNav(element: Element): void {
+  let root = navRoots.get(element);
+  if (!root) {
+    root = createRoot(element);
+    navRoots.set(element, root);
+  }
+  root.render(<NavApp />);
+}
+
+export function unmountNav(element: Element): void {
+  navRoots.get(element)?.unmount();
+  navRoots.delete(element);
 }
