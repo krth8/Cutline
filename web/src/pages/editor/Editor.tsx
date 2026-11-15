@@ -4,6 +4,7 @@ import type { Awareness } from 'y-protocols/awareness';
 import type * as Y from 'yjs';
 import { BlockHandle } from './BlockHandle';
 import { SlashMenu } from './SlashMenu';
+import { setEditorPageId } from './blocks/index';
 import { Toolbar } from './Toolbar';
 import { buildExtensions, type EditorUser } from './buildExtensions';
 import { SlashStore } from './extensions/slash';
@@ -17,6 +18,8 @@ export interface EditorProps {
   user: EditorUser;
   editable: boolean;
   placeholder?: string;
+  /** The page this editor shows; uploads of images and files go to it. Without it uploads are refused. */
+  pageId?: string;
   autoFocus?: boolean;
   onReady?(editor: TiptapEditor): void;
 }
@@ -25,7 +28,7 @@ export interface EditorProps {
  * The page editor: a Tiptap editor bound to a Y.Doc. Blocks registered through
  * `registerBlock` before this mounts are part of its schema.
  */
-export function Editor({ doc, awareness, user, editable, placeholder, autoFocus, onReady }: EditorProps) {
+export function Editor({ doc, awareness, user, editable, placeholder, pageId, autoFocus, onReady }: EditorProps) {
   const slashStore = useMemo(() => new SlashStore(), [doc]);
   const extensions = useMemo(
     () => buildExtensions({ doc, awareness, user, placeholder, slashStore }),
@@ -49,6 +52,10 @@ export function Editor({ doc, awareness, user, editable, placeholder, autoFocus,
   useEffect(() => {
     if (editor && editor.isEditable !== editable) editor.setEditable(editable);
   }, [editor, editable]);
+
+  useEffect(() => {
+    if (editor) setEditorPageId(editor, pageId);
+  }, [editor, pageId]);
 
   useEffect(() => {
     if (editor) onReady?.(editor);
