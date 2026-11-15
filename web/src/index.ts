@@ -27,13 +27,13 @@ window.dispatchEvent(new CustomEvent('cutline:pages-ready'));
  * route, so once the login is restored we cover it with the component demo.
  */
 function mountDevUiWhenReady(): void {
-  if (window.location.pathname !== '/dev/ui') return;
+  if (window.location.pathname !== '/dev/ui' && !window.location.pathname.startsWith('/dev/page/')) return;
   const started = Date.now();
   const timer = setInterval(() => {
     const user = getPlatform().user();
     if (user) {
       clearInterval(timer);
-      if (user.role !== 'admin') return;
+      if (user.role !== 'admin' && window.location.pathname === '/dev/ui') return;
       const host = document.createElement('div');
       host.className = 'cl-fullscreen';
       host.id = 'cl-dev-ui';

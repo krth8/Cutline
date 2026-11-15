@@ -1,0 +1,12 @@
+.cl-collab { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.cl-collab__bar { display: flex; justify-content: flex-end; padding: 8px 16px 0; }
+.cl-collab__body { flex: 1; min-height: 0; overflow: auto; }
+.cl-collab__message { color: var(--text-muted); padding: 24px 16px; }
+
+.cl-sync-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+.cl-sync-status__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
+.cl-sync-status[data-status='synced'] .cl-sync-status__dot { background: #2f9e44; }
+.cl-sync-status[data-status='saving'] .cl-sync-status__dot { background: #f08c00; }
+.cl-sync-status[data-status='offline'] .cl-sync-status__dot,
+.cl-sync-status[data-status='error'] .cl-sync-status__dot,
+.cl-sync-status[data-status='gone'] .cl-sync-status__dot { background: #c92a2a; }

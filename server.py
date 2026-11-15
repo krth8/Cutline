@@ -1432,6 +1432,12 @@ async def dev_ui_page():
     return index_response()
 
 
+@app.get("/dev/page/{page_id}")
+async def dev_page_editor(page_id: str):
+    """Serve the main page for the bare collaborative editor of one page (dev and browser tests)."""
+    return index_response()
+
+
 # Routes of the Pages app (PLAN.md 5.3). The page itself decides what to show from the URL.
 @app.get("/me")
 @app.get("/me/page/{page_id}")
