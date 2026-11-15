@@ -4,6 +4,9 @@
  */
 import './board';
 import './list';
+import './board';
+import './calendar';
+import './list';
 import './table';
 
 export {
