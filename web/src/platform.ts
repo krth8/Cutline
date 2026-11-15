@@ -38,6 +38,7 @@ interface LegacyGlobals {
   Live?: {
     on(type: string, fn: (msg: any) => void): void;
     watch(slot: string, projectId: string | null): void;
+    watchAllTasks?(slot: string, on: boolean): void;
   };
   Toast?: Record<'info' | 'success' | 'error', (message: string) => unknown>;
   Confirm?: { show(options: { message: string; type?: string; confirmText?: string }): Promise<boolean> };
@@ -55,6 +56,8 @@ export function createLegacyPlatform(): Platform {
   const handlers = new Map<string, Set<(msg: any) => void>>();
   // Legacy slot names held per caller slot, so a changed target releases the old projects
   const heldSlots = new Map<string, Set<string>>();
+  // Caller slots that hold the all-tasks watch
+  const allTasksSlots = new Set<string>();
 
   function requireLive(): NonNullable<LegacyGlobals['Live']> {
     const live = legacy().Live;
@@ -110,10 +113,13 @@ export function createLegacyPlatform(): Platform {
 
       watch(slot, target) {
         const live = requireLive();
-        if (target?.allTasks) {
-          // TODO(S2): the server has no "all tasks" subscription yet. WP S2 adds it to the
-          // watch message; then send it from here instead of throwing.
-          throw new Error('Platform.live.watch: allTasks is not supported yet (waiting for server support, WP S2)');
+        // allTasks asks the server for the task events of every project the user may see tasks of
+        const wantAll = !!target?.allTasks;
+        if (wantAll && !live.watchAllTasks) throw new Error('Platform: the legacy Live module has no watchAllTasks');
+        if (wantAll !== allTasksSlots.has(slot)) {
+          live.watchAllTasks?.(`${WATCH_PREFIX}${slot}:*`, wantAll);
+          if (wantAll) allTasksSlots.add(slot);
+          else allTasksSlots.delete(slot);
         }
         // The legacy Live follows ONE project per slot, so each project gets a slot derived from ours
         const wanted = new Map<string, string>();

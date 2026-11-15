@@ -4,6 +4,7 @@
  *
  *   Live.connect()                 once there is a token (login or share link)
  *   Live.watch('tasks', projectId) follow a project (the review project is followed automatically)
+ *   Live.watchAllTasks(slot, true) follow the task events of every project the user may see tasks of
  *   Live.on('comment_added', fn)   handle an event
  *   Live.on('resync', fn)          the line was down: fetch what may have been missed
  *
@@ -23,6 +24,7 @@ const Live = (function () {
     let connecting = false;
     const handlers = {};
     const wanted = {};   // slot ('review', 'tasks') -> project id
+    const wantedAll = new Set();   // slots that want the "all tasks" watch
     let sent = '';       // the watch list the server last got from us
 
     function on(type, fn) {
@@ -48,10 +50,17 @@ const Live = (function () {
     function sendWatch(force) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return;
         const list = projects();
-        const key = list.join(',');
+        const allTasks = wantedAll.size > 0;
+        const key = list.join(',') + (allTasks ? '|all' : '');
         if (!force && key === sent) return;
         sent = key;
-        ws.send(JSON.stringify({ type: 'watch', projects: list }));
+        ws.send(JSON.stringify({ type: 'watch', projects: list, allTasks }));
+    }
+
+    function watchAllTasks(slot, on) {
+        if (on) wantedAll.add(slot);
+        else wantedAll.delete(slot);
+        sendWatch();
     }
 
     function watch(slot, projectId) {
@@ -150,7 +159,7 @@ const Live = (function () {
         if (!document.hidden && !ws && !connecting && !stopped) { retries = 0; connect(); }
     });
 
-    return { connect, stop, watch, on, isConnected: () => !!ws && ws.readyState === WebSocket.OPEN };
+    return { connect, stop, watch, watchAllTasks, on, isConnected: () => !!ws && ws.readyState === WebSocket.OPEN };
 })();
 
 window.Live = Live;

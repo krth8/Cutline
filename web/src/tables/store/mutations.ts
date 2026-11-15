@@ -76,11 +76,22 @@ function pendingOpsFor(rowId: string, except: Op): boolean {
   return pendingOps.some((o) => o !== except && o.kind === 'patch' && o.rowId === rowId);
 }
 
+/** Projects a row can be created in through tasks:* (the user can edit tasks there). */
+export function projectsForCreate(): Array<{ id: string; name: string }> {
+  return getPlatform()
+    .projects()
+    .filter((p) => p.canTasks)
+    .map((p) => ({ id: p.id, name: p.name }));
+}
+
 export async function createRow(
   ref: string,
   values: Record<string, unknown>,
   opts: { parentId?: string; projectId?: string } = {},
 ): Promise<Row> {
+  if (ref === 'tasks:*' && !opts.projectId) {
+    throw fail(new Error('Choose a project for the new row'));
+  }
   const temp: Row = {
     id: `tmp:${++tempCounter}`,
     tableRef: opts.projectId ? `tasks:${opts.projectId}` : ref,

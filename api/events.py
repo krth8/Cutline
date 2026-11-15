@@ -52,6 +52,9 @@ class LiveConnection:
         self.principal = principal
         # Projects this tab is watching: project_id -> may see task events
         self.projects: Dict[str, bool] = {}
+        # "All tasks" watch: task events of every project the user has task access to.
+        # Access is checked when an event is sent, so it follows grants and revocations.
+        self.all_tasks = False
 
 
 class LiveHub:
@@ -74,8 +77,13 @@ class LiveHub:
             return None
         return db_check_project_access(principal["id"], project_id, require_tasks=True)
 
-    def watch(self, conn: LiveConnection, project_ids: list) -> list:
-        """Set the projects a connection gets updates for. Returns the ones it may not see."""
+    def watch(self, conn: LiveConnection, project_ids: list, all_tasks: bool = False) -> list:
+        """Set the projects a connection gets updates for. Returns the ones it may not see.
+
+        all_tasks also subscribes to the task events of every project the user may see tasks
+        of. Guests can never have it.
+        """
+        conn.all_tasks = bool(all_tasks) and not conn.principal.get("is_guest")
         conn.projects = {}
         denied = []
         for project_id in project_ids[:MAX_WATCHED]:
@@ -103,12 +111,20 @@ class LiveHub:
         """
         origin = None if echo else current_client_id.get()
         message = {**message, "project": project_id}
+        task_access: Dict[str, bool] = {}  # user id -> task access, for the all-tasks tabs of this event
         for conn in list(self.connections.values()):
-            if project_id not in conn.projects:
-                continue
-            if tasks_only and not conn.projects[project_id]:
-                continue
             if origin and conn.client_id == origin:
+                continue
+            if project_id in conn.projects:
+                if tasks_only and not conn.projects[project_id]:
+                    continue
+            elif tasks_only and conn.all_tasks:
+                user_id = conn.principal["id"]
+                if user_id not in task_access:
+                    task_access[user_id] = bool(self._access(conn.principal, project_id))
+                if not task_access[user_id]:
+                    continue
+            else:
                 continue
             await self._send(conn, message)
 
