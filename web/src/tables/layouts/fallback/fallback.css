@@ -1,0 +1,6 @@
+.cl-fallback { overflow: auto; }
+.cl-fallback__table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--text); }
+.cl-fallback__table th { padding: 6px 8px; text-align: left; font-weight: 600; color: var(--text-secondary); border-bottom: 1px solid var(--border-medium); white-space: nowrap; }
+.cl-fallback__table td { padding: 2px 4px; border-bottom: 1px solid var(--border-light); }
+.cl-fallback__group th { padding-top: 14px; color: var(--text); }
+.cl-fallback__empty { padding: 16px 8px; color: var(--text-muted); }

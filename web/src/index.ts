@@ -1,5 +1,6 @@
 import { mountApp, unmountApp } from './app';
 import { getPlatform } from './platform';
+import { installViewSource } from './tables';
 
 export const version = '0.1.0';
 
@@ -18,22 +19,25 @@ declare global {
   }
 }
 
+installViewSource();
 window.CutlinePages = api;
 // The bundle is deferred, so the legacy page may have been waiting for it (static/js/features/routes.js)
 window.dispatchEvent(new CustomEvent('cutline:pages-ready'));
 
 /**
- * /dev/ui is a full-screen page for admins: the legacy page does not know the
+ * /dev/ui (admins) and /dev/view/<viewId> (any user) are full-screen pages: the legacy page does not know the
  * route, so once the login is restored we cover it with the component demo.
  */
 function mountDevUiWhenReady(): void {
-  if (window.location.pathname !== '/dev/ui') return;
+  const path = window.location.pathname;
+  const devView = path.startsWith('/dev/view/');
+  if (path !== '/dev/ui' && !devView) return;
   const started = Date.now();
   const timer = setInterval(() => {
     const user = getPlatform().user();
     if (user) {
       clearInterval(timer);
-      if (user.role !== 'admin') return;
+      if (!devView && user.role !== 'admin') return; // /dev/ui is for admins; /dev/view/<id> for any user
       const host = document.createElement('div');
       host.className = 'cl-fullscreen';
       host.id = 'cl-dev-ui';

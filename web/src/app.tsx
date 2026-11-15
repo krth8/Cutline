@@ -3,6 +3,7 @@ import { DevUi } from './devUi';
 import { getPlatform } from './platform';
 import { useRoute } from './router';
 import { Shell } from './shell/Shell';
+import { DevView } from './tables/DevView';
 import './app.css';
 
 /** What the bundle renders: the component demo at /dev/ui (admins), the Pages shell elsewhere. */
@@ -10,6 +11,10 @@ export function App() {
   const route = useRoute();
   const user = getPlatform().user();
   if (route.kind === 'notFound' && route.path.split('?')[0] === '/dev/ui' && user?.role === 'admin') return <DevUi />;
+  if (route.kind === 'notFound' && user) {
+    const match = /^\/dev\/view\/([^/?]+)/.exec(route.path);
+    if (match) return <DevView viewId={decodeURIComponent(match[1]!)} />;
+  }
   return <Shell />;
 }
 

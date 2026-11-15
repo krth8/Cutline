@@ -1432,6 +1432,12 @@ async def dev_ui_page():
     return index_response()
 
 
+@app.get("/dev/view/{view_id}")
+async def dev_view_page(view_id: str):
+    """Serve the main page for the dev view route (the bundle shows one view full screen)."""
+    return index_response()
+
+
 # Routes of the Pages app (PLAN.md 5.3). The page itself decides what to show from the URL.
 @app.get("/me")
 @app.get("/me/page/{page_id}")
