@@ -238,6 +238,9 @@ def db_move_page(page_id: str, space_type: str, project_id: Optional[str], owner
         execute(conn, _SUBTREE + " UPDATE pages SET space_type = ?, project_id = ?, owner_id = ?, updated_at = ? "
                 "WHERE id IN (SELECT id FROM sub)", (page_id, space_type, project_id, owner_id, now))
         execute(conn, "UPDATE pages SET parent_id = ?, sort_order = ? WHERE id = ?", (parent_id, sort_order, page_id))
+        # A page that leaves the personal space cannot stay somebody's Home
+        execute(conn, _SUBTREE + " UPDATE users SET home_page_id = NULL WHERE home_page_id IN (SELECT id FROM sub) "
+                "AND ? = 'project'", (page_id, space_type))
     return db_get_page(page_id)
 
 
@@ -255,6 +258,10 @@ def db_set_archived(page_id: str, archived: bool) -> Optional[dict]:
             raise ValueError("The Tasks page cannot be archived or deleted")
         execute(conn, _SUBTREE + " UPDATE pages SET archived_at = ?, updated_at = ? WHERE id IN (SELECT id FROM sub)",
                 (page_id, now if archived else None, now))
+        if archived:
+            # An archived page is nobody's Home any more
+            execute(conn, _SUBTREE + " UPDATE users SET home_page_id = NULL WHERE home_page_id IN (SELECT id FROM sub)",
+                    (page_id,))
         if not archived and row["parent_id"]:
             parent = fetchone(execute(conn, "SELECT archived_at FROM pages WHERE id = ?", (row["parent_id"],)))
             if parent and parent["archived_at"]:
@@ -269,6 +276,8 @@ def db_delete_page(page_id: str) -> bool:
         if fetchone(execute(conn, _SUBTREE + " SELECT 1 AS x FROM pages WHERE id IN (SELECT id FROM sub) "
                             "AND system_key IS NOT NULL", (page_id,))):
             raise ValueError("The Tasks page cannot be deleted")
+        execute(conn, _SUBTREE + " UPDATE users SET home_page_id = NULL WHERE home_page_id IN (SELECT id FROM sub)",
+                (page_id,))
         # Views made for these pages go with them
         execute(conn, _SUBTREE + " DELETE FROM views WHERE owner_page_id IN (SELECT id FROM sub)", (page_id,))
         cursor = execute(conn, _SUBTREE + " DELETE FROM pages WHERE id IN (SELECT id FROM sub)", (page_id,))
@@ -397,3 +406,46 @@ def db_get_page_text(page_id: str) -> Optional[str]:
     with get_db() as conn:
         row = fetchone(execute(conn, "SELECT text FROM pages WHERE id = ?", (page_id,)))
     return row["text"] if row else None
+
+
+# ============ Home page of a user (S4) ============
+
+def db_get_home_page_id(user_id: str) -> Optional[str]:
+    """The user's Home page id if it is still one of the user's own live personal pages, else None
+    (a stale pointer is cleared on the way)."""
+    with get_db() as conn:
+        row = fetchone(execute(conn, "SELECT home_page_id FROM users WHERE id = ?", (user_id,)))
+        page_id = row["home_page_id"] if row else None
+        if not page_id:
+            return None
+        page = fetchone(execute(conn, "SELECT space_type, owner_id, archived_at, kind FROM pages WHERE id = ?", (page_id,)))
+        if page and page["space_type"] == "personal" and page["owner_id"] == user_id and not page["archived_at"]                 and page["kind"] == "page":
+            return page_id
+        execute(conn, "UPDATE users SET home_page_id = NULL WHERE id = ?", (user_id,))
+    return None
+
+
+def db_set_home_page_id(user_id: str, page_id: Optional[str]) -> None:
+    with get_db() as conn:
+        execute(conn, "UPDATE users SET home_page_id = ? WHERE id = ?", (page_id, user_id))
+
+
+def db_recent_pages(space_type: str, project_ids: List[str], owner_id: str, limit: int) -> List[dict]:
+    """Live pages (never task pages) of the caller's personal space ('personal'), of the given projects
+    ('project') or of both ('all'), most recently changed first. No permission check: the caller passes
+    only spaces the user may read."""
+    parts, params = [], []
+    if space_type in ("personal", "all"):
+        parts.append("(space_type = 'personal' AND owner_id = ?)")
+        params.append(owner_id)
+    if space_type in ("project", "all") and project_ids:
+        parts.append(f"(space_type = 'project' AND project_id IN ({', '.join('?' for _ in project_ids)}))")
+        params.extend(project_ids)
+    if not parts:
+        return []
+    with get_db() as conn:
+        rows = fetchall(execute(
+            conn,
+            f"SELECT {_META_COLUMNS} FROM pages WHERE kind = 'page' AND archived_at IS NULL AND ({' OR '.join(parts)}) "
+            "ORDER BY updated_at DESC, id LIMIT ?", tuple(params) + (limit,)))
+    return [_page(r) for r in rows]

@@ -1,7 +1,9 @@
 /**
  * Routes - the URL decides which top tab is shown (PLAN.md 5.3).
  *
- *   /                          legacy behaviour: the last tab (Projects, Docs, Lounge, ...)
+ *   /                          legacy behaviour: the last tab (Projects, Docs, Lounge, ...); with no saved
+ *                              tab at all (a first visit) it opens Home
+ *   /home                      Home: the user's home page (Pages tab; the React bundle mounts in #viewPages)
  *   /p/<id>/review[?session=][&clip=<name>[&v=<n>][&frame=<n>]]
  *                              Review tab with that project loaded, on that clip version and frame
  *   /me, /me/page/<id>,
@@ -48,6 +50,7 @@ const Routes = (function () {
         const segments = pathname.split('/').filter(s => s !== '').map(decode);
         if (segments.some(s => s === null)) return null;
         if (segments.length === 0) return { tab: null };
+        if (segments.length === 1 && segments[0] === 'home') return { tab: 'pages', home: true };
         if (segments[0] === 'me') {
             if (segments.length === 1 || (segments.length === 3 && segments[1] === 'page')) return { tab: 'pages' };
             if (segments.length === 3 && segments[1] === 'view') return { tab: 'pages' };
@@ -79,7 +82,35 @@ const Routes = (function () {
     function isDeepLink() {
         const route = current();
         if (route && route.tab) return true;
+        if (location.pathname.startsWith('/dev/')) return true; // the bundle's own full-screen pages keep their URL
         return location.pathname === '/' && new URLSearchParams(location.search).has('project');
+    }
+
+    const PAGES_HOME_KEY = 'pagesAtHome';
+
+    /** True when the Pages tab was last showing Home (so choosing the tab again comes back to /home). */
+    function pagesAtHome() {
+        try {
+            return localStorage.getItem(PAGES_HOME_KEY) === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function rememberPagesAtHome(atHome) {
+        try {
+            localStorage.setItem(PAGES_HOME_KEY, atHome ? '1' : '0');
+        } catch (e) {}
+    }
+
+    /** Show Home (the "Home" button of the top bar): /home is pushed and the URL decides the rest. */
+    function goHome() {
+        if (AppState.isShareLinkGuest) return;
+        if (location.pathname === '/' && ROOT_TABS.includes(AppState.activeTab)) {
+            history.replaceState({ tab: AppState.activeTab }, '', currentUrl());
+        }
+        if (location.pathname !== '/home') history.pushState({ tab: 'pages' }, '', '/home');
+        apply();
     }
 
     function projectInContext() {
@@ -99,6 +130,7 @@ const Routes = (function () {
         }
         if (tab === 'pages') {
             if (route && route.tab === 'pages') return null;
+            if (pagesAtHome()) return '/home'; // the Pages tab was last showing Home
             return pid ? `/p/${encodeURIComponent(pid)}/pages` : '/me';
         }
         // Projects, Docs and Lounge have no URL of their own: they live at "/"
@@ -167,6 +199,8 @@ const Routes = (function () {
         const tab = document.getElementById('mainTabPages');
         if (!tab) return;
         const show = !!AppState.adminUser && !AppState.isShareLinkGuest;
+        const home = document.getElementById('mainTabHome');
+        if (home) home.classList.toggle('hidden', !show);
         if (tab.classList.contains('hidden') === show) {
             tab.classList.toggle('hidden', !show);
             if (typeof updateTabIndicator === 'function') updateTabIndicator();
@@ -307,6 +341,7 @@ const Routes = (function () {
         if (route && route.tab === 'review') {
             await openReview(route.projectId);
         } else if (route && route.tab === 'pages') {
+            rememberPagesAtHome(!!route.home);
             switchTab('pages', { history: 'none' });
         } else if (route && route.tab === 'projects') {
             // /p/<id>/tasks with the old list switched on: the Projects tab on that project
@@ -318,7 +353,12 @@ const Routes = (function () {
             if (!tab && !initial) tab = localStorage.getItem('activeTab');
             if (tab === 'docs' && docsMoved()) tab = 'pages';
             if (tab && ROOT_TABS.includes(tab)) switchTab(tab, { history: 'none' });
-            else if (!initial) switchTab('projects', { history: 'none' });
+            else if (initial && !tab && !localStorage.getItem('activeTab')) {
+                // A bare "/" with nothing saved (first visit): Home
+                rememberPagesAtHome(true);
+                history.replaceState(null, '', '/home');
+                switchTab('pages', { history: 'none' });
+            } else if (!initial) switchTab('projects', { history: 'none' });
         }
     }
 
@@ -353,7 +393,7 @@ const Routes = (function () {
     window.addEventListener('popstate', onNavigate);
     window.addEventListener('cutline:navigate', onNavigate);
 
-    return { parse, apply, sync, afterSwitch, refreshPagesTab, legacyTasks, openTasks, toggleLegacyTasks, refreshTasksToggle, docsMoved, setDocsMoved, reviewUrl, isDeepLink, remember, restore };
+    return { parse, apply, goHome, sync, afterSwitch, refreshPagesTab, legacyTasks, openTasks, toggleLegacyTasks, refreshTasksToggle, docsMoved, setDocsMoved, reviewUrl, isDeepLink, remember, restore };
 })();
 
 window.Routes = Routes;

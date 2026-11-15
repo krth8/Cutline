@@ -47,7 +47,8 @@ OPS_BY_TYPE: Dict[str, set] = {
     "checkbox": {"eq", "neq"},
     "date": _COMMON | _COMPARE | {"before", "after", "relative"},
     "select": set(_COMMON),
-    "status": set(_COMMON),
+    # done / notDone: whether the status is one the table marks as done (the option's `done` flag)
+    "status": _COMMON | {"done", "notDone"},
     "priority": set(_COMMON),
     "person": set(_COMMON),
     "multiselect": _COMMON | {"contains"},
@@ -177,6 +178,11 @@ def _compile_leaf(node: dict, ctx: _Ctx) -> Callable[[dict], bool]:
         return lambda row: is_empty(col, cell(row))
     if op == "notEmpty":
         return lambda row: not is_empty(col, cell(row))
+
+    if op in ("done", "notDone"):
+        done_ids = {str(o["value"]) for o in (col.get("options") or []) if o.get("done")}
+        is_done = lambda row: any(a in done_ids for a in atoms(col, cell(row)))  # noqa: E731
+        return is_done if op == "done" else (lambda row: not is_done(row))
 
     if "value" not in node:
         raise QueryError(f"Operator {op!r} on '{key}' needs a value")

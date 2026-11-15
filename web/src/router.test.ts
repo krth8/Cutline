@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildRoute, parseRoute, routeProjectId, taskIdOfUrl, withTaskParam, type Route } from './router';
 
 const samples: Array<[string, Route]> = [
-  ['/', { kind: 'home' }],
+  ['/home', { kind: 'home' }],
   ['/me', { kind: 'me' }],
   ['/me/page/pg1', { kind: 'mePage', pageId: 'pg1' }],
   ['/p/proj1/pages', { kind: 'projectPages', projectId: 'proj1' }],
@@ -12,7 +12,7 @@ const samples: Array<[string, Route]> = [
   ['/p/proj1/page/pg1', { kind: 'projectPage', projectId: 'proj1', pageId: 'pg1' }],
   ['/p/proj1/review', { kind: 'review', projectId: 'proj1' }],
   ['/p/proj1/review?clip=7&v=2&session=s9', { kind: 'review', projectId: 'proj1', clip: '7', v: '2', session: 's9' }],
-  ['/?task=t1', { kind: 'home', task: 't1' }],
+  ['/home?task=t1', { kind: 'home', task: 't1' }],
   ['/me?task=t1', { kind: 'me', task: 't1' }],
   ['/me/page/pg1?task=t1', { kind: 'mePage', pageId: 'pg1', task: 't1' }],
   ['/p/a/pages?task=t1', { kind: 'projectPages', projectId: 'a', task: 't1' }],
@@ -25,6 +25,12 @@ describe('router', () => {
     expect(parseRoute(url)).toEqual(route);
     expect(buildRoute(route)).toBe(url);
     expect(parseRoute(buildRoute(route))).toEqual(route);
+  });
+
+  it('reads the bare "/" as Home too, and writes Home as /home', () => {
+    expect(parseRoute('/')).toEqual({ kind: 'home' });
+    expect(parseRoute('/?task=t1')).toEqual({ kind: 'home', task: 't1' });
+    expect(buildRoute({ kind: 'home' })).toBe('/home');
   });
 
   it('accepts full URLs and trailing slashes', () => {

@@ -12,6 +12,7 @@ from fastapi import (
 )
 from cache import cache_manager
 from database.docs_to_pages import docs_moved
+from database.pages import db_get_home_page_id
 from database import (
     db_create_invite_link,
     db_create_user,
@@ -183,6 +184,8 @@ async def auth_me(user: dict = Depends(require_auth)):
         "idleRemaining": auth_sessions.idle_remaining(user["sid"]),
         # The legacy UI hides its Docs tab when true (the Docs now live in Pages)
         "docsMoved": docs_moved(),
+        # The personal page Home shows (null until the user first opens Home)
+        "homePageId": db_get_home_page_id(user["id"]),
     }
 
 

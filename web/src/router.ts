@@ -59,7 +59,8 @@ export function parseRoute(url: string): Route {
   const task = q.get('task') || undefined;
   const withTask = <T extends object>(route: T): T & WithTask => (task ? { ...route, task } : route);
 
-  if (seg.length === 0) return withTask({ kind: 'home' as const });
+  // "/" and "/home" both mean Home; Home is always written as "/home"
+  if (seg.length === 0 || (seg.length === 1 && seg[0] === 'home')) return withTask({ kind: 'home' as const });
   if (seg[0] === 'me') {
     if (seg.length === 1) return withTask({ kind: 'me' as const });
     if (seg.length === 3 && seg[1] === 'page') return withTask({ kind: 'mePage' as const, pageId: seg[2]! });
@@ -97,7 +98,7 @@ export function buildRoute(route: Route): string {
   const query = new URLSearchParams();
   switch (route.kind) {
     case 'home':
-      path = '/';
+      path = '/home';
       break;
     case 'me':
       path = '/me';
