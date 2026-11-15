@@ -6,28 +6,8 @@
 // ============ Tab Navigation ============
 
 function initNavigation() {
-    // Tab switching
-    document.querySelectorAll('.main-tab').forEach(tab => {
-        tab.addEventListener('click', () => switchTab(tab.dataset.tab));
-    });
-
-    // Update user display on state change
+    // There are no tabs: the sidebar navigates and the URL decides the view (Routes.apply)
     AppState.subscribe(['adminUser', 'isAdmin'], updateUserDisplay);
-
-    // Restore saved tab from localStorage. A deep link decides the tab itself (Routes.apply),
-    // and Pages is only ever opened through its URL.
-    let savedTab = localStorage.getItem('activeTab');
-    // The Docs moved into Pages: a saved Docs tab opens Pages instead
-    if (savedTab === 'docs' && Routes.docsMoved()) savedTab = 'pages';
-    if (savedTab && ['projects', 'review', 'docs', 'lounge', 'pages'].includes(savedTab) && !Routes.isDeepLink()) {
-        // Delay to ensure DOM is ready
-        requestAnimationFrame(() => {
-            switchTab(savedTab, { history: 'replace' });
-        });
-    } else {
-        // Initialize tab indicator position for default tab
-        requestAnimationFrame(() => updateTabIndicator());
-    }
 }
 
 function updateTabIndicator() {
@@ -98,9 +78,8 @@ function switchTab(tabName, options) {
         if (el) el.classList.toggle('hidden', name !== tabName);
     });
 
-    // Store active tab (in memory and localStorage)
+    // Remember the active view (in memory)
     AppState.activeTab = tabName;
-    localStorage.setItem('activeTab', tabName);
 
     // The URL follows the tab; the Pages bundle is mounted only while its tab is shown
     Routes.sync(tabName, options && options.history, previousTab);
@@ -505,17 +484,9 @@ function showCreateTaskFallback() {
 // ============ Go Home ============
 
 function goHome() {
-    // Clear project selection and go to projects grid
-    window.currentTasksProjectId = null;
-    AppState.projectId = null;
-
-    // Clear TaskManager state if available
-    if (window.TaskManager) {
-        TaskManager.clear();
-    }
-
-    // Switch to projects tab and show grid
-    switchTab('projects');
+    // The logo opens Home (guests have no Home)
+    if (AppState.isShareLinkGuest) return;
+    Routes.goHome();
 }
 
 // ============ Logout ============

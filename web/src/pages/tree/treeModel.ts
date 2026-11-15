@@ -73,10 +73,15 @@ export interface VisibleRow {
 }
 
 /** The rows shown in the sidebar: a node's children follow it when it is expanded. */
-export function visibleRows(model: PageTreeModel, expanded: ReadonlySet<string>): VisibleRow[] {
+export function visibleRows(model: PageTreeModel, expanded: ReadonlySet<string>, hideSystem = false): VisibleRow[] {
   const rows: VisibleRow[] = [];
   const walk = (nodes: TreeNode[], depth: number) => {
     for (const node of nodes) {
+      // The sidebar lists the Tasks page as the project's "Tasks" entry; pages under it move up one level
+      if (hideSystem && node.page.system) {
+        walk(node.children, depth);
+        continue;
+      }
       rows.push({ node, depth });
       if (node.children.length && expanded.has(node.page.id)) walk(node.children, depth + 1);
     }

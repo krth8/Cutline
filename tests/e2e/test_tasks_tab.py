@@ -5,6 +5,7 @@ panel, the Tasks page in the sidebar, the fallback to the old list, and a user w
 import time
 
 import pytest
+from playwright.sync_api import expect
 
 from e2e.e2e_support import ADMIN, login, wait_js
 
@@ -63,10 +64,11 @@ def test_the_tab_shows_the_projects_tasks_as_a_table_inside_the_shell(server, sc
     # The columns of the old list, in its order
     headers = page.evaluate("() => [...document.querySelectorAll('[data-testid=table-header] [data-col]')].map(h => h.dataset.col)")
     assert headers == ["name", "status", "priority", "assignees", "dueDate", "stage"]
-    # The Tasks page is first in the page tree with its own icon, and "Open as page" leads to it
-    page.wait_for_selector("[data-testid=cl-sidebar] [data-testid=tasks-icon]", timeout=10000)
-    first = page.locator("[data-testid=cl-sidebar] [role=treeitem]").first
-    assert first.get_attribute("aria-label") == "Tasks"
+    # The sidebar lists Tasks once, as the project's entry (highlighted here); the Tasks page is not in the page tree
+    nav_tasks = page.locator("[data-testid=cl-sidebar] [data-testid=nav-tasks]")
+    expect(nav_tasks).to_have_count(1)
+    assert nav_tasks.get_attribute("aria-current") == "page"
+    assert page.locator("[data-testid=cl-sidebar] [role=treeitem][aria-label=Tasks]").count() == 0
     page.click("[data-testid=tasks-open-page]")
     page.wait_for_selector("[data-testid=view-block] [data-testid=table-layout]", timeout=20000)
     assert f"/p/{scene['project']}/page/" in page.url
@@ -157,19 +159,21 @@ def test_the_old_task_list_comes_back_with_the_switch(server, scene, new_page):
     assert page.locator("[data-testid=tasks-tab]").count() == 0
     wait_js(page, "AppState.activeTab === 'projects'", 10000)
     page.wait_for_selector("#projectsTableBody .task-row", timeout=10000)
-    assert page.inner_text("#tasksListToggle") == "Use the new task list"
+    # the switch lives in the user menu (Settings, Profile)
+    page.click("#userMenuBtn")
+    expect(page.locator("#tasksListToggle")).to_have_text("Use the new task list")
     # switching back brings the new table
     page.click("#tasksListToggle")
     page.wait_for_selector(f"{TAB} [data-testid=table-layout]", timeout=20000)
     assert page.evaluate("localStorage.getItem('legacyTasks')") == "0"
 
 
-def test_the_projects_tab_opens_a_project_on_the_new_list_by_default(server, scene, new_page):
+def test_the_sidebar_opens_a_projects_tasks_on_the_new_list_by_default(server, scene, new_page):
     page = new_page(name="editor-projects")
     login(page, server.base_url, "editor")
-    page.evaluate("switchTab('projects')")
-    page.wait_for_selector(".project-card", timeout=10000)
-    page.evaluate(f"openProjectTasks('{scene['project']}')")
+    page.wait_for_selector("[data-testid=cl-sidebar]", timeout=10000)
+    page.locator(f"[data-project-id='{scene['project']}'] .cl-nav__projectname").click()
+    page.click("[data-testid=nav-tasks]")
     page.wait_for_selector(f"{TAB} [data-testid=table-layout]", timeout=20000)
     assert page.url.endswith(f"/p/{scene['project']}/tasks")
 

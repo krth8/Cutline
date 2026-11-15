@@ -1,0 +1,5 @@
+.cl-relchip { display: inline-flex; align-items: center; max-width: 100%; min-width: 0; padding: 1px 9px; font: inherit; font-size: 12px; font-weight: 500; line-height: 18px; color: var(--text); background: var(--bg-hover); border: 1px solid transparent; border-radius: var(--radius-full); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.cl-relchip:hover:not(:disabled) { color: var(--accent-light); border-color: var(--border-medium); }
+.cl-relchip:disabled { cursor: default; }
+.cl-cell__muted { color: var(--text-muted); font-style: italic; }
+.cl-relpicker { width: 280px; }

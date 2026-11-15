@@ -72,7 +72,7 @@ function Body({ taskId, page, canEdit, onStatus }: { taskId: string; page: PageS
       {page === 'failed' ? (
         <p className="cl-task__empty">The description could not be loaded.</p>
       ) : page && page.for === taskId ? (
-        <CollabEditor key={page.id} pageId={page.id} readOnly={!canEdit} showStatus={false} onStatusChange={onStatus} placeholder="Add a description, or type / for blocks" />
+        <CollabEditor key={page.id} pageId={page.id} readOnly={!canEdit} hideStatusBar onSync={(info) => onStatus(info.status)} placeholder="Add a description, or type / for blocks" />
       ) : (
         <div className="cl-skel cl-skel--line" aria-busy="true" />
       )}
@@ -155,7 +155,7 @@ function TaskContent({ taskId, tableRef }: { taskId: string; tableRef: string })
         crumbs={<Crumbs tableRef={tableRef} parentId={row.parentId} projectName={projectName} />}
         done={done ? <DoneToggle model={done} row={row} onChange={(key, value) => save({ [key]: value })} /> : null}
         title={<Title row={row} canEdit={row.canEdit} onSave={(name) => save({ name })} />}
-        status={pageReady && status ? <SyncStatus status={status} /> : null}
+        status={pageReady && status ? <SyncStatus status={status} quiet /> : null}
         menu={menu}
         closeLabel="Close task"
       />

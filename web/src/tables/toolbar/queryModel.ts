@@ -54,6 +54,8 @@ export function opsFor(type: ColumnType): FilterOp[] {
     case 'multiselect':
     case 'people':
       return ['contains', 'in', ...EMPTY_OPS];
+    case 'relation':
+      return ['contains', ...EMPTY_OPS];
     case 'formula':
       return ['contains', 'eq', 'neq', ...EMPTY_OPS];
     default:
@@ -172,10 +174,10 @@ export function appendAt(root: Group, path: number[], node: Filter): Group {
 // ---- sort, group, summaries ----
 
 export const GROUPABLE: ReadonlySet<ColumnType> = new Set<ColumnType>([
-  'select', 'status', 'priority', 'person', 'people', 'multiselect', 'checkbox', 'date', 'number', 'text',
+  'select', 'status', 'priority', 'person', 'people', 'multiselect', 'checkbox', 'date', 'number', 'text', 'relation',
 ]);
 
-export const SORTABLE_EXCLUDED: ReadonlySet<ColumnType> = new Set<ColumnType>(['relation']);
+export const SORTABLE_EXCLUDED: ReadonlySet<ColumnType> = new Set<ColumnType>();
 
 type SummaryFn = NonNullable<Query['summaries']>[string];
 

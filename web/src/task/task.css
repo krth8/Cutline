@@ -3,19 +3,19 @@
 .cl-task {
   --cl-task-width: 540px;
   --cl-task-wide: 880px;
-  --cl-task-gutter: 20px;
+  --cl-task-gutter: var(--space-5);
   --cl-task-label: 108px;
-  --cl-task-title-size: 22px;
-  --cl-task-small: 12px;
+  --cl-task-title-size: calc(var(--font-size-2xl) + 2px);
+  --cl-task-small: var(--font-size-sm);
   --cl-task-row: 30px;
   --cl-task-gap: 18px;
-  --cl-task-font: 14px;
+  --cl-task-font: var(--font-size-lg);
 }
 
 .cl-task__scrim {
   position: fixed;
   inset: 0;
-  z-index: 15500;
+  z-index: var(--z-task-panel);
   background: var(--bg-overlay);
 }
 .cl-task {
@@ -23,7 +23,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 15600;
+  z-index: var(--z-task-panel-sheet);
   display: flex;
   flex-direction: column;
   width: var(--cl-task-w, var(--cl-task-width));
@@ -111,7 +111,7 @@ button.cl-task__crumb:hover { color: var(--text); text-decoration: underline; }
   background: none; border: 0; border-radius: var(--radius-sm); color: var(--text-muted); cursor: pointer; font: inherit; font-size: var(--cl-task-small);
 }
 .cl-props__more:hover { background: var(--bg-hover); color: var(--text); }
-.cl-props__count { padding: 0 6px; border-radius: 999px; background: var(--bg-secondary); font-size: 11px; }
+.cl-props__count { padding: 0 6px; border-radius: var(--radius-full); background: var(--bg-secondary); font-size: 11px; }
 .cl-props__footer { margin: 8px 0 0; color: var(--text-muted); font-size: var(--cl-task-small); }
 
 /* Description: the page body; it inherits the page typography, the panel only places it */

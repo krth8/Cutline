@@ -2,9 +2,9 @@
 .cl-menu__item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
-  padding: 7px 10px;
+  padding: 7px var(--space-2-5);
   font: inherit;
   text-align: left;
   color: var(--text);
@@ -21,4 +21,4 @@
 .cl-menu__item--danger.is-active,
 .cl-menu__item--danger:hover:not(:disabled) { background: var(--danger-bg); }
 .cl-menu__icon { display: inline-flex; width: 16px; justify-content: center; color: var(--text-muted); }
-.cl-menu__separator { height: 1px; margin: 4px 2px; background: var(--border-medium); }
+.cl-menu__separator { height: 1px; margin: var(--space-1) var(--space-0-5); background: var(--border-medium); }

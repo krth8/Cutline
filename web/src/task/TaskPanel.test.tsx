@@ -10,8 +10,8 @@ import { TaskPanelHost } from './TaskPanel';
 
 // The editor chunk needs a socket; the panel only has to hand it the right page
 vi.mock('../pages/sync', () => ({
-  CollabEditor: ({ pageId, readOnly, showStatus }: { pageId: string; readOnly?: boolean; showStatus?: boolean }) => (
-    <div data-testid="collab" data-page-id={pageId} data-readonly={String(!!readOnly)} data-show-status={String(showStatus)} />
+  CollabEditor: ({ pageId, readOnly, hideStatusBar }: { pageId: string; readOnly?: boolean; hideStatusBar?: boolean }) => (
+    <div data-testid="collab" data-page-id={pageId} data-readonly={String(!!readOnly)} data-hide-status={String(!!hideStatusBar)} />
   ),
   SyncStatus: ({ status }: { status: string }) => <span className="cl-sync-status" data-status={status} />,
 }));
@@ -364,7 +364,7 @@ describe('task panel', () => {
 
   it('puts History in the more-actions menu and hides the editor status bar', async () => {
     render(<TaskPanelHost />);
-    expect((await screen.findByTestId('collab')).getAttribute('data-show-status')).toBe('false');
+    expect((await screen.findByTestId('collab')).getAttribute('data-hide-status')).toBe('true');
     await userEvent.click(await screen.findByLabelText('More actions'));
     expect(await screen.findByRole('menuitem', { name: 'History' })).toBeTruthy();
     expect(screen.getByRole('menuitem', { name: 'Delete task' })).toBeTruthy();

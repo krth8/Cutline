@@ -1,0 +1,400 @@
+/* ==========================================================================
+   Cutline theme: the single source of design tokens.
+
+   Loaded before main.css (see static/index.html). Everything visual that can be
+   changed globally lives here: colours, type, spacing, radii, shadows, motion,
+   layers and layout sizes. Component CSS must use these tokens and must not
+   contain literal colours (web/src/theme.test.ts enforces this for the bundle).
+   See docs/THEME.md for how to change the look.
+
+   Contents
+     1. Palettes      dark (default) and light, same token names
+     2. Mode-independent tokens: effects, motion, typography, spacing, controls, layers, layout
+     3. Semantic aliases (--cl-*) used by the React bundle
+     4. Small-screen overrides of layout sizes
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1a. DARK PALETTE (default). Also applies to any element carrying
+   data-theme="dark", so a dark island (the Review player) can sit inside a
+   light page. data-theme="custom" uses these values plus inline overrides
+   set by the Settings dialog.
+   ========================================================================== */
+:root,
+[data-theme="dark"] {
+    /* ---- Base colours ---- */
+    --white: #ffffff;                          /* pure white */
+    --black: #000000;                          /* pure black */
+    --text-on-accent: #ffffff;                 /* text and icons placed on an accent or status fill */
+
+    /* ---- Surfaces / backgrounds ---- */
+    --bg-dark: #0f0c14;                        /* page background, lowest layer */
+    --bg-panel: rgba(24, 22, 36, 0.9);         /* translucent panel (glass look) */
+    --bg-secondary: #1e1a2e;                   /* card and section surface */
+    --bg-elevated: rgba(32, 30, 50, 0.95);     /* floating surface above panels */
+    --bg-hover: rgba(48, 44, 72, 0.85);        /* hover and selected-row fill */
+    --bg-active: rgba(255, 255, 255, 0.08);    /* pressed or subtle hover fill on small controls */
+    --bg-solid: #181628;                       /* opaque surface: inputs, sidebars, table body */
+    --bg-overlay: rgba(0, 0, 0, 0.5);          /* scrim behind light overlays */
+    --bg-overlay-dark: rgba(0, 0, 0, 0.6);     /* scrim behind dialogs */
+    --bg-overlay-heavy: rgba(0, 0, 0, 0.8);    /* scrim for full-screen viewers */
+
+    /* ---- Modal surfaces (3 levels: dialog, raised block inside it, field inside that) ---- */
+    --modal-bg: #1a1726;                       /* dialog background */
+    --modal-elevated: #242136;                 /* raised block inside a dialog; menus; popovers */
+    --modal-field: #2e2a42;                    /* field inside a raised block */
+
+    /* ---- Borders ---- */
+    --border: rgba(255, 255, 255, 0.08);       /* default hairline */
+    --border-light: rgba(255, 255, 255, 0.05); /* faint divider between rows */
+    --border-medium: rgba(255, 255, 255, 0.1); /* control outline, stronger divider */
+    --border-glow: rgba(95, 93, 229, 0.3);     /* accent-tinted outline */
+
+    /* ---- Text ---- */
+    --text: #f0ebd8;                           /* primary text */
+    --text-muted: #a8a8a8;                     /* secondary and placeholder text */
+    --text-secondary: #cbd5e1;                 /* body text one step below primary */
+
+    /* ---- Accent (indigo) ---- */
+    --accent: #5f5de5;                         /* brand colour: primary buttons, selection, links */
+    --accent-hover: #7d7bfc;                   /* accent on hover */
+    --accent-light: #818cf8;                   /* accent used as text or outline on dark surfaces */
+    --accent-lighter: #a5b4fc;                 /* lightest accent tint */
+    --accent-glow: rgba(95, 93, 229, 0.4);     /* accent glow around focused items */
+    --accent-bg: rgba(99, 102, 241, 0.1);      /* faint accent wash (selected row) */
+    --accent-bg-hover: rgba(99, 102, 241, 0.15);  /* accent wash on hover */
+    --accent-bg-strong: rgba(99, 102, 241, 0.2);  /* stronger accent wash (chips, drop targets) */
+
+    /* ---- Status: success (green) ---- */
+    --success: #22c55e;                        /* success */
+    --success-light: #4ade80;                  /* success as text on dark */
+    --success-lighter: #86efac;                /* lightest success tint */
+    --success-glow: rgba(74, 222, 128, 0.3);   /* success glow */
+    --success-bg: rgba(34, 197, 94, 0.1);      /* success wash */
+    --success-bg-hover: rgba(34, 197, 94, 0.15);  /* success wash on hover */
+    --success-border: rgba(34, 197, 94, 0.3);  /* success outline */
+    --green: var(--success-light);             /* legacy alias of success-light */
+    --green-glow: var(--success-glow);         /* legacy alias of success-glow */
+
+    /* ---- Status: warning (amber) ---- */
+    --warning: #f59e0b;                        /* warning */
+    --warning-light: #fbbf24;                  /* warning as text on dark */
+    --warning-bg: rgba(245, 158, 11, 0.15);    /* warning wash */
+    --orange: #f97316;                         /* orange accent for urgent items */
+
+    /* ---- Status: danger (red) ---- */
+    --danger: #ef4444;                         /* danger and errors */
+    --danger-dark: #dc2626;                    /* danger, darker (pressed) */
+    --danger-bg: rgba(239, 68, 68, 0.1);       /* danger wash */
+    --danger-bg-hover: rgba(239, 68, 68, 0.15);   /* danger wash on hover */
+    --danger-bg-strong: rgba(239, 68, 68, 0.2);   /* stronger danger wash */
+    --danger-border: rgba(239, 68, 68, 0.3);   /* danger outline */
+    --red: var(--danger);                      /* legacy alias of danger */
+
+    /* ---- Status: info (blue) ---- */
+    --info: #3b82f6;                           /* info */
+    --info-light: #60a5fa;                     /* info as text on dark */
+    --info-bg: rgba(59, 130, 246, 0.15);       /* info wash */
+
+    /* ---- Neutral greys ---- */
+    --gray-400: #9ca3af;                       /* light grey */
+    --gray-500: #6b7280;                       /* mid grey */
+    --gray-600: #4b5563;                       /* dark grey */
+    --gray-700: #374151;                       /* darker grey */
+    --gray-800: #1f2937;                       /* darkest grey */
+
+    /* ---- Categorical palette: user-assigned colours for options, collaborators, labels.
+       Data colours chosen by users or the server are stored as values, not tokens;
+       these are the defaults offered and the colours used for collaboration cursors. ---- */
+    --cat-1: #e8590c;                          /* orange */
+    --cat-2: #1c7ed6;                          /* blue */
+    --cat-3: #2f9e44;                          /* green */
+    --cat-4: #ae3ec9;                          /* purple */
+    --cat-5: #d6336c;                          /* pink */
+    --cat-6: #0c8599;                          /* teal */
+    --cat-7: #f08c00;                          /* amber */
+    --cat-8: #5f3dc4;                          /* violet */
+
+    /* ---- Shadow colours (used inside box-shadow below) ---- */
+    --shadow: rgba(0, 0, 0, 0.3);              /* soft shadow colour */
+    --shadow-medium: rgba(0, 0, 0, 0.4);       /* medium shadow colour */
+    --shadow-heavy: rgba(0, 0, 0, 0.5);        /* strong shadow colour (dialogs) */
+}
+
+
+/* ==========================================================================
+   1b. LIGHT PALETTE. Overrides the same tokens. Chosen with
+   localStorage "theme" = "light", or "system" while the OS prefers light
+   (see the inline script in index.html and window.CutlineTheme).
+   Contrast notes: --text on --bg-solid 15:1, --text-muted on --bg-solid 4.8:1,
+   white on --accent 6.3:1.
+   ========================================================================== */
+:root[data-theme="light"],
+[data-theme="light"] {
+    color-scheme: light;                       /* native controls and scrollbars follow the theme */
+
+    /* ---- Surfaces ---- */
+    --bg-dark: #f4f4f8;                        /* page background */
+    --bg-panel: rgba(255, 255, 255, 0.92);     /* translucent panel */
+    --bg-secondary: #ffffff;                   /* card and section surface */
+    --bg-elevated: rgba(255, 255, 255, 0.98);  /* floating surface */
+    --bg-hover: rgba(30, 30, 60, 0.06);        /* hover and selected-row fill */
+    --bg-active: rgba(30, 30, 60, 0.1);        /* pressed or subtle hover fill on small controls */
+    --bg-solid: #ffffff;                       /* opaque surface: inputs, sidebars, table body */
+    --bg-overlay: rgba(20, 20, 40, 0.3);       /* scrim behind light overlays */
+    --bg-overlay-dark: rgba(20, 20, 40, 0.4);  /* scrim behind dialogs */
+    --bg-overlay-heavy: rgba(20, 20, 40, 0.6); /* scrim for full-screen viewers */
+
+    /* ---- Modal surfaces ---- */
+    --modal-bg: #ffffff;                       /* dialog background */
+    --modal-elevated: #f6f6fa;                 /* raised block inside a dialog; menus; popovers */
+    --modal-field: #ececf3;                    /* field inside a raised block */
+
+    /* ---- Borders ---- */
+    --border: rgba(20, 20, 50, 0.12);          /* default hairline */
+    --border-light: rgba(20, 20, 50, 0.07);    /* faint divider between rows */
+    --border-medium: rgba(20, 20, 50, 0.18);   /* control outline, stronger divider */
+    --border-glow: rgba(79, 70, 229, 0.3);     /* accent-tinted outline */
+
+    /* ---- Text ---- */
+    --text: #1a1a2e;                           /* primary text */
+    --text-muted: #5f6675;                     /* secondary and placeholder text */
+    --text-secondary: #404656;                 /* body text one step below primary */
+
+    /* ---- Accent: darker so it holds contrast on white ---- */
+    --accent: #4f46e5;                         /* brand colour */
+    --accent-hover: #4338ca;                   /* accent on hover (darker on light) */
+    --accent-light: #4f46e5;                   /* accent used as text or outline */
+    --accent-lighter: #6366f1;                 /* lighter accent tint */
+    --accent-glow: rgba(79, 70, 229, 0.3);     /* accent glow */
+    --accent-bg: rgba(79, 70, 229, 0.08);      /* faint accent wash */
+    --accent-bg-hover: rgba(79, 70, 229, 0.12);   /* accent wash on hover */
+    --accent-bg-strong: rgba(79, 70, 229, 0.18);  /* stronger accent wash */
+
+    /* ---- Status: success ---- */
+    --success: #15803d;                        /* success */
+    --success-light: #15803d;                  /* success as text */
+    --success-lighter: #22c55e;                /* lighter success tint */
+    --success-glow: rgba(22, 163, 74, 0.25);   /* success glow */
+    --success-bg: rgba(22, 163, 74, 0.1);      /* success wash */
+    --success-bg-hover: rgba(22, 163, 74, 0.15);  /* success wash on hover */
+    --success-border: rgba(22, 163, 74, 0.35); /* success outline */
+
+    /* ---- Status: warning ---- */
+    --warning: #b45309;                        /* warning */
+    --warning-light: #b45309;                  /* warning as text */
+    --warning-bg: rgba(217, 119, 6, 0.14);     /* warning wash */
+    --orange: #c2410c;                         /* orange accent */
+
+    /* ---- Status: danger ---- */
+    --danger: #dc2626;                         /* danger and errors */
+    --danger-dark: #b91c1c;                    /* danger, darker */
+    --danger-bg: rgba(220, 38, 38, 0.08);      /* danger wash */
+    --danger-bg-hover: rgba(220, 38, 38, 0.12);   /* danger wash on hover */
+    --danger-bg-strong: rgba(220, 38, 38, 0.18);  /* stronger danger wash */
+    --danger-border: rgba(220, 38, 38, 0.3);   /* danger outline */
+
+    /* ---- Status: info ---- */
+    --info: #1d4ed8;                           /* info */
+    --info-light: #1d4ed8;                     /* info as text */
+    --info-bg: rgba(37, 99, 235, 0.1);         /* info wash */
+
+    /* ---- Neutral greys ---- */
+    --gray-400: #9ca3af;                       /* light grey */
+    --gray-500: #6b7280;                       /* mid grey */
+    --gray-600: #4b5563;                       /* dark grey */
+    --gray-700: #374151;                       /* darker grey */
+    --gray-800: #e5e7eb;                       /* darkest grey; inverted: a light grey surface */
+
+    /* ---- Shadow colours ---- */
+    --shadow: rgba(20, 20, 50, 0.1);           /* soft shadow colour */
+    --shadow-medium: rgba(20, 20, 50, 0.15);   /* medium shadow colour */
+    --shadow-heavy: rgba(20, 20, 50, 0.2);     /* strong shadow colour */
+}
+
+
+/* ==========================================================================
+   2. MODE-INDEPENDENT TOKENS
+   ========================================================================== */
+:root {
+    /* ---- Effects ---- */
+    --blur-amount: 20px;                       /* backdrop blur for glass panels */
+    --blur-light: 12px;                        /* lighter backdrop blur */
+
+    /* ---- Radii ---- */
+    --radius-xs: 4px;                          /* small chips, checkboxes */
+    --radius-sm: 6px;                          /* buttons, inputs, menu items */
+    --radius-md: 10px;                         /* cards, tables, popovers */
+    --radius-lg: 14px;                         /* dialogs */
+    --radius-xl: 16px;                         /* large surfaces */
+    --radius-full: 9999px;                     /* pills and round avatars */
+
+    /* ---- Marks drawn on top of coloured fills (gantt bars, status chips) ---- */
+    --on-fill-ring: rgba(255, 255, 255, 0.55);   /* inner ring that marks a milestone bar */
+    --on-fill-text-shadow: rgba(0, 0, 0, 0.45);  /* shadow that keeps white text readable on any fill */
+    --bar-handle: rgba(0, 0, 0, 0.14);           /* resize handle on a gantt bar */
+    --bar-handle-hover: rgba(0, 0, 0, 0.3);      /* resize handle on hover */
+
+    /* ---- Motion ---- */
+    --transition-fast: 0.15s ease;             /* hover and colour changes */
+    --transition-normal: 0.25s ease;           /* small movements */
+    --transition-slow: 0.3s ease;              /* panels sliding in */
+
+    /* ---- Typography: families ---- */
+    --font-sans: 'Inter', system-ui, sans-serif;                          /* UI and body text */
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;               /* code and ids */
+
+    /* ---- Typography: size scale ---- */
+    --font-size-xs: 11px;                      /* badges, counters, captions */
+    --font-size-sm: 12px;                      /* secondary UI text, small buttons, table headers */
+    --font-size-md: 13px;                      /* default UI text */
+    --font-size-lg: 14px;                      /* comfortable body text */
+    --font-size-xl: 16px;                      /* dialog titles, section headings */
+    --font-size-2xl: 20px;                     /* page and panel titles */
+
+    /* ---- Typography: weights ---- */
+    --font-weight-regular: 400;                /* body text */
+    --font-weight-medium: 500;                 /* buttons, labels */
+    --font-weight-semibold: 600;               /* headings, emphasis */
+    --font-weight-bold: 700;                   /* strong emphasis */
+
+    /* ---- Typography: line heights ---- */
+    --line-height-none: 1;                     /* icons and single-line controls */
+    --line-height-tight: 1.25;                 /* titles */
+    --line-height-normal: 1.5;                 /* UI text */
+    --line-height-relaxed: 1.65;               /* long-form page text */
+
+    /* ---- Spacing: 4px grid, plus three half steps for dense UI ---- */
+    --space-0-5: 2px;                          /* hairline gap */
+    --space-1: 4px;                            /* tight gap between icon and label */
+    --space-1-5: 6px;                          /* dense gap (half step) */
+    --space-2: 8px;                            /* default gap and small padding */
+    --space-2-5: 10px;                         /* padding of compact controls (half step) */
+    --space-3: 12px;                           /* padding inside cards and rows */
+    --space-4: 16px;                           /* section padding */
+    --space-5: 20px;                           /* page gutters */
+    --space-6: 24px;                           /* between sections */
+    --space-7: 32px;                           /* large separations */
+    --space-8: 40px;                           /* page-level separations */
+
+    /* ---- Control sizes ---- */
+    --control-height-xs: 22px;                 /* chips, calendar events */
+    --control-height-sm: 26px;                 /* small buttons and inputs */
+    --control-height-md: 32px;                 /* default buttons and inputs */
+    --row-height: 34px;                        /* a table row */
+    --row-height-compact: 32px;                /* a gantt or list row */
+
+    /* ---- Layers (z-index) ---- */
+    --z-raised: 1;                             /* element lifted above its siblings */
+    --z-sticky: 3;                             /* sticky headers and columns */
+    --z-sticky-corner: 5;                      /* sticky corner above both header and column */
+    --z-local-popup: 100;                      /* small popup anchored inside a block */
+    --z-editor-handle: 800;                    /* drag handle in the page editor */
+    --z-editor-toolbar: 900;                   /* floating editor toolbar */
+    --z-editor-float: 1000;                    /* editor popups */
+    --z-block-viewer: 10000;                   /* full-screen viewer inside a page block */
+    --z-app-fullscreen: 15000;                 /* full-screen app pages (dev pages) */
+    --z-task-panel: 15500;                     /* task panel scrim */
+    --z-task-panel-sheet: 15600;               /* task panel itself */
+    --z-dialog: 19000;                         /* dialogs and view settings panels */
+    --z-palette: 19500;                        /* command palette and drag ghosts */
+    --z-popover: 20000;                        /* menus, popovers, confirm dialogs */
+    --z-toast: 20001;                          /* toasts */
+    --z-tooltip: 21000;                        /* tooltips, always on top */
+
+    /* ---- Layout sizes ---- */
+    --sidebar-left: clamp(260px, 23vw, 420px);    /* legacy left sidebar */
+    --sidebar-right: clamp(280px, 25vw, 450px);   /* legacy right sidebar */
+    --sidebar-width: 240px;                    /* page-tree sidebar of the new shell */
+    --clip-bin-height: 260px;                  /* legacy clip bin */
+    --header-global-height: 48px;              /* top bar */
+    --header-toolbar-height: 44px;             /* tab bar under it */
+    --header-height: calc(var(--header-global-height) + var(--header-toolbar-height));  /* both together */
+    --panel-width: min(820px, 94vw);           /* task side panel */
+    --content-measure: 860px;                  /* maximum width of page content */
+
+    /* Mobile bottom sheet - smaller so content is visible */
+    --mobile-bottom-sheet-height: 45vh;        /* height of a bottom sheet */
+    --mobile-bottom-sheet-max: 400px;          /* cap for a bottom sheet */
+}
+
+
+/* ==========================================================================
+   3. SEMANTIC ALIASES for the React bundle (class prefix cl-).
+   Components should use these names, not raw palette names, so a redesign
+   can remap meaning in one place. Declared for every element that carries
+   data-theme so a nested theme island recomputes them from its own palette.
+   ========================================================================== */
+:root,
+[data-theme] {
+    --cl-surface: var(--bg-dark);              /* page background */
+    --cl-surface-panel: var(--bg-secondary);   /* cards, sections */
+    --cl-surface-field: var(--bg-solid);       /* inputs, sidebars, table body */
+    --cl-surface-raised: var(--modal-elevated);/* menus, popovers, raised blocks */
+    --cl-surface-dialog: var(--modal-bg);      /* dialogs */
+    --cl-surface-hover: var(--bg-hover);       /* hover and selected rows */
+    --cl-surface-active: var(--bg-active);     /* pressed state */
+    --cl-scrim: var(--bg-overlay-dark);        /* backdrop behind dialogs */
+
+    --cl-border: var(--border);                /* default hairline */
+    --cl-border-subtle: var(--border-light);   /* faint dividers */
+    --cl-border-strong: var(--border-medium);  /* control outlines */
+
+    --cl-text: var(--text);                    /* primary text */
+    --cl-text-secondary: var(--text-secondary);/* body text */
+    --cl-text-muted: var(--text-muted);        /* hints, placeholders */
+    --cl-text-on-accent: var(--text-on-accent);/* text on accent and status fills */
+
+    --cl-accent: var(--accent);                /* brand colour */
+    --cl-accent-hover: var(--accent-hover);    /* brand colour on hover */
+    --cl-accent-text: var(--accent-light);     /* accent used as text or thin outline */
+    --cl-accent-soft: var(--accent-bg);        /* faint accent wash */
+    --cl-accent-soft-strong: var(--accent-bg-strong);  /* stronger accent wash */
+    --cl-focus-ring: var(--accent);            /* keyboard focus outline colour */
+
+    --cl-success: var(--success);              /* success */
+    --cl-warning: var(--warning);              /* warning */
+    --cl-danger: var(--danger);                /* danger */
+    --cl-info: var(--info);                    /* info */
+    --cl-success-soft: var(--success-bg);     /* success wash */
+    --cl-warning-soft: var(--warning-bg);     /* warning wash */
+    --cl-danger-soft: var(--danger-bg);       /* danger wash */
+    --cl-info-soft: var(--info-bg);           /* info wash */
+
+    /* Elevation shadows, built from the palette's shadow colours */
+    --shadow-sm: 0 1px 2px var(--shadow);                       /* resting card */
+    --shadow-md: 0 4px 16px var(--shadow-medium);               /* menus and popovers */
+    --shadow-lg: 0 16px 48px var(--shadow-heavy);               /* dialogs */
+    --shadow-panel: -12px 0 32px var(--shadow-medium);          /* side panel over the page */
+
+    --cl-shadow-menu: var(--shadow-md);        /* shadow of menus and popovers */
+    --cl-shadow-dialog: var(--shadow-lg);      /* shadow of dialogs */
+}
+
+/* A nested theme island paints its own background and text colour */
+[data-theme]:not(:root) {
+    background: var(--bg-dark);
+    color: var(--text);
+}
+
+
+/* ==========================================================================
+   4. SMALL-SCREEN OVERRIDES of layout sizes
+   ========================================================================== */
+@media (max-width: 800px) {
+    :root {
+        --sidebar-left: 0px;
+        --sidebar-right: 0px;
+        --clip-bin-height: 280px;
+        --header-height: 48px;
+        --mobile-bottom-sheet-height: 40vh;
+        --mobile-toolbar-height: 44px;
+    }
+}
+
+@media (max-width: 480px) {
+    :root {
+        --clip-bin-height: 220px;
+    }
+}

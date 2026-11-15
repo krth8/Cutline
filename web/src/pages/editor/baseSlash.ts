@@ -28,7 +28,7 @@ export const BASE_SLASH_ITEMS: SlashItem[] = [
   { title: 'Bullet list', description: 'A simple list of points', icon: '•', keywords: ['ul', 'unordered', 'points'], group: 'Lists', run: kind('bulletList') },
   { title: 'Numbered list', description: 'A list with numbers', icon: '1.', keywords: ['ol', 'ordered', 'steps'], group: 'Lists', run: kind('orderedList') },
   { title: 'To-do list', description: 'Checkable items', icon: '☐', keywords: ['task', 'checkbox', 'todo', 'checklist'], group: 'Lists', run: kind('taskList') },
-  { title: 'Code block', description: 'Monospaced code', icon: '</>', keywords: ['code', 'snippet', 'pre'], group: 'Advanced', run: kind('codeBlock') },
+  { title: 'Code block', description: 'Monospaced code', icon: '</>', keywords: ['code', 'snippet', 'pre'], group: 'Basic', run: kind('codeBlock') },
   { id: 'callout-info', title: 'Callout', description: 'Highlighted note', icon: 'i', keywords: ['note', 'info', 'tip', 'admonition'], group: 'Advanced', run: callout('info') },
   { id: 'callout-success', title: 'Success callout', description: 'Green highlighted note', icon: '✓', keywords: ['callout', 'done', 'ok'], group: 'Advanced', run: callout('success') },
   { id: 'callout-warning', title: 'Warning callout', description: 'Amber highlighted note', icon: '!', keywords: ['callout', 'caution', 'attention'], group: 'Advanced', run: callout('warning') },

@@ -1,0 +1,26 @@
+/* The /dev/theme page: token swatches and samples. Colours come from the tokens only. */
+.cl-theme { max-width: var(--content-measure); margin: 0 auto; padding: var(--space-6) var(--space-5) 64px; font-size: var(--font-size-md); }
+.cl-theme h1 { font-size: var(--font-size-2xl); margin: 0 0 var(--space-1); }
+.cl-theme__hint { color: var(--text-muted); margin: 0 0 var(--space-4); }
+.cl-theme__switch { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); }
+.cl-theme__section { padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.cl-theme__section h2 { margin: 0 0 var(--space-2-5); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.cl-theme__probe { position: absolute; width: 0; height: 0; overflow: hidden; }
+.cl-theme__chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--space-2); }
+.cl-theme__chip { display: flex; flex-direction: column; gap: var(--space-0-5); padding: var(--space-2); background: var(--bg-solid); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); }
+.cl-theme__swatch { height: 28px; border-radius: var(--radius-xs); border: 1px solid var(--border-medium); }
+.cl-theme__chipname { font-size: var(--font-size-sm); font-family: var(--font-mono); color: var(--text); }
+.cl-theme__chipmeta { font-size: var(--font-size-xs); color: var(--text-muted); min-height: 14px; }
+.cl-theme__type { padding: var(--space-0-5) 0; color: var(--text); }
+.cl-theme__type code, .cl-theme__space code { font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--text-muted); margin-right: var(--space-2); }
+.cl-theme__row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2-5); margin-bottom: var(--space-2); }
+.cl-theme__space { display: flex; align-items: center; padding: var(--space-0-5) 0; }
+.cl-theme__space code { width: 110px; }
+.cl-theme__bar { display: inline-block; height: var(--space-3); background: var(--accent); border-radius: var(--radius-xs); }
+.cl-theme__box { display: flex; align-items: center; justify-content: center; width: 80px; height: 56px; background: var(--modal-elevated); border: 1px solid var(--border-medium); color: var(--text-secondary); }
+.cl-theme__pill { display: inline-flex; align-items: center; padding: 0 var(--space-2-5); height: var(--control-height-xs); font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); border-radius: var(--radius-full); }
+.cl-theme__pill--success { color: var(--success); background: var(--success-bg); }
+.cl-theme__pill--warning { color: var(--warning); background: var(--warning-bg); }
+.cl-theme__pill--danger { color: var(--danger); background: var(--danger-bg); }
+.cl-theme__pill--info { color: var(--info); background: var(--info-bg); }
+.cl-theme__pill--accent { color: var(--accent-light); background: var(--accent-bg-strong); }

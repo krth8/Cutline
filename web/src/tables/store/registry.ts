@@ -128,7 +128,10 @@ function syncLive(): void {
     liveOff = [
       live.on('rows_changed', (msg) => {
         if (typeof msg?.tableRef !== 'string') return;
-        for (const t of tables.values()) if (t.active > 0 && refMatches(msg.tableRef, t.ref)) t.scheduleQueries();
+        for (const t of tables.values()) {
+          // A table also refetches when it shows linked titles of the changed table (a relation column pointing at it)
+          if (t.active > 0 && (refMatches(msg.tableRef, t.ref) || t.linksTo(msg.tableRef))) t.scheduleQueries();
+        }
       }),
       // The user's rights in a project changed: the project options and visible rows of tasks:* change
       live.on('projects_changed', () => {
@@ -399,6 +402,15 @@ export class TableEntry {
 
   scheduleQueries(): void {
     for (const q of this.queries.values()) if (q.subs > 0) q.schedule();
+  }
+
+  /** Does the loaded schema have a relation column (own or mirror) whose target is `ref`? Then linked titles in its rows can go stale. */
+  linksTo(ref: string): boolean {
+    return (
+      this.schemaState.schema?.columns.some(
+        (c) => c.type === 'relation' && typeof c.config?.target === 'string' && refMatches(ref, c.config.target),
+      ) ?? false
+    );
   }
 
   // ---- schema ----
