@@ -6,6 +6,8 @@ from fastapi import (
     HTTPException,
     Request,
 )
+import re
+from datetime import date
 from typing import List, Optional
 from database import (
     db_check_project_access,
@@ -62,6 +64,18 @@ def check_assignees(user_ids: List[str]) -> None:
             raise HTTPException(status_code=400, detail="Unknown assignee")
 
 
+def check_start_date(value) -> None:
+    """startDate must be null or a strict YYYY-MM-DD date. The server does not require start <= due."""
+    if value is None or value == "":
+        return
+    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        raise HTTPException(status_code=400, detail="startDate must be a date like 2030-01-31")
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="startDate must be a date like 2030-01-31")
+
+
 async def rows_changed(project_id: str, ids: List[str], change: str) -> None:
     """Tell open table views that rows of the project's task table changed."""
     await live.to_project(
@@ -92,6 +106,7 @@ async def create_task_record(user: dict, project_id: str, data: dict) -> dict:
 
     parent_id = data.get("parentId")
     check_parent(project_id, parent_id)
+    check_start_date(data.get("startDate"))
     check_assignees(data.get("assigneeIds") or [data.get("assigneeId")])
 
     # Written to the database first; the in-memory copy is read back from it
@@ -108,6 +123,7 @@ async def create_task_record(user: dict, project_id: str, data: dict) -> dict:
         assignee_id=data.get("assigneeId"),  # Single assignee (legacy)
         assignee_ids=data.get("assigneeIds"),  # Multiple assignees (new)
         priority=data.get("priority", "medium"),
+        start_date=data.get("startDate") or None,
         due_date=data.get("dueDate"),
         custom_fields=data.get("customFields")
     )
@@ -134,12 +150,16 @@ async def update_task_record(task: dict, data: dict) -> dict:
         "stageTag": "stage_tag",
         "statusId": "status_id",
         "priority": "priority",
+        "startDate": "start_date",
         "dueDate": "due_date",
         "customFields": "custom_fields",
         "sortOrder": "sort_order",
     }
     updates = {col: data[field] for field, col in field_mapping.items() if field in data}
 
+    if "startDate" in data:
+        check_start_date(data["startDate"])
+        updates["start_date"] = data["startDate"] or None
     if "name" in updates and not updates["name"]:
         raise HTTPException(status_code=400, detail="Task name is required")
     if "parentId" in data:

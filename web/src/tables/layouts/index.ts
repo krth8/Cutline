@@ -4,6 +4,7 @@
  */
 import './board';
 import './calendar';
+import './gantt';
 import './list';
 import './table';
 

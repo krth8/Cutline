@@ -40,7 +40,8 @@ def db_create_task(project_id: str, name: str, created_by: str = None,
                    parent_id: str = None, clip_id: int = None, stage_tag: str = None,
                    section_id: str = None, description: str = None, status_id: str = None,
                    assignee_id: str = None, assignee_ids: List[str] = None,
-                   priority: str = None, due_date: str = None, custom_fields: dict = None) -> dict:
+                   priority: str = None, due_date: str = None, custom_fields: dict = None,
+                   start_date: str = None) -> dict:
     """Create a new task."""
     task_id = secrets.token_urlsafe(12)
     created_at = datetime.now().isoformat()
@@ -61,11 +62,11 @@ def db_create_task(project_id: str, name: str, created_by: str = None,
 
         execute(conn, """
             INSERT INTO tasks (id, project_id, parent_id, clip_id, section_id, stage_tag, name, description,
-                               status_id, assignee_id, priority, due_date, custom_fields, sort_order,
+                               status_id, assignee_id, priority, start_date, due_date, custom_fields, sort_order,
                                created_at, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (task_id, project_id, parent_id, clip_id, section_id, stage_tag, name, description,
-              status_id, first_assignee, priority, due_date, custom_fields_json, sort_order,
+              status_id, first_assignee, priority, start_date, due_date, custom_fields_json, sort_order,
               created_at, created_by))
 
     # Set all assignees in junction table
@@ -84,6 +85,7 @@ def db_create_task(project_id: str, name: str, created_by: str = None,
         "statusId": status_id,
         "assigneeIds": final_assignee_ids,
         "priority": priority,
+        "startDate": start_date,
         "dueDate": due_date,
         "customFields": custom_fields,
         "sortOrder": sort_order,
@@ -125,6 +127,7 @@ def db_get_task(task_id: str) -> Optional[dict]:
             "description": row["description"],
             "statusId": row["status_id"],
             "priority": row["priority"],
+            "startDate": row["start_date"],
             "dueDate": row["due_date"],
             "sortOrder": row["sort_order"],
             "createdAt": row["created_at"],
@@ -255,6 +258,7 @@ def db_list_tasks(project_id: str, parent_id: str = None, include_children: bool
             "description": row["description"],
             "statusId": row["status_id"],
             "priority": row["priority"],
+            "startDate": row["start_date"],
             "dueDate": row["due_date"],
             "sortOrder": row["sort_order"],
             "createdAt": row["created_at"],
@@ -311,6 +315,7 @@ def db_update_task(task_id: str, **kwargs) -> bool:
         "status_id": "status_id",
         "assignee_id": "assignee_id",
         "priority": "priority",
+        "start_date": "start_date",
         "due_date": "due_date",
         "custom_fields": "custom_fields",
         "sort_order": "sort_order"
