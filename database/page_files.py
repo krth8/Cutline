@@ -55,3 +55,11 @@ def db_delete_files_of_pages(page_ids: List[str]) -> None:
     with get_db() as conn:
         for page_id in page_ids:
             execute(conn, "DELETE FROM page_files WHERE page_id = ?", (page_id,))
+
+
+def db_list_page_files(page_id: str) -> List[dict]:
+    """Every file row of a page, oldest first."""
+    with get_db() as conn:
+        rows = fetchall(execute(conn, f"SELECT {_COLUMNS} FROM page_files WHERE page_id = ? ORDER BY created_at, id",
+                                (page_id,)))
+    return [_file(r) for r in rows]
