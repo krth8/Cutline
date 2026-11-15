@@ -48,10 +48,11 @@ class TableSource:
 def custom_columns_for(table_ref: str) -> List[dict]:
     """Hook for WP T2: the user-defined columns of a table, as Column dicts (builtin: False).
 
-    Sources append these after their builtin columns in schema(). Until T2 exists there
-    are none.
+    Sources append these after their builtin columns in schema(), in sort order. Custom
+    columns belong to one project: ``tasks:*`` has none (rows still carry their values).
     """
-    return []
+    from .columns import list_columns
+    return list_columns(table_ref)
 
 
 _TASKS_REF = re.compile(r"^tasks:(\*|[A-Za-z0-9_-]+)$")

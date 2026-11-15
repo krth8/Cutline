@@ -731,15 +731,15 @@ Risks:
 | P1 | done | main | Merged. Adds `import_claimed_by`; `sort_order` is double precision; change `restored` exists; task pages are not in the tree. |
 | P2 | done | main | Merged. Router is included in server.py before the legacy `/ws/{session}/{user}` catch-all. Client notes are in the P2 commit and api/pagesync.py. |
 | P3 | done | main | Merged. Not imported by the bundle yet (about 230 KB gzip: lazy-load it). Image slash entry is left to P6. |
-| P4 | not started | | |
-| P5 | not started | | |
+| P4 | in progress | wp/P4-collab-client | |
+| P5 | in progress | wp/P5-page-tree | |
 | P6 | not started | | |
 | P7 | not started | | |
 | P8 | not started | | |
 | T1 | done | main | Merged. Open: moving a row to another parent through the table API (proposed: `parentId` on PATCH). |
-| T2 | not started | | |
-| T3 | not started | | |
-| T4 | not started | | |
+| T2 | done | main | Merged. Migration 004. Column has no `sortOrder` in GET (order = position). Custom names may not clash with builtin names. Old `PATCH /api/tasks/{id}` still replaces `customFields` wholesale. |
+| T3 | done | main | Merged. API in web/src/tables/store/index.ts; T4 plugs its REST view source in through `setViewSource`. `loading` = no result yet, `refreshing` is separate. `tasks:*` watches every project until S2. |
+| T4 | in progress | wp/T4-views | Migration 005. |
 | T5 | done | main | Merged. Value shapes in web/src/tables/cells/README.md. |
 | T6 | not started | | |
 | T7 | not started | | |
