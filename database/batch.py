@@ -223,33 +223,34 @@ def db_batch_upsert_tasks(tasks: List[dict]) -> int:
             if DB_TYPE == DatabaseType.POSTGRESQL:
                 execute(conn, """
                     INSERT INTO tasks (id, project_id, parent_id, clip_id, stage_tag, name,
-                                      description, status_id, assignee_id, due_date,
+                                      description, status_id, assignee_id, start_date, due_date,
                                       custom_fields, sort_order, created_at, created_by)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (id) DO UPDATE SET
                         name = EXCLUDED.name,
                         description = EXCLUDED.description,
                         status_id = EXCLUDED.status_id,
                         assignee_id = EXCLUDED.assignee_id,
+                        start_date = EXCLUDED.start_date,
                         due_date = EXCLUDED.due_date,
                         custom_fields = EXCLUDED.custom_fields,
                         sort_order = EXCLUDED.sort_order,
                         stage_tag = EXCLUDED.stage_tag
                 """, (task["id"], task["projectId"], task.get("parentId"), task.get("clipId"),
                       task.get("stageTag"), task["name"], task.get("description"),
-                      task.get("statusId"), first_assignee, task.get("dueDate"),
+                      task.get("statusId"), first_assignee, task.get("startDate"), task.get("dueDate"),
                       custom_fields_json, task.get("sortOrder", 0),
                       task.get("createdAt"), task.get("createdBy")))
             else:
                 execute(conn, """
                     INSERT OR REPLACE INTO tasks
                     (id, project_id, parent_id, clip_id, stage_tag, name, description,
-                     status_id, assignee_id, due_date, custom_fields, sort_order,
+                     status_id, assignee_id, start_date, due_date, custom_fields, sort_order,
                      created_at, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (task["id"], task["projectId"], task.get("parentId"), task.get("clipId"),
                       task.get("stageTag"), task["name"], task.get("description"),
-                      task.get("statusId"), first_assignee, task.get("dueDate"),
+                      task.get("statusId"), first_assignee, task.get("startDate"), task.get("dueDate"),
                       custom_fields_json, task.get("sortOrder", 0),
                       task.get("createdAt"), task.get("createdBy")))
 

@@ -87,11 +87,11 @@ def test_schema_has_the_builtin_columns(table, admin, project):
     assert schema["capabilities"] == {"create": True, "delete": True, "hierarchy": True, "editSchema": True}
     cols = {c["key"]: c for c in schema["columns"]}
     assert [c["key"] for c in schema["columns"]] == [
-        "name", "status", "assignees", "priority", "stage", "dueDate", "section", "clip",
+        "name", "status", "assignees", "priority", "stage", "startDate", "dueDate", "section", "clip",
         "description", "createdAt", "createdBy"]
     assert {k: c["type"] for k, c in cols.items()} == {
         "name": "text", "status": "status", "assignees": "people", "priority": "priority", "stage": "select",
-        "dueDate": "date", "section": "select", "clip": "clip", "description": "longtext",
+        "startDate": "date", "dueDate": "date", "section": "select", "clip": "clip", "description": "longtext",
         "createdAt": "date", "createdBy": "person"}
     assert all(c["builtin"] for c in cols.values())
     assert {k for k, c in cols.items() if c.get("readonly")} == {"clip", "createdAt", "createdBy"}
@@ -174,7 +174,8 @@ def test_row_shape(table, admin, editor, project):
     assert child["parentId"] == parent["id"] and child["childCount"] == 0 and child["canEdit"] is True
     assert child["values"] == {
         "name": "Child", "status": status["id"], "assignees": [editor["user"]["id"]], "priority": "medium",
-        "stage": "Layout", "dueDate": None, "section": None, "clip": None, "description": None,
+        "stage": "Layout", "startDate": None, "dueDate": None, "section": None, "clip": None,
+            "description": None,
         "createdAt": child["values"]["createdAt"], "createdBy": admin["user"]["id"]}
     root = next(r for r in t.rows({"parentId": None}) if r["id"] == parent["id"])
     assert root["childCount"] == 1

@@ -44,9 +44,9 @@ MAX_CONFIG = 8000
 KEY_PREFIX = "cf_"
 
 # Builtin task columns: their keys cannot be changed here, their names cannot be reused
-BUILTIN_KEYS = {"name", "status", "assignees", "priority", "stage", "dueDate", "section", "clip",
+BUILTIN_KEYS = {"name", "status", "assignees", "priority", "stage", "startDate", "dueDate", "section", "clip",
                 "description", "createdAt", "createdBy", "project"}
-BUILTIN_NAMES = {"name", "status", "assignees", "priority", "stage", "due date", "section", "clip",
+BUILTIN_NAMES = {"name", "status", "assignees", "priority", "stage", "start date", "due date", "section", "clip",
                  "description", "created", "created by", "project"}
 
 

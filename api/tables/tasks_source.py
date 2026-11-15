@@ -11,6 +11,7 @@ and the live events are exactly those of the task endpoints.
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from typing import Any, Dict, List, Optional
 
@@ -47,11 +48,16 @@ WRITABLE = {
     "assignees": "assigneeIds",
     "priority": "priority",
     "stage": "stageTag",
+    "startDate": "startDate",
     "dueDate": "dueDate",
     "section": "sectionId",
     "description": "description",
 }
 READONLY_KEYS = {"clip", "createdAt", "createdBy", "project"}
+
+
+# strict YYYY-MM-DD (date.fromisoformat alone also accepts other ISO forms on newer Pythons)
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _bad(detail: str) -> HTTPException:
@@ -142,6 +148,7 @@ class TasksSource(TableSource):
              "options": self._priority_options()},
             {"key": "stage", "name": "Stage", "type": "select", "builtin": True,
              "options": self._stage_options(project_ids)},
+            {"key": "startDate", "name": "Start date", "type": "date", "builtin": True},
             {"key": "dueDate", "name": "Due date", "type": "date", "builtin": True},
             {"key": "section", "name": "Section", "type": "select", "builtin": True, "options": sections},
             {"key": "clip", "name": "Clip", "type": "clip", "builtin": True, "readonly": True},
@@ -193,6 +200,7 @@ class TasksSource(TableSource):
             "assignees": [a["id"] for a in task.get("assignees", [])],
             "priority": task.get("priority"),
             "stage": task.get("stageTag"),
+            "startDate": task.get("startDate"),
             "dueDate": task.get("dueDate"),
             "section": task.get("sectionId"),
             "clip": clip,
@@ -283,11 +291,13 @@ class TasksSource(TableSource):
             section = db_get_section(value)
             if not section or section["projectId"] != project_id:
                 raise _bad("Unknown section for this project")
-        if key == "dueDate":
+        if key in ("startDate", "dueDate"):
+            if not _DATE_RE.match(value):
+                raise _bad(f"{key} must be a date like 2030-01-31")
             try:
                 date.fromisoformat(value)
             except ValueError:
-                raise _bad("dueDate must be a date like 2030-01-31")
+                raise _bad(f"{key} must be a date like 2030-01-31")
         return value
 
     async def create_row(self, principal: dict, values: dict, parent_id: Optional[str] = None,

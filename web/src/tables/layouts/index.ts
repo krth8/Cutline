@@ -6,6 +6,7 @@ import { registerLayout } from './registry';
 import { FallbackLayout } from './fallback/FallbackLayout';
 import './board';
 import './list';
+import './gantt';
 
 // Placeholder for the real table layout (T6 registers 'table' again and removes this line)
 registerLayout('table', FallbackLayout);
