@@ -12,8 +12,12 @@ import { fileURLToPath } from 'node:url';
 const watch = process.argv.includes('--watch');
 const here = path.dirname(fileURLToPath(import.meta.url));
 const registryFile = path.join(here, 'src/pages/editor/registry');
-// The part of the view block that needs main-bundle code (React content, API, platform): see viewBlock/host.ts
-const viewBlockHostFile = path.join(here, 'src/pages/editor/blocks/viewBlock/host');
+// The parts of a block that need main-bundle code (React content, API, platform): each block has a host.ts
+// (see viewBlock/host.ts); in the chunk its import becomes window.__clShared[<key>]
+const blockHosts = new Map([
+  [path.join(here, 'src/pages/editor/blocks/viewBlock/host'), 'view-block-host'],
+  [path.join(here, 'src/pages/editor/blocks/summary/host'), 'summary-host'],
+]);
 
 const EDITOR_CHUNK_URL = '/static/dist/pages-editor.js';
 const SHARED = new Set(['react', 'react/jsx-runtime', 'react/jsx-dev-runtime', 'react-dom', 'yjs', 'y-protocols/awareness']);
@@ -36,9 +40,10 @@ const sharedFromMainBundle = {
       if (args.path.startsWith('.') && path.resolve(args.resolveDir, args.path) === registryFile) {
         return { path: 'editor-registry', namespace: 'cl-shared' };
       }
-      // Same for the view block's host: its React content, the row store and the layouts exist once, in the main bundle
-      if (args.path.startsWith('.') && path.resolve(args.resolveDir, args.path) === viewBlockHostFile) {
-        return { path: 'view-block-host', namespace: 'cl-shared' };
+      // Same for the blocks' hosts: their React content, the row store and the layouts exist once, in the main bundle
+      if (args.path.startsWith('.')) {
+        const host = blockHosts.get(path.resolve(args.resolveDir, args.path));
+        if (host) return { path: host, namespace: 'cl-shared' };
       }
       return undefined;
     });

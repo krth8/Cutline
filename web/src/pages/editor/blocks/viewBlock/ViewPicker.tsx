@@ -7,10 +7,13 @@ export function ViewPicker({
   open,
   onClose,
   onPick,
+  pinnedIds = [],
 }: {
   open: boolean;
   onClose(): void;
   onPick(view: ViewSummary): void;
+  /** Views to list first, marked "on this page" (the view blocks of the page being edited). */
+  pinnedIds?: string[];
 }) {
   const [views, setViews] = useState<ViewSummary[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -31,7 +34,10 @@ export function ViewPicker({
     };
   }, [open]);
 
-  const shown = (views ?? []).filter((v) => v.name.toLowerCase().includes(search.trim().toLowerCase()));
+  const pinned = new Set(pinnedIds);
+  const shown = (views ?? [])
+    .filter((v) => v.name.toLowerCase().includes(search.trim().toLowerCase()))
+    .sort((a, b) => Number(pinned.has(b.id)) - Number(pinned.has(a.id)));
 
   return (
     <Dialog
@@ -67,6 +73,7 @@ export function ViewPicker({
                 <span className="cl-viewpicker__name">{v.name}</span>
                 <span className="cl-viewpicker__meta">
                   {v.layout} · {v.tableRef === 'tasks:*' ? 'all my projects' : 'project tasks'}
+                  {pinned.has(v.id) ? ' · on this page' : ''}
                 </span>
               </button>
             </li>

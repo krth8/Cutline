@@ -3,7 +3,7 @@
  *
  * Production: web/build.mjs builds `editorChunk.ts` as an ES module (static/dist/pages-editor.js plus
  * pages-editor.css) and turns the `import('./editorChunk')` below into a runtime import of that URL.
- * The chunk gets React, Yjs and the block registry and the view block's host from `window.__clShared` (set below) so there is
+ * The chunk gets React, Yjs and the block registry and the blocks' hosts from `window.__clShared` (set below) so there is
  * exactly one copy of each. Tests and the dev builds simply bundle it.
  */
 import * as ReactJsxRuntime from 'react/jsx-runtime';
@@ -11,6 +11,7 @@ import * as React from 'react';
 import * as ReactDom from 'react-dom';
 import * as AwarenessProtocol from 'y-protocols/awareness';
 import * as Y from 'yjs';
+import * as summaryHost from '../editor/blocks/summary/host';
 import * as viewBlockHost from '../editor/blocks/viewBlock/host';
 import * as editorRegistry from '../editor/registry';
 
@@ -28,6 +29,7 @@ if (lazy) {
     'y-protocols/awareness': AwarenessProtocol,
     'editor-registry': editorRegistry,
     'view-block-host': viewBlockHost,
+    'summary-host': summaryHost,
   };
 }
 
