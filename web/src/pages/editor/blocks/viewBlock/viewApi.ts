@@ -4,12 +4,12 @@
  */
 import { ApiError, requestJson } from '../../../../api/http';
 import { getPage } from '../../../../api/pageTree';
-import { getSchema } from '../../../../api/tables';
+import { createTable, deleteTable, getSchema, getTableInfo } from '../../../../api/tables';
 import { createView, deleteView, getView } from '../../../../api/views';
 import { getPlatform } from '../../../../platform';
 import { layoutDefaults, getLayout } from '../../../../tables/layouts';
 import type { View } from '../../../../tables/types';
-import { newViewSpec, ownsView, type PageContext } from './model';
+import { newViewSpec, ownsView, tableViewSpec, type PageContext } from './model';
 
 export interface ViewSummary {
   id: string;
@@ -52,6 +52,26 @@ export async function createViewForPage(layout: string, ctx: PageContext): Promi
   return view as View & { ownerPageId: string };
 }
 
+/** Create a table view owned by the page on an existing custom table. */
+export async function createViewOnTable(tableRef: string, name: string, ctx: PageContext): Promise<View & { ownerPageId: string }> {
+  const view = await createView({ ...tableViewSpec(tableRef, name), ownerPageId: ctx.pageId });
+  return view as View & { ownerPageId: string };
+}
+
+/**
+ * "New table": a custom table in the page's space with the title column and one text column "Notes", and a
+ * table view of it owned by the page. When the view cannot be made the new table is removed again.
+ */
+export async function createTableViewForPage(ctx: PageContext): Promise<View & { ownerPageId: string }> {
+  const table = await createTable({ name: 'Untitled table', space: await spaceOf(ctx), columns: [{ name: 'Notes', type: 'text' }] });
+  try {
+    return await createViewOnTable(table.ref, table.name, ctx);
+  } catch (e) {
+    await deleteTable(table.ref).catch(() => undefined);
+    throw e;
+  }
+}
+
 /**
  * The view id a pasted copy of `sourceId` gets: a view this page owns is copied (same table, layout and
  * config, new row in the database); a view picked from elsewhere is shared, so it keeps its id.
@@ -76,8 +96,11 @@ export async function copyViewForPaste(sourceId: string, ctx: PageContext): Prom
 export async function confirmAndDeleteViewOf(viewId: string | null, ctx: PageContext | null): Promise<boolean> {
   if (!viewId || !ctx) return true;
   let owned = false;
+  let tableRef = '';
   try {
-    owned = ownsView((await getView(viewId)) as View & { ownerPageId?: string | null }, ctx.pageId);
+    const view = (await getView(viewId)) as View & { ownerPageId?: string | null };
+    owned = ownsView(view, ctx.pageId);
+    tableRef = view.tableRef;
   } catch {
     return true; // already gone or not readable: only the block is left to remove
   }
@@ -87,6 +110,7 @@ export async function confirmAndDeleteViewOf(viewId: string | null, ctx: PageCon
     confirmLabel: 'Delete',
   });
   if (!ok) return false;
+  const dropTable = tableRef.startsWith('tbl_') ? await askToDeleteTable(tableRef) : false;
   try {
     await deleteView(viewId);
   } catch (e) {
@@ -95,5 +119,30 @@ export async function confirmAndDeleteViewOf(viewId: string | null, ctx: PageCon
       return false;
     }
   }
+  if (dropTable) {
+    try {
+      await deleteTable(tableRef);
+    } catch (e) {
+      getPlatform().toast('error', e instanceof Error ? e.message : 'Could not delete the table');
+    }
+  }
   return true;
+}
+
+/**
+ * The view being deleted is the only one on a custom table: ask whether the table goes too. Keeping the
+ * table is the default (Cancel, or no right to delete it), so rows are never lost by accident.
+ */
+async function askToDeleteTable(tableRef: string): Promise<boolean> {
+  try {
+    const info = await getTableInfo(tableRef);
+    if (info.viewCount !== 1 || !info.canEditSchema) return false;
+    const rows = `${info.rowCount} ${info.rowCount === 1 ? 'row' : 'rows'}`;
+    return await getPlatform().confirm(
+      `This is the only view of the table "${info.name}" (${rows}). Delete the table and its rows too? Cancel keeps the table.`,
+      { danger: true, confirmLabel: 'Delete table' },
+    );
+  } catch {
+    return false;
+  }
 }

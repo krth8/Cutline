@@ -1,3 +1,6 @@
+/* The page editor's floating toolbar (pages/editor/editor.css) also uses the class cl-toolbar and makes it absolute;
+   inside a view block both stylesheets are loaded, so the view toolbar must say it is part of the flow. */
+.cl-viewshell > .cl-toolbar { position: static; z-index: auto; }
 .cl-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 6px 0; }
 .cl-toolbar__layouts { display: inline-flex; gap: 2px; }
 .cl-toolbar__layout.is-active { color: var(--text); background: var(--accent-bg-strong); }

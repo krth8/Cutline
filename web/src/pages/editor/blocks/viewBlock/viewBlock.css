@@ -74,3 +74,4 @@
 .cl-viewpicker__item:focus-visible { background: var(--bg-hover); }
 .cl-viewpicker__meta { font-size: 12px; color: var(--text-muted); }
 .cl-viewpicker__state { color: var(--text-muted); margin: 8px 0; }
+.cl-viewpicker__heading { margin: 8px 0 4px; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }

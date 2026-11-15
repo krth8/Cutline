@@ -209,3 +209,41 @@ export function useTaskId(): string | null {
   const url = useSyncExternalStore(subscribe, currentUrl, currentUrl);
   return taskIdOfUrl(url);
 }
+
+// ---- Row panel (`?row=<tableRef>:<rowId>`: a row of a custom table, shown over the current route) ----
+
+/** The custom-table row a URL asks to show (`?row=tbl_x:rowId`), or null. */
+export function rowOfUrl(url: string): { ref: string; id: string } | null {
+  try {
+    const value = new URL(url, 'http://cutline.invalid').searchParams.get('row');
+    const at = value ? value.indexOf(':') : -1;
+    if (!value || at <= 0 || at === value.length - 1) return null;
+    return { ref: value.slice(0, at), id: value.slice(at + 1) };
+  } catch {
+    return null;
+  }
+}
+
+/** `url` with the row panel for `row` open, or closed when `row` is null. Everything else is kept. */
+export function withRowParam(url: string, row: { ref: string; id: string } | null): string {
+  const parsed = new URL(url, 'http://cutline.invalid');
+  if (row) parsed.searchParams.set('row', `${row.ref}:${row.id}`);
+  else parsed.searchParams.delete('row');
+  return parsed.pathname + parsed.search + parsed.hash;
+}
+
+/** Open the row panel of a custom-table row over the current page. */
+export function openCustomRow(ref: string, id: string): void {
+  getPlatform().navigate(withRowParam(currentUrl(), { ref, id }));
+}
+
+/** Close the row panel (the page underneath stays). */
+export function closeCustomRow(): void {
+  getPlatform().navigate(withRowParam(currentUrl(), null));
+}
+
+/** The custom-table row the URL asks to show, or null. Re-renders on navigation. */
+export function useCustomRow(): { ref: string; id: string } | null {
+  const url = useSyncExternalStore(subscribe, currentUrl, currentUrl);
+  return useMemo(() => rowOfUrl(url), [url]);
+}

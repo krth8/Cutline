@@ -21,6 +21,8 @@ export interface TableSchema {
   columns: Column[];
   titleColumn: string; // 'name' for tasks
   capabilities: { create: boolean; delete: boolean; hierarchy: boolean; editSchema: boolean };
+  /** Custom tables only: the space the table lives in (decides which live events reach it). */
+  space?: { type: 'project'; projectId: string } | { type: 'personal' };
 }
 
 export interface Row {

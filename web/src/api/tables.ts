@@ -72,3 +72,37 @@ export const purgeRow = (ref: string, id: string) => requestJson<{ success: bool
 
 /** Delete everything in the trash of a table for good (project owner or admin). */
 export const emptyTrash = (ref: string) => requestJson<{ removed: number }>('DELETE', `${base(ref)}/trash`);
+
+// ---- Custom tables (`tbl_<id>`) ----
+
+/** What the server says about a custom table. `space` is 'me' or 'p:<projectId>'. */
+export interface CustomTable {
+  id: string;
+  ref: string;
+  name: string;
+  space: string;
+  spaceType: 'project' | 'personal';
+  projectId: string | null;
+  canEdit: boolean;
+  canEditSchema: boolean;
+}
+
+export type CustomTableInfo = CustomTable & { rowCount: number; viewCount: number };
+
+/** The custom tables of a space ('me' or 'p:<projectId>') the caller may read. */
+export const listTables = (space: string) =>
+  requestJson<{ tables: CustomTable[] }>('GET', `/api/tables?space=${enc(space)}`).then((r) => r.tables);
+
+/** Create a table in a space; `columns` are extra starter columns after the title column. */
+export const createTable = (body: {
+  name: string;
+  space: string;
+  columns?: Array<{ name: string; type: Column['type']; options?: Array<{ label: string }> }>;
+}) => requestJson<CustomTable>('POST', '/api/tables', body);
+
+export const getTableInfo = (ref: string) => requestJson<CustomTableInfo>('GET', base(ref));
+
+export const renameTable = (ref: string, name: string) => requestJson<CustomTable>('PATCH', base(ref), { name });
+
+/** Delete the table with its rows, columns and views. */
+export const deleteTable = (ref: string) => requestJson<{ success: boolean; deletedViews: number }>('DELETE', base(ref));

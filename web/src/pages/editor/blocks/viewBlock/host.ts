@@ -9,7 +9,7 @@ import { getPlatform } from '../../../../platform';
 import { listLayouts } from '../../../../tables/layouts';
 
 export { ViewBlockContent, type ViewBlockContentProps } from './ViewBlockContent';
-export { copyViewForPaste, createViewForPage, confirmAndDeleteViewOf } from './viewApi';
+export { copyViewForPaste, createViewForPage, createTableViewForPage, confirmAndDeleteViewOf } from './viewApi';
 
 /** Names of the layouts that have a component registered right now. */
 export function registeredLayoutNames(): string[] {

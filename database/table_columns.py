@@ -3,7 +3,7 @@
 import json
 import secrets
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from .engine import execute, fetchall, fetchone
 from .utils import get_db
@@ -73,9 +73,11 @@ def _write_values(conn, task_values: Dict[str, dict]) -> None:
                 (json.dumps(values) if values else None, task_id))
 
 
-def db_update_table_column(table_ref: str, key: str, fields: dict, task_values: Dict[str, dict]) -> None:
+def db_update_table_column(table_ref: str, key: str, fields: dict, task_values: Dict[str, dict],
+                           write: Callable = _write_values) -> None:
     """Change a column (name, type, config, sortOrder given in fields) and rewrite the values of the
-    given tasks (task id -> complete custom_fields) in one transaction."""
+    given rows (row id -> complete values; tasks by default, ``write`` for another kind of row) in one
+    transaction."""
     columns = {"name": "name", "type": "type", "sortOrder": "sort_order"}
     sets, params = [], []
     for field, value in fields.items():
@@ -89,11 +91,12 @@ def db_update_table_column(table_ref: str, key: str, fields: dict, task_values: 
         if sets:
             execute(conn, f"UPDATE table_columns SET {', '.join(sets)} WHERE table_ref = ? AND key = ?",
                     tuple(params) + (table_ref, key))
-        _write_values(conn, task_values)
+        write(conn, task_values)
 
 
-def db_delete_table_column(table_ref: str, key: str, task_values: Dict[str, dict]) -> None:
-    """Delete a column and rewrite the values of the given tasks, in one transaction."""
+def db_delete_table_column(table_ref: str, key: str, task_values: Dict[str, dict],
+                           write: Callable = _write_values) -> None:
+    """Delete a column and rewrite the values of the given rows, in one transaction."""
     with get_db() as conn:
         execute(conn, "DELETE FROM table_columns WHERE table_ref = ? AND key = ?", (table_ref, key))
-        _write_values(conn, task_values)
+        write(conn, task_values)

@@ -1,6 +1,6 @@
 """The TableSource contract and the resolver from a table ref to a source.
 
-A table ref names a table: ``tasks:<projectId>``, ``tasks:*`` or (Phase 4) ``tbl_<id>``.
+A table ref names a table: ``tasks:<projectId>``, ``tasks:*`` or ``tbl_<id>`` (a custom table).
 Every source answers the same six calls, so the routes and every view layout work the
 same for tasks and for user-created tables.
 
@@ -88,6 +88,7 @@ def custom_columns_for(table_ref: str) -> List[dict]:
 
 
 _TASKS_REF = re.compile(r"^tasks:(\*|[A-Za-z0-9_-]+)$")
+_CUSTOM_REF = re.compile(r"^tbl_[A-Za-z0-9_-]+$")
 
 
 def resolve_source(ref: str) -> TableSource:
@@ -96,5 +97,7 @@ def resolve_source(ref: str) -> TableSource:
     if match:
         from .tasks_source import TasksSource
         return TasksSource(match.group(1))
-    # Phase 4 (WP C1): refs like "tbl_<id>" resolve to a CustomTableSource here.
+    if _CUSTOM_REF.match(ref or ""):
+        from .custom_source import CustomTableSource
+        return CustomTableSource(ref)
     raise HTTPException(status_code=404, detail=f"Unknown table {ref!r}")

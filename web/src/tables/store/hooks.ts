@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import * as api from '../../api/tables';
 import { getPlatform } from '../../platform';
-import { buildRoute, parseRoute } from '../../router';
+import { buildRoute, openCustomRow, parseRoute } from '../../router';
 import type { LayoutProps, Query, QueryResult, Row, TableSchema, View } from '../types';
 import * as mutations from './mutations';
 import {
@@ -119,7 +119,12 @@ export function toLayoutProps(data: ViewQueryData): LayoutProps | null {
 
 const viewOf = (d: ViewDescriptor): View => ({ id: d.id, tableRef: d.tableRef, name: d.name ?? '', layout: d.layout, config: d.config });
 
-function openRow(id: string): void {
+/** A task opens the task panel (`?task=`); a row of a custom table opens the row panel (`?row=`). */
+function openRow(ref: string | null, id: string): void {
+  if (ref?.startsWith('tbl_')) {
+    openCustomRow(ref, id);
+    return;
+  }
   const route = parseRoute(window.location.pathname + window.location.search);
   if (route.kind === 'notFound') {
     const url = new URL(window.location.href);
@@ -151,7 +156,7 @@ function useViewData(descriptor: ViewDescriptor | null, updateConfig: (patch: Pa
       createRow: (values, opts) => mutations.createRow(latest.current.ref!, values, opts),
       deleteRows: (ids) => mutations.deleteRows(latest.current.ref!, ids),
       reorder: (ids, before) => mutations.reorder(latest.current.ref!, ids, before),
-      openRow,
+      openRow: (id) => openRow(latest.current.ref, id),
       updateConfig: (patch) => latest.current.updateConfig(patch),
       loadChildren: (parentId) => loadChildren(latest.current.ref!, latest.current.query, parentId),
       moveRow: (id, parentId) => mutations.moveRow(latest.current.ref!, id, parentId),

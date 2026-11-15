@@ -11,7 +11,7 @@ import { filterSlashItems } from '../../filter';
 import { getRegisteredSlashItems } from '../../registry';
 import { LinkedNetwork } from '../../testing/linkedProvider';
 import { ViewBlockContent } from './ViewBlockContent';
-import { clampHeight, type PageContext, findNewDuplicates, newViewSpec, ownsView } from './model';
+import { clampHeight, type PageContext, findNewDuplicates, newViewSpec, ownsView, tableViewSpec } from './model';
 import './index'; // registers the block
 
 // The real shell needs the whole store; the block only has to put it in the right place
@@ -37,6 +37,21 @@ let deniedTables: Set<string>;
 /** The space the fake server reports for the page. */
 let pageSpace = 'p:p1';
 
+interface StoredTable {
+  ref: string;
+  id: string;
+  name: string;
+  space: string;
+  rowCount: number;
+  canEdit: boolean;
+  canEditSchema: boolean;
+  columns?: unknown;
+}
+/** The custom tables of the fake server. */
+let tables: Map<string, StoredTable>;
+/** Make the next view creation fail (a table made just before must be removed again). */
+let failViewCreate = false;
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -47,6 +62,27 @@ function installServer() {
     const method = (init?.method ?? 'GET').toUpperCase();
     const body = init?.body ? JSON.parse(init.body as string) : undefined;
     const one = /^\/api\/views\/([^/?]+)$/.exec(path);
+    const table = /^\/api\/tables\/(tbl_[^/?]+)$/.exec(path);
+    if (method === 'POST' && path === '/api/tables') {
+      const ref = `tbl_${tables.size + 1}`;
+      const made = { ref, id: ref, name: body.name, space: body.space, rowCount: 0, canEdit: true, canEditSchema: true, columns: body.columns };
+      tables.set(ref, made);
+      return json(made);
+    }
+    if (method === 'GET' && path.startsWith('/api/tables?space=')) {
+      const space = decodeURIComponent(path.split('=')[1]!);
+      return json({ tables: [...tables.values()].filter((t) => t.space === space) });
+    }
+    if (table && method === 'GET') {
+      const t = tables.get(table[1]!);
+      if (!t) return json({ detail: 'Table not found' }, 404);
+      return json({ ...t, viewCount: [...views.values()].filter((v) => v.tableRef === t.ref).length });
+    }
+    if (table && method === 'DELETE') {
+      fake.fetchCalls.push({ path, ...(init ? { init } : {}) });
+      return tables.delete(table[1]!) ? json({ success: true, deletedViews: 0 }) : json({ detail: 'Table not found' }, 404);
+    }
+    if (method === 'POST' && path === '/api/views' && failViewCreate) return json({ detail: 'No way' }, 500);
     if (method === 'POST' && path === '/api/views') {
       const id = `v${++counter}`;
       const view = { id, canEdit: true, ownerPageId: null, config: {}, ...body } as StoredView;
@@ -118,6 +154,8 @@ const ids = (editor: TiptapEditor) => blocks(editor).map((b) => b.attrs?.viewId)
 
 beforeEach(() => {
   views = new Map();
+  tables = new Map();
+  failViewCreate = false;
   counter = 100; // ids made by the fake server never collide with the fixed ids used in the tests
   deniedTables = new Set();
   pageSpace = 'p:p1';
@@ -150,11 +188,11 @@ describe('model', () => {
 });
 
 describe('slash entries', () => {
-  it('offers the five layouts and an existing view, whether or not the layout has a component', () => {
+  it('offers the five layouts, a new table and an existing view, whether or not the layout has a component', () => {
     const titles = getRegisteredSlashItems()
       .filter((i) => i.group === 'Views')
       .map((i) => i.title);
-    expect(titles).toEqual(['Table', 'Board', 'Calendar', 'Gantt', 'List', 'Existing view']);
+    expect(titles).toEqual(['Table', 'Board', 'Calendar', 'Gantt', 'List', 'New table', 'Existing view']);
     expect(filterSlashItems(getRegisteredSlashItems(), 'board').map((i) => i.title)).toContain('Board');
   });
 
@@ -179,6 +217,51 @@ describe('slash entries', () => {
     });
     await waitFor(() => expect(ids(m.editor)).toHaveLength(1));
     expect([...views.values()][0]).toMatchObject({ tableRef: 'tasks:*', layout: 'calendar', ownerPageId: 'page1' });
+  });
+});
+
+describe('new table', () => {
+  const newTable = () => getRegisteredSlashItems().find((i) => i.id === 'view-new-table')!;
+
+  it('is found by typing "table"', () => {
+    expect(filterSlashItems(getRegisteredSlashItems(), 'new tab').map((i) => i.title)).toContain('New table');
+    expect(newTable()).toMatchObject({ title: 'New table', group: 'Views' });
+  });
+
+  it('creates a custom table in the page space with a Notes column and a table view owned by the page', async () => {
+    const m = await mount();
+    m.editor.commands.focus();
+    await act(async () => {
+      newTable().run(m.editor, { from: 1, to: 1 });
+    });
+    await waitFor(() => expect(ids(m.editor)).toHaveLength(1));
+    const table = [...tables.values()][0]!;
+    expect(table).toMatchObject({ space: 'p:p1', name: 'Untitled table', columns: [{ name: 'Notes', type: 'text' }] });
+    const view = [...views.values()][0]!;
+    expect(view).toMatchObject({ tableRef: table.ref, layout: 'table', ownerPageId: 'page1' });
+    expect(view.config).toEqual(tableViewSpec(table.ref, 'x').config); // created-by columns start hidden
+    expect(ids(m.editor)).toEqual([view.id]);
+  });
+
+  it('in a personal page the table is a personal table', async () => {
+    pageSpace = 'me';
+    const m = await mount();
+    await act(async () => {
+      newTable().run(m.editor, { from: 1, to: 1 });
+    });
+    await waitFor(() => expect(ids(m.editor)).toHaveLength(1));
+    expect([...tables.values()][0]!.space).toBe('me');
+  });
+
+  it('removes the table again when its view cannot be created, and puts no block in the page', async () => {
+    failViewCreate = true;
+    const m = await mount();
+    await act(async () => {
+      newTable().run(m.editor, { from: 1, to: 1 });
+    });
+    await waitFor(() => expect(fake.toasts).toHaveLength(1));
+    expect(tables.size).toBe(0);
+    expect(ids(m.editor)).toEqual([]);
   });
 });
 
@@ -410,5 +493,124 @@ describe('ViewBlockContent', () => {
     expect(list.textContent).toContain('First');
     fireEvent.click(screen.getByText('Second'));
     expect(props.setAttrs).toHaveBeenCalledWith({ viewId: 'v2' });
+  });
+});
+
+describe('tables in the picker and deleting a table view', () => {
+  const baseProps = (over: Partial<Parameters<typeof ViewBlockContent>[0]> = {}) => ({
+    viewId: null as string | null,
+    copying: false,
+    height: null,
+    editable: true,
+    context: CONTEXT,
+    setAttrs: vi.fn(),
+    removeBlock: vi.fn(),
+    ...over,
+  });
+  const addTable = (extra: Partial<StoredTable> = {}) => {
+    const t: StoredTable = { ref: `tbl_${tables.size + 1}`, id: '', name: 'Shots', space: 'p:p1', rowCount: 3, canEdit: true, canEditSchema: true, ...extra };
+    tables.set(t.ref, t);
+    return t;
+  };
+
+  it('lists the custom tables of the page space and starts a new table view on a picked one', async () => {
+    const mine = addTable({ name: 'Shots' });
+    addTable({ name: 'Elsewhere', space: 'p:other' });
+    const props = baseProps();
+    render(<ViewBlockContent {...props} />);
+    fireEvent.click(screen.getByTestId('viewblock-pick'));
+    const list = await screen.findByTestId('view-picker-tables');
+    expect(list.textContent).toContain('Shots');
+    expect(list.textContent).not.toContain('Elsewhere');
+    fireEvent.click(screen.getByText('Shots'));
+    await waitFor(() => expect(props.setAttrs).toHaveBeenCalledOnce());
+    const view = [...views.values()][0]!;
+    expect(view).toMatchObject({ tableRef: mine.ref, layout: 'table', ownerPageId: 'page1' });
+    expect(props.setAttrs).toHaveBeenCalledWith({ viewId: view.id });
+  });
+
+  it('shows the views even when the tables cannot be listed', async () => {
+    addView({ id: 'v1', name: 'First', ownerPageId: null });
+    const base = fake.fetch;
+    fake.fetch = async (path, init) => (path.startsWith('/api/tables?') ? json({ detail: 'no' }, 500) : base(path, init));
+    render(<ViewBlockContent {...baseProps()} />);
+    fireEvent.click(screen.getByTestId('viewblock-pick'));
+    expect((await screen.findByTestId('view-picker-list')).textContent).toContain('First');
+    expect(screen.queryByTestId('view-picker-tables')).toBeNull();
+  });
+
+  /** Answer the confirms in order: first "delete the view?", then "delete the table too?". */
+  const answers = (...list: boolean[]) => {
+    let i = 0;
+    fake.confirm = async (message, opts) => {
+      fake.confirmations.push({ message, ...(opts ? { opts } : {}) });
+      return list[i++] ?? false;
+    };
+  };
+
+  it('asks about the table when the view was its only one, and keeps the table by default', async () => {
+    const t = addTable();
+    addView({ id: 'v1', tableRef: t.ref, layout: 'table' });
+    const props = baseProps({ viewId: 'v1' });
+    render(<ViewBlockContent {...props} />);
+    await screen.findByTestId('shell-stub');
+    answers(true, false);
+    fireEvent.click(screen.getByTestId('viewblock-remove'));
+    await waitFor(() => expect(props.removeBlock).toHaveBeenCalledOnce());
+    expect(fake.confirmations).toHaveLength(2);
+    expect(fake.confirmations[1]!.message).toContain('only view of the table "Shots" (3 rows)');
+    expect(views.has('v1')).toBe(false);
+    expect(tables.has(t.ref)).toBe(true);
+  });
+
+  it('deletes the table too when the user says so', async () => {
+    const t = addTable();
+    addView({ id: 'v1', tableRef: t.ref, layout: 'table' });
+    const props = baseProps({ viewId: 'v1' });
+    render(<ViewBlockContent {...props} />);
+    await screen.findByTestId('shell-stub');
+    answers(true, true);
+    fireEvent.click(screen.getByTestId('viewblock-remove'));
+    await waitFor(() => expect(props.removeBlock).toHaveBeenCalledOnce());
+    expect(tables.has(t.ref)).toBe(false);
+  });
+
+  it('does not ask about the table when another view still uses it, or when the user may not delete it', async () => {
+    const shared = addTable();
+    addView({ id: 'v1', tableRef: shared.ref });
+    addView({ id: 'v2', tableRef: shared.ref, ownerPageId: 'other-page' });
+    const props = baseProps({ viewId: 'v1' });
+    const { unmount } = render(<ViewBlockContent {...props} />);
+    await screen.findByTestId('shell-stub');
+    answers(true, true);
+    fireEvent.click(screen.getByTestId('viewblock-remove'));
+    await waitFor(() => expect(props.removeBlock).toHaveBeenCalledOnce());
+    expect(fake.confirmations).toHaveLength(1);
+    expect(tables.has(shared.ref)).toBe(true);
+    unmount();
+
+    const locked = addTable({ canEditSchema: false });
+    addView({ id: 'v3', tableRef: locked.ref });
+    fake.confirmations.length = 0;
+    const props2 = baseProps({ viewId: 'v3' });
+    render(<ViewBlockContent {...props2} />);
+    await screen.findByTestId('shell-stub');
+    answers(true, true);
+    fireEvent.click(screen.getByTestId('viewblock-remove'));
+    await waitFor(() => expect(props2.removeBlock).toHaveBeenCalledOnce());
+    expect(fake.confirmations).toHaveLength(1);
+  });
+
+  it('cancelling the first question keeps the view and the table and asks nothing more', async () => {
+    const t = addTable();
+    addView({ id: 'v1', tableRef: t.ref });
+    const props = baseProps({ viewId: 'v1' });
+    render(<ViewBlockContent {...props} />);
+    await screen.findByTestId('shell-stub');
+    answers(false);
+    fireEvent.click(screen.getByTestId('viewblock-remove'));
+    await waitFor(() => expect(fake.confirmations).toHaveLength(1));
+    expect(props.removeBlock).not.toHaveBeenCalled();
+    expect(views.has('v1') && tables.has(t.ref)).toBe(true);
   });
 });

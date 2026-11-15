@@ -51,6 +51,25 @@ export function newViewSpec(
   };
 }
 
+/** A new view on a custom table: the table layout, without the read-only created-by columns. */
+export function tableViewSpec(
+  tableRef: string,
+  name: string,
+): { tableRef: string; name: string; layout: 'table'; config: { query: Record<string, unknown>; columns: Array<{ key: string; hidden: boolean }> } } {
+  return {
+    tableRef,
+    name,
+    layout: 'table',
+    config: {
+      query: {},
+      columns: [
+        { key: 'createdAt', hidden: true },
+        { key: 'createdBy', hidden: true },
+      ],
+    },
+  };
+}
+
 /** True when the page owns the view, i.e. the view is deleted together with its block. */
 export function ownsView(view: { ownerPageId?: string | null }, pageId: string): boolean {
   return !!view.ownerPageId && view.ownerPageId === pageId;

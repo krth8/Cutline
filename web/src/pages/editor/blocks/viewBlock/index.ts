@@ -7,7 +7,7 @@ import type { Transaction } from '@tiptap/pm/state';
 import { registerBlock, type SlashItem } from '../../registry';
 import { getEditorContext } from './context';
 import * as host from './host';
-import { VIEW_BLOCK, VIEW_LAYOUTS } from './model';
+import { VIEW_BLOCK, VIEW_LAYOUTS, type PageContext } from './model';
 import { ViewBlock } from './viewBlockNode';
 
 export { ViewBlock } from './viewBlockNode';
@@ -27,7 +27,11 @@ const DESCRIPTIONS: Record<string, string> = {
  * transaction (deleting the text first and inserting later, in two steps, made the collaboration binding
  * lose the deletion for the other editors). The range is followed through any edits made meanwhile.
  */
-async function insertNewView(editor: Editor, range: Range, layout: string): Promise<void> {
+async function insertNewView(
+  editor: Editor,
+  range: Range,
+  create: (ctx: PageContext) => Promise<{ id: string }>,
+): Promise<void> {
   const ctx = getEditorContext(editor);
   if (!ctx) {
     host.showError('This page cannot show views here');
@@ -41,7 +45,7 @@ async function insertNewView(editor: Editor, range: Range, layout: string): Prom
   };
   editor.on('transaction', follow);
   try {
-    const view = await host.createViewForPage(layout, ctx);
+    const view = await create(ctx);
     if (!editor.isDestroyed) {
       editor.chain().focus().deleteRange({ from, to }).insertContent({ type: VIEW_BLOCK, attrs: { viewId: view.id } }).run();
     }
@@ -52,7 +56,7 @@ async function insertNewView(editor: Editor, range: Range, layout: string): Prom
   }
 }
 
-/** One slash entry per layout (the five of the plan plus any other registered layout) and one for an existing view. */
+/** One slash entry per layout (the five of the plan plus any other registered layout), one for a new table and one for an existing view. */
 export function viewSlashItems(layoutNames: string[]): SlashItem[] {
   const known = VIEW_LAYOUTS as readonly string[];
   const names = [...VIEW_LAYOUTS, ...layoutNames.filter((n) => !known.includes(n))];
@@ -63,8 +67,18 @@ export function viewSlashItems(layoutNames: string[]): SlashItem[] {
     icon: ICONS[layout] ?? '▦',
     keywords: ['view', 'tasks', layout],
     group: 'Views',
-    run: (editor, range) => void insertNewView(editor, range, layout),
+    run: (editor, range) => void insertNewView(editor, range, (ctx) => host.createViewForPage(layout, ctx)),
   }));
+  // A table of the page's own: a custom table in the page's space (Name and Notes) with a table view owned by the page
+  items.push({
+    id: 'view-new-table',
+    title: 'New table',
+    description: 'A table with rows of your own',
+    icon: '▦',
+    keywords: ['table', 'new', 'database', 'spreadsheet', 'rows', 'custom'],
+    group: 'Views',
+    run: (editor, range) => void insertNewView(editor, range, (ctx) => host.createTableViewForPage(ctx)),
+  });
   items.push({
     id: 'view-existing',
     title: 'Existing view',

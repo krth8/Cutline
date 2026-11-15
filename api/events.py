@@ -128,10 +128,11 @@ class LiveHub:
                 continue
             await self._send(conn, message)
 
-    async def to_user(self, user_id: str, message: dict) -> None:
-        """Send to every tab of one user."""
+    async def to_user(self, user_id: str, message: dict, skip_origin: bool = False) -> None:
+        """Send to every tab of one user (skip_origin: not to the tab whose request caused the change)."""
+        origin = current_client_id.get() if skip_origin else None
         for conn in list(self.connections.values()):
-            if conn.principal["id"] == user_id:
+            if conn.principal["id"] == user_id and not (origin and conn.client_id == origin):
                 await self._send(conn, message)
 
     async def to_all_users(self, message: dict) -> None:

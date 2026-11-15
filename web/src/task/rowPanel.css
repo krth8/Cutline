@@ -1,0 +1,3 @@
+/* The row panel of a custom table reuses the task panel's chrome (task.css) and is narrower. */
+.cl-rowpanel { width: min(460px, 94vw); }
+.cl-rowpanel__table { margin: 4px 0 0; font-size: 12px; color: var(--text-muted); }
