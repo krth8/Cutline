@@ -1,5 +1,6 @@
 import { mountApp, unmountApp } from './app';
 import { getPlatform } from './platform';
+import './pages/tree/register'; // sidebar tree and page views for the shell
 
 export const version = '0.1.0';
 

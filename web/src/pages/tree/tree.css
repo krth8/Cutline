@@ -1,0 +1,136 @@
+/* The page tree in the sidebar */
+.cl-tree { padding: 2px 0 6px; font-size: 13px; }
+.cl-tree__rows { max-height: 55vh; overflow-y: auto; overflow-x: hidden; }
+
+.cl-tree__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding-right: 4px;
+  box-sizing: border-box;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.cl-tree__row:hover,
+.cl-tree__row.is-menu-open { background: var(--bg-hover); color: var(--text); }
+.cl-tree__row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cl-tree__row.is-active { background: var(--bg-hover); color: var(--text); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
+
+.cl-tree__chevron,
+.cl-tree__chevron-spacer { flex: 0 0 18px; width: 18px; height: 18px; }
+.cl-tree__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+.cl-tree__chevron:hover { background: var(--bg-active, rgba(255, 255, 255, 0.08)); }
+.cl-tree__chevron.is-open { transform: rotate(90deg); }
+.cl-tree__icon { flex: 0 0 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; }
+.cl-tree__doc { opacity: 0.7; }
+.cl-tree__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-tree__rename {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 4px;
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-solid);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+}
+
+.cl-tree__actions { display: none; flex: 0 0 auto; gap: 2px; }
+.cl-tree__row:hover .cl-tree__actions,
+.cl-tree__row:focus-within .cl-tree__actions,
+.cl-tree__row.is-menu-open .cl-tree__actions { display: inline-flex; }
+.cl-tree__action {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.cl-tree__action:hover { background: rgba(255, 255, 255, 0.12); }
+
+/* Drop indicators: a line before / after, a highlight for "inside" */
+.cl-tree__row.is-drop-before::before,
+.cl-tree__row.is-drop-after::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  pointer-events: none;
+}
+.cl-tree__row.is-drop-before::before { top: -1px; }
+.cl-tree__row.is-drop-after::after { bottom: -1px; }
+.cl-tree__row.is-drop-inside { background: var(--accent-bg, rgba(95, 93, 229, 0.25)); outline: 1px solid var(--accent); outline-offset: -1px; }
+.cl-tree__tail { min-height: 12px; border-radius: 3px; }
+.cl-tree__tail.is-drop-active { background: var(--accent-bg, rgba(95, 93, 229, 0.25)); }
+
+.cl-tree__new,
+.cl-tree__archived {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px 5px 26px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cl-tree__new:hover,
+.cl-tree__archived:hover { background: var(--bg-hover); color: var(--text); }
+.cl-tree__new:focus-visible,
+.cl-tree__archived:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.cl-tree__note { padding: 4px 8px 4px 26px; color: var(--text-muted); }
+.cl-tree__empty { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-left: 0; }
+.cl-tree__empty .cl-btn { margin-left: 26px; }
+.cl-tree__link { padding: 0; border: 0; background: none; color: var(--accent-light, var(--accent)); font: inherit; text-decoration: underline; cursor: pointer; }
+.cl-tree__skeleton { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 6px 26px; }
+.cl-tree__skeleton span { height: 12px; border-radius: 3px; background: var(--bg-hover); animation: cl-pulse 1.2s ease-in-out infinite; }
+.cl-tree__skeleton span:nth-child(2) { width: 70%; }
+.cl-tree__skeleton span:nth-child(3) { width: 50%; }
+@keyframes cl-pulse { 50% { opacity: 0.45; } }
+
+/* Archived list (dialog) */
+.cl-archived { list-style: none; margin: 0; padding: 0; min-width: 360px; max-height: 50vh; overflow-y: auto; }
+.cl-archived__row { display: flex; align-items: center; gap: 8px; min-height: 36px; padding-right: 4px; }
+.cl-archived__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-archived__actions { display: inline-flex; gap: 6px; }
+.cl-archived__empty { margin: 0; color: var(--text-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cl-tree__skeleton span { animation: none; }
+  .cl-tree__chevron { transition: none; }
+}
+
+/* The legacy confirm dialog (platform.confirm) is asked from inside the archived list dialog: keep it on top */
+.confirm-overlay { z-index: 20000; }
