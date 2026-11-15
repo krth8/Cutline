@@ -4,6 +4,7 @@ import { CollabEditor } from './pages/sync';
 import { getPlatform } from './platform';
 import { useRoute } from './router';
 import { Shell } from './shell/Shell';
+import { DevView } from './tables/DevView';
 import './app.css';
 
 /** What the bundle renders: the component demo at /dev/ui (admins), the Pages shell elsewhere. */
@@ -14,6 +15,10 @@ export function App() {
   // Dev-only: /dev/page/<pageId> shows just the collaborative editor, for any logged-in user (browser tests)
   const devPage = route.kind === 'notFound' ? /^\/dev\/page\/([^/?#]+)$/.exec(route.path.split('?')[0] ?? '') : null;
   if (devPage && user) return <CollabEditor key={devPage[1]} pageId={decodeURIComponent(devPage[1]!)} autoFocus />;
+  if (route.kind === 'notFound' && user) {
+    const match = /^\/dev\/view\/([^/?]+)/.exec(route.path);
+    if (match) return <DevView viewId={decodeURIComponent(match[1]!)} />;
+  }
   return <Shell />;
 }
 

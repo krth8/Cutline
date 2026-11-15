@@ -213,6 +213,8 @@ def db_set_archived(page_id: str, archived: bool) -> Optional[dict]:
 def db_delete_page(page_id: str) -> bool:
     """Delete a page and its sub-pages for good (callers only allow this for archived pages)."""
     with get_db() as conn:
+        # Views made for these pages go with them
+        execute(conn, _SUBTREE + " DELETE FROM views WHERE owner_page_id IN (SELECT id FROM sub)", (page_id,))
         cursor = execute(conn, _SUBTREE + " DELETE FROM pages WHERE id IN (SELECT id FROM sub)", (page_id,))
         return cursor.rowcount > 0
 
