@@ -6,7 +6,7 @@ that inserting between two siblings never renumbers the others.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
 from .engine import execute, fetchall, fetchone
@@ -285,16 +285,26 @@ def db_get_or_create_task_page(task_id: str, project_id: str, title: str, create
         raise
 
 
+IMPORT_CLAIM_SECONDS = 60  # how long a legacy import claim holds while the page stays empty
+
+
 def db_claim_page_import(page_id: str, user_id: str) -> bool:
-    """Atomically claim the legacy-HTML import of a page. True for exactly one caller, once."""
+    """Atomically claim the legacy-HTML import of a page. True for one caller at a time.
+
+    A claim whose owner never wrote anything (the tab was closed mid-import) expires after
+    IMPORT_CLAIM_SECONDS, so the next person to open the still-empty page gets the import.
+    """
+    now = datetime.now()
+    expired = (now - timedelta(seconds=IMPORT_CLAIM_SECONDS)).isoformat()
     with get_db() as conn:
         cursor = execute(
             conn,
-            """UPDATE pages SET import_claimed_by = ?
-               WHERE id = ? AND import_claimed_by IS NULL AND legacy_html IS NOT NULL
+            """UPDATE pages SET import_claimed_by = ?, import_claimed_at = ?
+               WHERE id = ? AND legacy_html IS NOT NULL
+                 AND (import_claimed_by IS NULL OR import_claimed_at IS NULL OR import_claimed_at < ?)
                  AND (ydoc IS NULL OR LENGTH(ydoc) <= ?)
                  AND NOT EXISTS (SELECT 1 FROM page_updates WHERE page_id = ?)""",
-            (user_id, page_id, EMPTY_YDOC_BYTES, page_id))
+            (user_id, now.isoformat(), page_id, expired, EMPTY_YDOC_BYTES, page_id))
         return cursor.rowcount == 1
 
 
