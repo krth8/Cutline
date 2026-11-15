@@ -36,6 +36,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+// ':' is legal in a path segment; keep built-in ids such as builtin:blank readable
+const seg = (id: string) => encodeURIComponent(id).replace('%3A', ':');
+
 function json(method: string, body: unknown): RequestInit {
   return { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
 }
@@ -62,10 +65,10 @@ export function saveTemplate(body: {
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
-  await request<{ success: boolean }>(`/api/templates/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  await request<{ success: boolean }>(`/api/templates/${seg(id)}`, { method: 'DELETE' });
 }
 
 /** Create pages from a template in a space (end of the top level, or under `parentId`). */
 export function useTemplate(id: string, body: { space: SpaceKey; parentId?: string | null; title?: string }): Promise<CreatedPages> {
-  return request<CreatedPages>(`/api/templates/${encodeURIComponent(id)}/use`, json('POST', body));
+  return request<CreatedPages>(`/api/templates/${seg(id)}/use`, json('POST', body));
 }

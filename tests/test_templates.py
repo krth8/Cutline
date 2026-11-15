@@ -592,3 +592,37 @@ def test_copy_setup_rules(client, world, make_project, make_user, grant):
     owner = make_user()
     mine = make_project("Mine", token=owner["token"])
     assert copy_setup(client, owner["token"], mine, other).status_code == 403
+
+
+# ---------- relation columns ----------
+
+def test_relation_columns_follow_the_copied_tables_and_are_dropped_where_invalid(client, world):
+    b = world["b"]
+    page = create(client, b, world["sa"], "Rel")
+    people = make_table(client, world["admin"], world["sa"], "People", [{"name": "Who", "type": "text"}])
+    work = make_table(client, world["admin"], world["sa"], "Work", [{"name": "Note", "type": "text"}])
+    ok(client.post(f"/api/tables/{work}/columns", json={"name": "Owner", "type": "relation",
+                   "config": {"target": people}}, headers=auth(world["admin"])))
+    ok(client.post(f"/api/tables/{work}/columns", json={"name": "Tasks", "type": "relation",
+                   "config": {"target": f"tasks:{world['pa']}"}}, headers=auth(world["admin"])))
+    add_view(client, b, page["id"], people, "People")
+    add_view(client, b, page["id"], work, "Work")
+
+    def relations(ref):
+        return {c["name"]: c["config"]["target"] for c in
+                ok(client.get(f"/api/tables/{ref}/schema", headers=auth(b)))["columns"] if c["type"] == "relation"}
+
+    # same project: both relations stay, the table target points at the copied table
+    copy = ok(duplicate(client, b, page["id"]))
+    views = {v["name"]: v for v in own_views(client, b, copy["id"])}
+    assert relations(views["Work"]["tableRef"]) == {"Owner": views["People"]["tableRef"],
+                                                    "Tasks": f"tasks:{world['pa']}"}
+    # another project: the tasks relation is invalid there and is dropped
+    other = ok(duplicate(client, b, page["id"], space=world["sb"]))
+    views = {v["name"]: v for v in own_views(client, b, other["id"])}
+    assert relations(views["Work"]["tableRef"]) == {"Owner": views["People"]["tableRef"]}
+    # personal space: tasks of a project the user can use stay
+    mine = ok(duplicate(client, b, page["id"], space="me"))
+    views = {v["name"]: v for v in own_views(client, b, mine["id"])}
+    assert relations(views["Work"]["tableRef"]) == {"Owner": views["People"]["tableRef"],
+                                                    "Tasks": f"tasks:{world['pa']}"}

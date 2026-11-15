@@ -5,6 +5,7 @@ import type { SidebarSectionProps } from '../../shell/registry';
 import { Button, cx, Menu, type MenuItem } from '../../ui';
 import { setHomePage, useHomePageId } from '../home/homeStore';
 import { ArchivedDialog } from './ArchivedList';
+import { duplicateAndOpen, openTemplates } from '../templates';
 import { MoveDialog } from './MoveDialog';
 import {
   canEditSpace,
@@ -228,6 +229,7 @@ export function PageTree({ space, route }: SidebarSectionProps) {
       });
     }
     items.push({ id: 'move', label: 'Move to...', onSelect: () => setMoving({ from: key, id }) });
+    items.push({ id: 'duplicate', label: 'Duplicate', onSelect: () => void duplicateAndOpen(key, id) });
     // Any personal page can be Home
     if (key === 'me' && id !== homeId) items.push({ id: 'set-home', label: 'Set as home', onSelect: () => void setHomePage(id) });
     items.push({ type: 'separator' }, { id: 'archive', label: 'Archive', danger: true, onSelect: () => void store.archive(id) });
@@ -431,9 +433,14 @@ export function PageTree({ space, route }: SidebarSectionProps) {
       <div className="cl-tree__empty">
         <div className="cl-tree__note">No pages yet.</div>
         {canEdit ? (
-          <Button size="sm" onClick={() => void addSubpage(null)}>
-            New page
-          </Button>
+          <>
+            <Button size="sm" onClick={() => void addSubpage(null)}>
+              New page
+            </Button>
+            <Button size="sm" onClick={() => openTemplates({ space: key })}>
+              New from template...
+            </Button>
+          </>
         ) : null}
       </div>
     );
@@ -465,9 +472,14 @@ export function PageTree({ space, route }: SidebarSectionProps) {
           ) : null}
         </div>
         {canEdit ? (
-          <button type="button" className="cl-tree__new" onClick={() => void addSubpage(null)}>
-            <span aria-hidden="true">+</span> New page
-          </button>
+          <>
+            <button type="button" className="cl-tree__new" onClick={() => void addSubpage(null)}>
+              <span aria-hidden="true">+</span> New page
+            </button>
+            <button type="button" className="cl-tree__new" onClick={() => openTemplates({ space: key })}>
+              <span aria-hidden="true">+</span> New from template...
+            </button>
+          </>
         ) : null}
       </>
     );
