@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentType, type MouseEvent, type ReactNode } from 'react';
 import { getPlatform } from '../platform';
 import { buildRoute, navigate, routeProjectId, useRoute, type Route } from '../router';
+import { openSearch, shortcutLabel } from '../search';
 import { Avatar, Button, cx } from '../ui';
 import { useRouteView, useSidebarSections, type Space } from './registry';
 import './shell.css';
@@ -120,6 +121,12 @@ export function Sidebar({ route, collapsed, onToggle }: { route: Route; collapse
   return (
     <aside className={cx('cl-sidebar', collapsed && 'is-collapsed')} data-testid="cl-sidebar">
       <div className="cl-sidebar__bar">
+        {collapsed ? null : (
+          <button type="button" className="cl-sidebar__search" data-testid="sidebar-search" onClick={openSearch} title="Search and commands">
+            <span>Search</span>
+            <kbd>{shortcutLabel()}</kbd>
+          </button>
+        )}
         <Button
           variant="ghost"
           size="sm"

@@ -5,6 +5,7 @@ import './pages/home/register'; // the Home route (S4)
 import './pages/pageBody'; // the editor inside a page view
 import { installViewSource } from './tables';
 import './tables/routeViews'; // full-page routes of views and the Tasks tab
+import { mountSearch } from './search'; // the command palette (Ctrl+K), mounted in a root of its own
 
 export const version = '0.1.0';
 
@@ -55,3 +56,7 @@ function mountDevUiWhenReady(): void {
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountDevUiWhenReady);
 else mountDevUiWhenReady();
+
+// The palette must work on every legacy tab too, so it gets its own root on <body> (it opens only for a logged-in user)
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountSearch);
+else mountSearch();

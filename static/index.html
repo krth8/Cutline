@@ -732,6 +732,10 @@
             </nav>
 
             <div class="header-actions">
+                <!-- Search and commands (Ctrl+K): shown by routes.js for logged-in users; the palette itself is in the React bundle -->
+                <button class="notifications-btn hidden" id="searchBtn" style="width:auto;gap:6px;padding:0 10px;font-size:12px" title="Search and commands" onclick="window.dispatchEvent(new CustomEvent('cutline:open-search'))">
+                    <svg class="icon" style="width:16px;height:16px"><use href="/static/icons.svg#icon-search"/></svg><span>Search</span> <kbd id="searchBtnKey" style="font:inherit;opacity:.7">Ctrl+K</kbd>
+                </button>
                 <!-- Notifications -->
                 <div class="notifications-menu" id="notificationsMenu">
                     <button class="notifications-btn" id="notificationsBtn" onclick="toggleNotificationsPanel()">
@@ -1196,7 +1200,7 @@
     <script src="/static/js/modules/lounge/LoungeModule.js?v=6"></script>
     <!-- Feature modules -->
     <script src="/static/js/features/settingsUI.js?v=2"></script>
-    <script src="/static/js/features/routes.js?v=3"></script>
+    <script src="/static/js/features/routes.js?v=4"></script>
     <script src="/static/js/features/navigation.js?v=20"></script>
     <script src="/static/js/features/usersAdmin.js?v=1"></script>
     <!-- Main application -->
