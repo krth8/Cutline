@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from api.auth import can_access_space, can_edit_page, can_read_page, require_auth
 from api.events import live
 from api.pagesync import close_rooms_without_access, close_unavailable_rooms
+from api.routes.page_files import delete_files_of_page_tree
 from api.state import projects, tasks
 from database import db_check_project_access, db_list_users
 from database.access import db_list_project_access
@@ -286,6 +287,7 @@ async def delete_page(page_id: str, user: dict = Depends(require_auth)):
     page = _load(page_id, user, write=True)
     if page["archivedAt"] is None:
         raise HTTPException(status_code=409, detail="Archive the page before deleting it")
+    delete_files_of_page_tree(page_id)
     db_delete_page(page_id)
     await close_unavailable_rooms()
     await _notify(page, "deleted")

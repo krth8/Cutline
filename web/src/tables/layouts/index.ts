@@ -3,8 +3,6 @@
  * (its own `layouts/<name>/index.ts` calls `registerLayout`).
  */
 import './board';
-import './list';
-import './board';
 import './calendar';
 import './list';
 import './table';

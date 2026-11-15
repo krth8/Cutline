@@ -71,6 +71,7 @@ export function CollabEditor({ pageId, placeholder, autoFocus, readOnly }: Colla
         awareness={awareness ?? undefined}
         user={user}
         editable={editable && !readOnly}
+        pageId={pageId}
         {...(placeholder ? { placeholder } : {})}
         {...(autoFocus ? { autoFocus } : {})}
       />
