@@ -34,7 +34,8 @@ export interface Row {
 
 export type FilterOp =
   | 'eq' | 'neq' | 'in' | 'nin' | 'contains' | 'empty' | 'notEmpty' | 'lt' | 'lte' | 'gt' | 'gte'
-  | 'before' | 'after' | 'between' | 'relative'; // relative: {unit:'day'|'week'|'month', from:-7, to:0}
+  | 'before' | 'after' | 'between' | 'relative'
+  | 'done' | 'notDone'; // status columns: the status is (not) one the table marks as done; no value // relative: {unit:'day'|'week'|'month', from:-7, to:0}
 
 export type Filter =
   | { column: string; op: FilterOp; value?: unknown }

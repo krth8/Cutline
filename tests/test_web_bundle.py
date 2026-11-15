@@ -28,6 +28,7 @@ import pytest
 
 
 @pytest.mark.parametrize("path", [
+    "/home",
     "/me",
     "/me/page/pg1",
     "/p/proj1/pages",

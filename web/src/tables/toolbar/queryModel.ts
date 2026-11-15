@@ -26,6 +26,8 @@ export const OP_LABELS: Record<FilterOp, string> = {
   after: 'is after',
   between: 'is between',
   relative: 'is within',
+  done: 'is done',
+  notDone: 'is not done',
 };
 
 const EMPTY_OPS: FilterOp[] = ['empty', 'notEmpty'];
@@ -43,8 +45,9 @@ export function opsFor(type: ColumnType): FilterOp[] {
       return ['eq'];
     case 'date':
       return ['eq', 'neq', 'before', 'after', 'between', 'relative', ...EMPTY_OPS];
-    case 'select':
     case 'status':
+      return ['eq', 'neq', 'in', 'nin', 'done', 'notDone', ...EMPTY_OPS];
+    case 'select':
     case 'priority':
     case 'person':
       return ['eq', 'neq', 'in', 'nin', ...EMPTY_OPS];
@@ -58,7 +61,7 @@ export function opsFor(type: ColumnType): FilterOp[] {
   }
 }
 
-export const hasValue = (op: FilterOp) => op !== 'empty' && op !== 'notEmpty';
+export const hasValue = (op: FilterOp) => op !== 'empty' && op !== 'notEmpty' && op !== 'done' && op !== 'notDone';
 
 export const isLeaf = (f: Filter): f is Leaf => 'column' in f;
 export const isAnd = (f: Filter): f is { and: Filter[] } => 'and' in f;
@@ -70,6 +73,8 @@ export function defaultValue(column: Column, op: FilterOp): unknown {
   switch (op) {
     case 'empty':
     case 'notEmpty':
+    case 'done':
+    case 'notDone':
       return undefined;
     case 'in':
     case 'nin':

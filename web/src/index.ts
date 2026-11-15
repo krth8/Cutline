@@ -1,6 +1,7 @@
 import { mountApp, unmountApp } from './app';
 import { getPlatform } from './platform';
 import './pages/tree/register'; // sidebar tree and page views for the shell
+import './pages/home/register'; // the Home route (S4)
 import './pages/pageBody'; // the editor inside a page view
 import { installViewSource } from './tables';
 

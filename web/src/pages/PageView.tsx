@@ -18,6 +18,7 @@ import {
 import { getPage, PageApiError, type PageInfo, type SpaceKey } from '../api/pageTree';
 import { getPlatform } from '../platform';
 import { Backlinks } from './backlinks';
+import { setHomePage, useHomePageId } from './home/homeStore';
 import { buildRoute, navigate, type Route } from '../router';
 import { Button, cx, Menu, Popover, type MenuItem } from '../ui';
 import {
@@ -262,6 +263,7 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
   const menuAnchor = useRef<HTMLButtonElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const [focusTitle] = useState(() => consumeTitleFocus(pageId));
+  const homeId = useHomePageId();
 
   const load = useCallback(async () => {
     try {
@@ -359,6 +361,10 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
       },
     });
     items.push({ type: 'separator' });
+  }
+  // Any live personal page can be Home (the server refuses everything else)
+  if (space === 'me' && page.canEdit && !archived && homeId !== pageId) {
+    items.push({ id: 'set-home', label: 'Set as home', onSelect: () => void setHomePage(pageId) });
   }
   items.push({
     id: 'copy',

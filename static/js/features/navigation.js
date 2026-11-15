@@ -49,6 +49,8 @@ function updateTabIndicator() {
  * 'push' (default, the user chose the tab), 'replace', or 'none' (the URL chose the tab).
  */
 function switchTab(tabName, options) {
+    // The Home button is not a tab of its own: it opens /home (Pages tab)
+    if (tabName === 'home') { Routes.goHome(); return; }
     // Share-link guests have no Pages tab
     if (tabName === 'pages' && AppState.isShareLinkGuest) tabName = 'review';
     const previousTab = AppState.activeTab;

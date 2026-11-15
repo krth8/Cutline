@@ -14,6 +14,7 @@ import * as Y from 'yjs';
 import * as summaryHost from '../editor/blocks/summary/host';
 import * as clipEmbedHost from '../editor/blocks/clipEmbed/host';
 import * as mentionHost from '../editor/blocks/mention/host';
+import * as pageListHost from '../editor/blocks/pageList/host';
 import * as viewBlockHost from '../editor/blocks/viewBlock/host';
 import * as editorRegistry from '../editor/registry';
 
@@ -34,6 +35,7 @@ if (lazy) {
     'summary-host': summaryHost,
     'clip-embed-host': clipEmbedHost,
     'mention-host': mentionHost,
+    'page-list-host': pageListHost,
   };
 }
 

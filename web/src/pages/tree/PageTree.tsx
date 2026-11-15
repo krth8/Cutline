@@ -3,6 +3,7 @@ import type { SpaceKey } from '../../api/pageTree';
 import { navigate } from '../../router';
 import type { SidebarSectionProps } from '../../shell/registry';
 import { Button, cx, Menu, type MenuItem } from '../../ui';
+import { setHomePage, useHomePageId } from '../home/homeStore';
 import { ArchivedDialog } from './ArchivedList';
 import { MoveDialog } from './MoveDialog';
 import {
@@ -29,6 +30,15 @@ import './tree.css';
 
 /** The page being dragged and the space it comes from, so another space's tree can accept the drop. */
 let dragging: { space: SpaceKey; id: string } | null = null;
+
+/** A small house: marks the page Home shows. */
+function HomeIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path d="M2 7.5 8 2.5l6 5M3.5 6.5V13.5h9V6.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export function DocIcon() {
   return (
@@ -92,6 +102,7 @@ export function PageTree({ space, route }: SidebarSectionProps) {
   const canEdit = canEditSpace(key);
   const activeId = activePageId(key, route);
   const { model } = snap;
+  const homeId = useHomePageId();
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -205,6 +216,8 @@ export function PageTree({ space, route }: SidebarSectionProps) {
       });
     }
     items.push({ id: 'move', label: 'Move to...', onSelect: () => setMoving({ from: key, id }) });
+    // Any personal page can be Home
+    if (key === 'me' && id !== homeId) items.push({ id: 'set-home', label: 'Set as home', onSelect: () => void setHomePage(id) });
     items.push({ type: 'separator' }, { id: 'archive', label: 'Archive', danger: true, onSelect: () => void store.archive(id) });
     return items;
   }
@@ -343,6 +356,11 @@ export function PageTree({ space, route }: SidebarSectionProps) {
         ) : (
           <span className="cl-tree__title">{title}</span>
         )}
+        {key === 'me' && id === homeId && !renaming ? (
+          <span className="cl-tree__home" role="img" aria-label="Home page" title="Your Home page">
+            <HomeIcon />
+          </span>
+        ) : null}
         {canEdit && !renaming ? (
           <span className="cl-tree__actions">
             <button

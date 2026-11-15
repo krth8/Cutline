@@ -11,6 +11,7 @@ import './viewBlock'; // the view block (its node lives in this chunk, its conte
 import './summary'; // the summary block and the inline number (same split as the view block)
 import './clipEmbed'; // the clip block (same split)
 import './mention'; // the mention chip and the @ menu (S5)
+import './pageList'; // the list of recently changed pages (S4)
 import { PageFileUploads, pickFiles, startUpload } from './uploads';
 
 /** Remove the typed "/query", open the file picker and upload what was chosen at that place. */

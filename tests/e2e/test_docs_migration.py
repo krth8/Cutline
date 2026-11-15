@@ -61,6 +61,8 @@ def test_opened_by_two_people_at_once_the_content_is_imported_exactly_once(scene
     alice.evaluate("(url) => { window.location.href = url; }", target)
     bob.evaluate("(url) => { window.location.href = url; }", target)
     for page in (alice, bob):
+        # After the login both are on Home, which has an editor of its own: wait for the new address first
+        page.wait_for_url("**/dev/page/**", timeout=20000)
         page.wait_for_selector(PROSE, timeout=20000)
         wait_text(page, ("contains", "Closing scene"), timeout=20000)
         wait_status(page, "synced")
