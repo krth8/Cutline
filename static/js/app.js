@@ -3116,22 +3116,23 @@ async function deleteProfileImage() {
 
 // ============ Theme Functions ============
 function setTheme(theme) {
-    // Store current theme
-    localStorage.setItem('theme', theme);
+    // Store and apply the choice (system, light, dark or custom) through the shared helper from index.html
+    if (window.CutlineTheme) window.CutlineTheme.set(theme);
+    else localStorage.setItem('theme', theme);
 
     // Apply theme to document
     if (theme === 'custom') {
         // Load custom colors
         const customColors = JSON.parse(localStorage.getItem('customTheme') || '{}');
         applyCustomTheme(customColors);
-        document.documentElement.setAttribute('data-theme', 'custom');
+        if (!window.CutlineTheme) document.documentElement.setAttribute('data-theme', 'custom');
 
         // Show custom options
         const customOptions = document.getElementById('themeCustomOptions');
         if (customOptions) customOptions.classList.remove('hidden');
     } else {
-        // Apply dark or light theme
-        document.documentElement.setAttribute('data-theme', theme);
+        // System, dark or light: CutlineTheme has set data-theme on <html>
+        if (!window.CutlineTheme) document.documentElement.setAttribute('data-theme', theme);
 
         // Hide custom options
         const customOptions = document.getElementById('themeCustomOptions');
@@ -3218,7 +3219,7 @@ function adjustColor(hex, percent) {
 }
 
 function initTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
+    const savedTheme = window.CutlineTheme ? window.CutlineTheme.get() : (localStorage.getItem('theme') || 'dark');
     setTheme(savedTheme);
 
     // Load custom colors into pickers if available

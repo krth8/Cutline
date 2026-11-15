@@ -10,6 +10,39 @@
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Theme: applied before the stylesheets load so the first paint is already in the right theme.
+         localStorage "theme" holds the choice: system (default), light, dark or custom.
+         <html data-theme> holds the resolved theme (light, dark or custom). window.CutlineTheme = { get, set, resolved }. -->
+    <script>
+    (function () {
+        var root = document.documentElement, mq = window.matchMedia && matchMedia('(prefers-color-scheme: light)');
+        function read() { try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark' || t === 'custom') return t; } catch (e) {} return 'system'; }
+        function resolve(pref) { return pref === 'system' ? (mq && mq.matches ? 'light' : 'dark') : pref; }
+        function apply() {
+            var r = resolve(read());
+            root.setAttribute('data-theme', r);
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', r === 'light' ? '#f4f4f8' : '#181628');
+            return r;
+        }
+        apply();
+        if (mq && mq.addEventListener) mq.addEventListener('change', function () { if (read() === 'system') { apply(); notify(); } });
+        function notify() { try { window.dispatchEvent(new CustomEvent('cutline-theme')); } catch (e) {} }
+        window.CutlineTheme = {
+            /** The stored choice: 'system', 'light', 'dark' or 'custom'. */
+            get: read,
+            /** The theme in effect: 'light', 'dark' or 'custom'. */
+            resolved: function () { return resolve(read()); },
+            /** Store a choice and apply it. */
+            set: function (pref) {
+                if (pref !== 'system' && pref !== 'light' && pref !== 'dark' && pref !== 'custom') return;
+                try { if (pref === 'system') localStorage.removeItem('theme'); else localStorage.setItem('theme', pref); } catch (e) {}
+                apply(); notify();
+            }
+        };
+    })();
+    </script>
+    <link rel="stylesheet" href="/static/css/theme.css">
     <link rel="stylesheet" href="/static/css/main.css?v=197">
     <link rel="stylesheet" href="/static/css/comment-tasks.css?v=1">
     <link rel="stylesheet" href="/static/dist/pages.css">
@@ -293,7 +326,14 @@
                         <label class="settings-label">Theme</label>
                         <div class="theme-options">
                             <label class="theme-option">
-                                <input type="radio" name="theme" value="dark" checked onchange="setTheme('dark')">
+                                <input type="radio" name="theme" value="system" checked onchange="setTheme('system')">
+                                <span class="theme-option-label">
+                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-gear"/></svg>
+                                    System
+                                </span>
+                            </label>
+                            <label class="theme-option">
+                                <input type="radio" name="theme" value="dark" onchange="setTheme('dark')">
                                 <span class="theme-option-label">
                                     <svg class="icon icon-sm"><use href="/static/icons.svg#icon-moon"/></svg>
                                     Dark
