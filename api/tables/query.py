@@ -14,7 +14,8 @@ Value shapes the engine understands, per column type:
   select, status,
   priority, person      option value (str) or None
   multiselect, people   list of option values
-  clip, relation        an id, or ``{"id": ..., "name": ...}``, or None
+  clip                  an id, or ``{"id": ..., "name": ...}``, or None
+  relation              a list of ``{"id", "label"}`` (the linked rows, as the reader may see them)
   formula               any scalar
 
 Anything invalid in the query raises QueryError; the routes answer it with a 400.
@@ -54,7 +55,7 @@ OPS_BY_TYPE: Dict[str, set] = {
     "multiselect": _COMMON | {"contains"},
     "people": _COMMON | {"contains"},
     "clip": set(_COMMON),
-    "relation": set(_COMMON),
+    "relation": _COMMON | {"contains"},
     "formula": _COMMON | _COMPARE | {"contains"},
 }
 
@@ -129,7 +130,9 @@ def atoms(col: dict, v: Any) -> List[str]:
     if isinstance(v, dict):
         v = v.get("id")
     if isinstance(v, (list, tuple)):
-        return [str(x) for x in v if x not in (None, "")]
+        # Relation cells hold {id, label} objects
+        return [str(x["id"] if isinstance(x, dict) else x) for x in v
+                if (x.get("id") if isinstance(x, dict) else x) not in (None, "")]
     return [str(v)]
 
 
@@ -349,11 +352,22 @@ def _search_predicate(text: str, ctx: _Ctx) -> Callable[[dict], bool]:
     needle = text.casefold()
     keys = [c["key"] for c in ctx.columns
             if c["type"] in ("text", "longtext", "url") or c["key"] == ctx.title_column]
+    relation_keys = [c["key"] for c in ctx.columns if c["type"] == "relation"]
 
     def hit(row: dict) -> bool:
         values = row.get("values") or {}
-        return any(needle in str(values.get(k) or "").casefold() for k in keys)
+        if any(needle in str(values.get(k) or "").casefold() for k in keys):
+            return True
+        # Linked rows match by their titles
+        return any(needle in _relation_labels(values.get(k)).casefold() for k in relation_keys)
     return hit
+
+
+def _relation_labels(v: Any) -> str:
+    """The titles of a relation cell, joined with a comma."""
+    if not isinstance(v, list):
+        return ""
+    return ", ".join(str(x.get("label") or "") for x in v if isinstance(x, dict))
 
 
 def _sort_key(col: dict, v: Any):
@@ -369,6 +383,10 @@ def _sort_key(col: dict, v: Any):
         return str(v).casefold()
     if ctype in PERSON:
         return tuple(sorted(_label(col, a).casefold() for a in atoms(col, v)))
+    if ctype == "relation":
+        # By the first linked row's title
+        first = v[0] if isinstance(v, list) and v else None
+        return str(first.get("label") or "").casefold() if isinstance(first, dict) else ""
     if ctype == "clip":
         return str(v.get("name") or v.get("id")).casefold() if isinstance(v, dict) else str(v)
     # select-like: option order, unknown values last
@@ -430,6 +448,17 @@ def _group_order(col: dict, keys: List[Optional[str]]) -> List[Optional[str]]:
     if None in keys:
         ordered.append(None)
     return ordered
+
+
+def _relation_group_column(col: dict, rows: List[dict]) -> dict:
+    """A copy of a relation column whose options are the linked rows, ordered by title, so groups get labels."""
+    titles: Dict[str, str] = {}
+    for row in rows:
+        for item in (row.get("values") or {}).get(col["key"]) or []:
+            if isinstance(item, dict) and item.get("id") is not None:
+                titles.setdefault(str(item["id"]), str(item.get("label") or item["id"]))
+    ordered = sorted(titles.items(), key=lambda kv: (kv[1].casefold(), kv[0]))
+    return {**col, "options": [{"value": i, "label": label} for i, label in ordered]}
 
 
 def _group_info(col: dict, key: Optional[str]) -> dict:
@@ -544,6 +573,8 @@ def run_query(rows: List[dict], columns: List[dict], query: Optional[dict], *, m
         group_col = ctx.column(query["groupBy"], "groupBy column")
         if group_col["type"] == "longtext":
             raise QueryError(f"Cannot group by long text column '{group_col['key']}'")
+        if group_col["type"] == "relation":
+            group_col = _relation_group_column(group_col, rows)
 
     summary_spec = _check_summaries(query["summaries"], ctx) if query.get("summaries") else None
 

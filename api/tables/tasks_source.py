@@ -34,6 +34,7 @@ from database import (
 from database.task_trash import db_get_trashed_task, db_list_trash, db_trash_ids
 
 from . import columns as custom
+from . import relations
 from .query import run_query
 from .source import UNSET, TableSource, custom_columns_for
 
@@ -137,7 +138,7 @@ class TasksSource(TableSource):
         names = sorted(used) + [s for s in suggested if s not in used]
         return [{"value": n, "label": n} for n in names]
 
-    def _columns(self, project_ids: List[str], scoped_tasks: List[dict]) -> List[dict]:
+    def _columns(self, project_ids: List[str], scoped_tasks: List[dict], principal: dict) -> List[dict]:
         sections = [{"value": s["id"], "label": s["name"], "color": s["color"]}
                     for pid in project_ids for s in db_list_sections(pid)]
         people = self._people_options(project_ids, scoped_tasks)
@@ -169,7 +170,7 @@ class TasksSource(TableSource):
         for column in extra:
             if column["type"] in ("person", "people"):
                 column["options"] = people
-        return columns + extra
+        return relations.finish_columns(principal, self.ref, columns + extra, with_mirrors=not self.all_projects)
 
     def _scoped_tasks(self, project_ids: List[str]) -> List[dict]:
         order = {pid: i for i, pid in enumerate(project_ids)}
@@ -188,7 +189,7 @@ class TasksSource(TableSource):
         return {
             "ref": self.ref,
             "name": name,
-            "columns": self._columns(project_ids, self._scoped_tasks(project_ids)),
+            "columns": self._columns(project_ids, self._scoped_tasks(project_ids), principal),
             "titleColumn": "name",
             "capabilities": {"create": True, "delete": True, "hierarchy": True, "editSchema": edit_schema},
         }
@@ -233,14 +234,15 @@ class TasksSource(TableSource):
             pid = task["projectId"]
             if pid not in editable:
                 editable[pid] = task_api.can_edit_tasks(principal, pid)
-                project_columns[pid] = custom_columns_for(f"tasks:{pid}")
+                project_columns[pid] = relations.finish_columns(
+                    principal, f"tasks:{pid}", custom_columns_for(f"tasks:{pid}"))
             rows.append(self._row(task, editable[pid], project_columns[pid]))
-        return rows
+        return relations.fill_rows(principal, rows, {f"tasks:{pid}": cols for pid, cols in project_columns.items()})
 
     def query(self, principal: dict, query: Optional[dict], today: Optional[date] = None) -> dict:
         project_ids = self.project_ids(principal)
         scoped = self._scoped_tasks(project_ids)
-        columns = self._columns(project_ids, scoped)
+        columns = self._columns(project_ids, scoped, principal)
         return run_query(self._rows(principal, scoped), columns, query, me=principal["id"], today=today,
                          title_column="name")
 
@@ -254,7 +256,8 @@ class TasksSource(TableSource):
 
     # ------------------------------------------------------------ writes
 
-    def _to_task_fields(self, values: Any, project_id: str, for_create: bool, base: Optional[dict] = None) -> dict:
+    def _to_task_fields(self, principal: dict, values: Any, project_id: str, for_create: bool,
+                        base: Optional[dict] = None) -> dict:
         """Row values (by column key) -> fields of the task API, validated."""
         if not isinstance(values, dict):
             raise _bad("values must be an object of column key -> value")
@@ -267,7 +270,7 @@ class TasksSource(TableSource):
                 raise _bad(f"Unknown column '{key}'. Writable columns: {', '.join(WRITABLE)}, plus the custom columns of the project")
             fields[WRITABLE[key]] = self._check_value(key, value, project_id)
         if custom_values:
-            fields["customFields"] = custom.checked_custom_values(project_id, custom_values, base)
+            fields["customFields"] = custom.checked_custom_values(project_id, custom_values, base, principal)
         if for_create and fields.get("priority") is None:
             fields.pop("priority", None)  # the task API default (medium)
         return fields
@@ -322,7 +325,7 @@ class TasksSource(TableSource):
             raise HTTPException(status_code=404, detail="Project not found")
         self._need_edit(principal, project_id)
 
-        fields = self._to_task_fields(values, project_id, for_create=True)
+        fields = self._to_task_fields(principal, values, project_id, for_create=True)
         if parent_id:
             fields["parentId"] = parent_id
         task = await task_api.create_task_record(principal, project_id, fields)
@@ -331,7 +334,7 @@ class TasksSource(TableSource):
     async def update_row(self, principal: dict, row_id: str, values: dict, parent_id: Any = UNSET) -> dict:
         task = self._task_in_scope(principal, row_id)
         self._need_edit(principal, task["projectId"])
-        fields = self._to_task_fields(values, task["projectId"], for_create=False,
+        fields = self._to_task_fields(principal, values, task["projectId"], for_create=False,
                                       base=task.get("customFields"))
         if parent_id is not UNSET:
             parent_id = parent_id or None

@@ -87,7 +87,8 @@ export function groupIdOf(key: string | null): string {
 /** The text a group key is compared with: the atoms of a cell value as strings. */
 function atomsOf(value: unknown): string[] {
   if (value === null || value === undefined || value === '') return [];
-  if (Array.isArray(value)) return value.filter((v) => v !== null && v !== undefined).map(String);
+  // A relation cell holds {id, label} objects; groups are keyed by the linked row's id
+  if (Array.isArray(value)) return value.filter((v) => v !== null && v !== undefined).map((v) => (typeof v === 'object' ? String((v as { id?: unknown }).id) : String(v)));
   return [String(value)];
 }
 

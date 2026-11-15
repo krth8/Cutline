@@ -12,7 +12,10 @@ import {
   readableTextColor,
   type Option,
 } from './util';
+import { openCustomRow, openTask } from '../../router';
+import { asLinks, relationConfig } from './relation';
 import './cells.css';
+import './relation.css';
 
 export function Empty() {
   return (
@@ -279,11 +282,50 @@ export function ClipDisplay({ column, value, compact }: CellDisplayProps) {
   );
 }
 
+/** Open a linked row: a task in the task panel, a row of a custom table in the row panel. */
+export function openLinkedRow(target: string, id: string): void {
+  if (target.startsWith('tbl_')) openCustomRow(target, id);
+  else openTask(id);
+}
+
+/** The linked rows as chips; a click on a chip opens that row. */
 export function RelationDisplay({ column, value, compact }: CellDisplayProps) {
-  const ids = asArray(value);
+  const config = relationConfig(column);
+  if (config.targetDeleted) {
+    return (
+      <Shell column={column} compact={compact}>
+        <span className="cl-cell__muted">Table deleted</span>
+      </Shell>
+    );
+  }
+  const links = asLinks(value);
+  const shown = compact ? links.slice(0, 2) : links;
   return (
     <Shell column={column} compact={compact}>
-      {ids.length === 0 ? <Empty /> : <span className="cl-cell__badge">{ids.length === 1 ? '1 linked row' : `${ids.length} linked rows`}</span>}
+      {links.length === 0 ? (
+        <Empty />
+      ) : (
+        <span className="cl-cell__pills" data-testid="relation-chips">
+          {shown.map((link) => (
+            <button
+              key={link.id}
+              type="button"
+              className="cl-relchip"
+              tabIndex={-1}
+              title={link.label}
+              disabled={!config.target}
+              data-testid="relation-chip"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (config.target) openLinkedRow(config.target, link.id);
+              }}
+            >
+              {link.label || 'Untitled'}
+            </button>
+          ))}
+          {links.length > shown.length && <span className="cl-cell__badge">+{links.length - shown.length}</span>}
+        </span>
+      )}
     </Shell>
   );
 }
