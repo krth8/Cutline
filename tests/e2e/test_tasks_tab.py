@@ -67,11 +67,13 @@ def test_the_tab_shows_the_projects_tasks_as_a_table_inside_the_shell(server, sc
     page.wait_for_selector("[data-testid=cl-sidebar] [data-testid=tasks-icon]", timeout=10000)
     first = page.locator("[data-testid=cl-sidebar] [role=treeitem]").first
     assert first.get_attribute("aria-label") == "Tasks"
+    page.click("[data-testid=toolbar-more]")
     page.click("[data-testid=tasks-open-page]")
     page.wait_for_selector("[data-testid=view-block] [data-testid=table-layout]", timeout=20000)
     assert f"/p/{scene['project']}/page/" in page.url
     wait_for(lambda: sorted(names(page)) == ["Alpha", "Beta", "Gamma"])
     # "Open full page" of the block uses the real route
+    page.click("[data-testid=view-block] [data-testid=toolbar-more]")
     href = page.get_attribute("[data-testid=viewblock-open]", "href")
     assert href.startswith(f"/p/{scene['project']}/view/")
 

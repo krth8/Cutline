@@ -12,6 +12,8 @@
   border: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  box-sizing: border-box;
+  text-decoration: none;
 }
 .cl-menu__item.is-active,
 .cl-menu__item:hover:not(:disabled) { background: var(--bg-hover); }

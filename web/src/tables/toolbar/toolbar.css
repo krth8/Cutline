@@ -1,18 +1,68 @@
-/* The page editor's floating toolbar (pages/editor/editor.css) also uses the class cl-toolbar and makes it absolute;
-   inside a view block both stylesheets are loaded, so the view toolbar must say it is part of the flow. */
-.cl-viewshell > .cl-toolbar { position: static; z-index: auto; }
-.cl-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 6px 0; }
-.cl-toolbar__layouts { display: inline-flex; gap: 2px; }
-.cl-toolbar__layout.is-active { color: var(--text); background: var(--accent-bg-strong); }
-.cl-toolbar__sep { width: 1px; height: 18px; margin: 0 4px; background: var(--border-medium); }
-.cl-toolbar__spacer { flex: 1; }
-.cl-toolbar__btn.is-set { color: var(--accent-lighter); }
-.cl-toolbar__count { margin-left: 6px; padding: 0 6px; font-size: 11px; line-height: 16px; color: #fff; background: var(--accent); border-radius: var(--radius-full); }
-.cl-toolbar__search { width: 180px; height: 28px; }
+:root {
+  /* Sizes of the view head and bar in one place (to be remapped to the shared type and spacing tokens) */
+  --viewbar-font-size: 12px;
+  --viewbar-gap: 2px;
+  --viewbar-height: 28px;
+  --viewhead-title-size: 16px;
+  --viewhead-page-title-size: 22px;
+}
 
-.cl-toolbar__panel { position: fixed; z-index: 19000; box-sizing: border-box; min-width: 260px; max-width: calc(100vw - 16px); max-height: 70vh; overflow: auto; padding: 10px; color: var(--text); background: var(--modal-elevated); border: 1px solid var(--border-medium); border-radius: var(--radius-md); box-shadow: 0 8px 28px var(--shadow-medium); font-size: 13px; }
-.cl-toolbar__panel:focus { outline: none; }
-.cl-toolbar__panel--wide { min-width: 520px; }
+/* The head of a view: its name and row count, and the toolbar. Class names start with cl-viewhead / cl-viewbar so
+   they cannot meet the page editor's floating toolbar (cl-toolbar in pages/editor). */
+.cl-viewhead { container-type: inline-size; display: flex; align-items: center; gap: 8px; min-height: 32px; min-width: 0; }
+.cl-viewhead__title { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; }
+.cl-viewhead__name { margin: 0; min-width: 0; font-size: var(--viewhead-title-size); font-weight: 600; line-height: 1.3; }
+.cl-viewhead .cl-viewhead__input { box-sizing: border-box; width: auto; max-width: 100%; height: auto; padding: 2px 6px; margin-left: -6px; font: inherit; font-weight: inherit; line-height: inherit; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm); text-overflow: ellipsis; }
+.cl-viewhead .cl-viewhead__input:hover:not(:disabled):not(:focus) { border-color: transparent; background: var(--bg-hover); }
+.cl-viewhead .cl-viewhead__input:read-only:hover { background: transparent; }
+.cl-viewhead .cl-viewhead__input:focus-visible { background: var(--bg-solid); border-color: var(--accent); }
+.cl-viewhead__count { flex: none; font-size: var(--viewbar-font-size); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.cl-viewbar { display: flex; align-items: center; gap: 4px; margin-left: auto; min-width: 0; font-size: var(--viewbar-font-size); }
+.cl-viewbar__options, .cl-viewbar__actions { display: flex; align-items: center; gap: var(--viewbar-gap); min-width: 0; }
+.cl-viewbar .cl-btn { height: var(--viewbar-height); font-size: var(--viewbar-font-size); }
+.cl-viewbar__icon { flex: none; }
+.cl-viewbar__icon-btn { padding: 0 6px; }
+.cl-viewbar__sep { width: 1px; height: 16px; margin: 0 6px; background: var(--border-medium); }
+.cl-viewbar__layouts { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--radius-sm); background: var(--bg-hover); }
+.cl-viewbar__layouts .cl-btn { height: 24px; padding: 0 8px; }
+.cl-viewbar__layout.is-active { color: var(--text); background: var(--bg-solid); box-shadow: 0 1px 2px var(--shadow); }
+.cl-viewbar__layoutbtn { padding: 0 6px 0 8px; }
+.cl-viewbar__opt { padding: 0 8px; color: var(--text-muted); }
+.cl-viewbar__opt.is-set { color: var(--accent); }
+.cl-viewbar__chip.is-set { background: var(--accent-bg); }
+.cl-viewbar__chip.is-set:hover:not(:disabled) { background: var(--accent-bg-hover); }
+.cl-viewbar__count { margin-left: 2px; font-variant-numeric: tabular-nums; }
+.cl-viewbar__new { padding: 0 8px 0 6px; }
+.cl-viewbar__search { box-sizing: border-box; width: 160px; height: var(--viewbar-height); padding: 0 8px; font: inherit; font-size: var(--viewbar-font-size); color: var(--text); background: var(--bg-solid); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); }
+.cl-viewbar__search:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+
+/* Embedded: the strip is laid out all the time (no jump) and only fades in on hover or focus; always on touch screens */
+.cl-viewshell--embedded .cl-viewbar { opacity: 0; transition: opacity var(--transition-fast); }
+.cl-viewshell--embedded:hover .cl-viewbar,
+.cl-viewshell--embedded:focus-within .cl-viewbar,
+.cl-viewshell--embedded .cl-viewbar.is-pinned { opacity: 1; }
+@media (hover: none) { .cl-viewshell--embedded .cl-viewbar { opacity: 1; } }
+.cl-viewshell--embedded .cl-viewbar__options { margin-right: 4px; }
+
+/* Full page: title on the first line with search, "..." and New; the options on a second line */
+.cl-viewhead--page { display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; padding: 4px 0 8px; }
+.cl-viewhead--page .cl-viewhead__name { font-size: var(--viewhead-page-title-size); }
+.cl-viewhead--page .cl-viewbar { display: contents; }
+.cl-viewhead--page .cl-viewbar__actions { grid-column: 2; grid-row: 1; justify-self: end; gap: 4px; }
+.cl-viewhead--page .cl-viewbar__options { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; }
+@container (max-width: 640px) { .cl-viewbar__layout-label { display: none; } }
+
+.cl-viewbar__panel { position: fixed; z-index: 19000; box-sizing: border-box; min-width: 260px; max-width: calc(100vw - 16px); max-height: 70vh; overflow: auto; padding: 10px; color: var(--text); background: var(--modal-elevated); border: 1px solid var(--border-medium); border-radius: var(--radius-md); box-shadow: 0 8px 28px var(--shadow-medium); font-size: 13px; }
+.cl-viewbar__panel:focus { outline: none; }
+.cl-viewbar__panel--wide { min-width: 520px; }
+.cl-viewbar__newform { display: flex; align-items: center; gap: 6px; }
+.cl-viewbar__newinput { flex: 1; min-width: 160px; height: 28px; padding: 0 8px; font: inherit; color: var(--text); background: var(--bg-solid); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); }
+.cl-viewbar__newinput:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* The project picker of quick-adds in tasks:* views */
+.cl-addproject { height: 26px; max-width: 160px; padding: 0 6px; font: inherit; font-size: 12px; color: var(--text-secondary); background: var(--bg-solid); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); }
+.cl-addproject:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .cl-filter__row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .cl-filter__select { height: 28px; padding: 0 6px; font: inherit; font-size: 13px; color: var(--text); background: var(--bg-solid); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); }
@@ -40,9 +90,6 @@
 .cl-summaries__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .cl-viewshell { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.cl-viewshell__head { display: flex; align-items: center; gap: 8px; }
-.cl-viewshell__name { flex: 0 1 320px; font-size: 16px; font-weight: 600; background: transparent; border-color: transparent; }
-.cl-viewshell__name:hover:not(:disabled) { border-color: var(--border-medium); }
 .cl-viewshell__body { flex: 1; min-height: 0; overflow: auto; }
 .cl-viewshell__state { padding: 24px 8px; color: var(--text-muted); }
 .cl-viewshell__state--error { color: var(--danger); }
@@ -50,4 +97,3 @@
 .cl-devview { padding: 16px 24px; }
 .cl-viewpage { display: flex; flex-direction: column; min-height: 0; height: 100%; }
 .cl-viewpage > .cl-viewshell { flex: 1; }
-.cl-viewpage__links { display: flex; justify-content: flex-end; font-size: 12px; margin-bottom: 4px; }

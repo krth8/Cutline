@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { CellHost } from '../../cells';
-import { projectsForCreate } from '../../store';
+import { ProjectSelect, useAddProject, useFocusWithin } from '../../addProject';
 import type { LayoutProps, Row } from '../../types';
 import { cx } from '../../../ui';
 import { doneModel, hasValue, rowInGroup, secondaryColumns } from './listHelpers';
@@ -43,9 +43,8 @@ export function ListLayout({ schema, view, result, loading, actions }: LayoutPro
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [newTitle, setNewTitle] = useState('');
-  const [projectId, setProjectId] = useState('');
-  const projects = schema.ref === 'tasks:*' ? projectsForCreate() : [];
-  const chosenProject = projects.find((p) => p.id === projectId) ?? projects[0];
+  const add = useAddProject(view.id, schema.ref);
+  const addFocus = useFocusWithin();
   const canCreate = schema.capabilities.create;
 
   function toggle(row: Row) {
@@ -102,10 +101,10 @@ export function ListLayout({ schema, view, result, loading, actions }: LayoutPro
   function addRow() {
     const title = newTitle.trim();
     if (!title) return;
-    if (schema.ref === 'tasks:*' && !chosenProject) return;
+    if (schema.ref === 'tasks:*' && !add.projectId) return;
     setNewTitle('');
     actions
-      .createRow({ [titleKey]: title }, schema.ref === 'tasks:*' && chosenProject ? { projectId: chosenProject.id } : undefined)
+      .createRow({ [titleKey]: title }, schema.ref === 'tasks:*' ? { projectId: add.projectId } : undefined)
       .catch(() => {});
   }
 
@@ -214,10 +213,18 @@ export function ListLayout({ schema, view, result, loading, actions }: LayoutPro
           </ul>
         </section>
       ))}
-      {result.rows.length === 0 && !loading && <p className="cl-list__empty">No rows.</p>}
+      {result.rows.length === 0 && !loading && <p className="cl-list__empty" data-testid="list-empty">
+          {schema.ref.startsWith('tasks:') ? 'No tasks yet' : 'No rows yet'}
+          {canCreate && (
+            <button type="button" className="cl-list__empty-new" onClick={() => rootRef.current?.querySelector<HTMLInputElement>('[data-testid=list-new]')?.focus()}>
+              {schema.ref.startsWith('tasks:') ? 'New task' : 'New row'}
+            </button>
+          )}
+        </p>}
       {canCreate && (
         <form
           className="cl-list__add"
+          {...addFocus.bind}
           onSubmit={(e) => {
             e.preventDefault();
             addRow();
@@ -234,20 +241,7 @@ export function ListLayout({ schema, view, result, loading, actions }: LayoutPro
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
           />
-          {projects.length > 0 && (
-            <select
-              className="cl-list__project"
-              aria-label="Project"
-              value={chosenProject?.id ?? ''}
-              onChange={(e) => setProjectId(e.target.value)}
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          )}
+          {addFocus.active && <ProjectSelect add={add} className="cl-list__project" testId="list-add-project" />}
         </form>
       )}
     </div>

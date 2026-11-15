@@ -1,22 +1,30 @@
 /* Table layout. Column widths come in through --cl-table-cols / --cl-table-width set on .cl-table. */
 .cl-table { --cl-table-head-h: 36px; --cl-table-foot-h: 34px; display: flex; flex-direction: column; min-width: 0; font-size: 13px; color: var(--text); }
-.cl-table__scroll { position: relative; overflow: auto; height: var(--cl-table-height, auto); min-height: 160px; max-height: var(--cl-table-max-height, calc(100vh - 190px)); border: 1px solid var(--border-medium); border-radius: var(--radius-md); background: var(--bg-solid); }
+.cl-table__scroll { position: relative; overflow: auto; height: var(--cl-table-height, auto); min-height: 160px; max-height: var(--cl-table-max-height, calc(100vh - 190px)); border: 1px solid var(--border-light); border-radius: var(--radius-md); background: transparent; }
 
 .cl-table__header, .cl-table__row, .cl-table__group, .cl-table__addrow, .cl-table__footer { display: grid; grid-template-columns: var(--cl-table-cols); width: var(--cl-table-width); min-width: 100%; box-sizing: border-box; }
 .cl-table__row, .cl-table__group, .cl-table__addrow { height: var(--cl-table-row-h); border-bottom: 1px solid var(--border-light); }
 
-.cl-table__header { position: sticky; top: 0; z-index: 3; height: var(--cl-table-head-h); background: var(--bg-secondary); border-bottom: 1px solid var(--border-medium); }
-.cl-table__footer { position: sticky; bottom: 0; z-index: 3; height: var(--cl-table-foot-h); background: var(--bg-secondary); border-top: 1px solid var(--border-medium); }
+.cl-table__header { position: sticky; top: 0; z-index: 3; height: var(--cl-table-head-h); background: var(--bg-solid); border-bottom: 1px solid var(--border-light); }
+.cl-table__footer { position: sticky; bottom: 0; z-index: 3; height: var(--cl-table-foot-h); background: var(--bg-solid); border-top: 1px solid var(--border-light); }
 .cl-table__body { position: relative; }
 .cl-table__window { position: absolute; top: 0; left: 0; right: 0; width: var(--cl-table-width); min-width: 100%; will-change: transform; }
 
-.cl-table__lead { display: flex; align-items: center; gap: 4px; padding: 0 8px 0 4px; min-width: 0; }
+.cl-table__row { align-items: center; }
+/* One gutter holds the drag handle and the row checkbox; both show on row hover, focus or selection */
+.cl-table__lead { display: flex; align-items: center; gap: 2px; padding: 0 4px 0 6px; min-width: 0; }
+.cl-table__row .cl-table__check, .cl-table__header .cl-table__check { opacity: 0; transition: opacity var(--transition-fast); }
+.cl-table__row:hover .cl-table__check, .cl-table__row:focus-within .cl-table__check, .cl-table__row.is-selected .cl-table__check,
+.cl-table.has-selection .cl-table__check, .cl-table__scroll:hover .cl-table__header .cl-table__check, .cl-table__header:focus-within .cl-table__check,
+.cl-table__header .cl-table__check:checked, .cl-table__header .cl-table__check:indeterminate { opacity: 1; }
+@media (hover: none) { .cl-table__check, .cl-table__grip { opacity: 1 !important; } }
+.cl-table__sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .cl-table__check { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .cl-table__grip { width: 14px; font-size: 11px; line-height: 1; letter-spacing: -2px; text-align: center; color: var(--text-muted); cursor: grab; opacity: 0; user-select: none; }
 .cl-table__grip--off { cursor: default; }
 .cl-table__row:hover .cl-table__grip, .cl-table__row:focus-within .cl-table__grip { opacity: 0.8; }
 
-.cl-table__hcell { position: relative; display: flex; align-items: center; gap: 4px; min-width: 0; padding: 0 12px 0 8px; font-weight: 600; font-size: 12px; color: var(--text-secondary); border-left: 1px solid transparent; }
+.cl-table__hcell { position: relative; display: flex; align-items: center; gap: 4px; min-width: 0; padding: 0 12px 0 8px; font-weight: 500; font-size: 12px; color: var(--text-muted); border-left: 1px solid transparent; }
 .cl-table__hcell.is-drop-before { border-left-color: var(--accent-light); box-shadow: inset 2px 0 0 var(--accent-light); }
 .cl-table__hcell.is-drop-after { box-shadow: inset -2px 0 0 var(--accent-light); }
 .cl-table__hlabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: grab; }
@@ -30,7 +38,7 @@
 .cl-table__row.is-drop-before { box-shadow: inset 0 2px 0 var(--accent-light); }
 .cl-table__row.is-drop-after { box-shadow: inset 0 -2px 0 var(--accent-light); }
 
-.cl-table__cell { display: flex; align-items: center; min-width: 0; padding: 0 4px; overflow: hidden; }
+.cl-table__cell { display: flex; align-items: center; min-height: 0; min-width: 0; padding: 0 4px; overflow: hidden; }
 .cl-table__cell > .cl-cellhost { flex: 1; min-width: 0; }
 .cl-table__cell--title { gap: 2px; overflow: visible; }
 .cl-table__title { flex: 1; min-width: 0; overflow: hidden; }
@@ -45,7 +53,7 @@
 .cl-table__tool:hover { color: var(--text); background: var(--bg-hover); }
 .cl-table__tool:focus-visible, .cl-table__caret:focus-visible, .cl-table__grouphead:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-.cl-table__group { align-items: center; background: var(--bg-secondary); }
+.cl-table__group { align-items: center; background: var(--bg-hover); }
 .cl-table__grouphead { grid-column: 1 / span 2; display: flex; align-items: center; gap: 8px; min-width: 0; height: 100%; padding: 0 10px; font: inherit; font-weight: 600; color: var(--text); text-align: left; background: none; border: none; cursor: pointer; }
 .cl-table__groupcaret { width: 12px; color: var(--text-secondary); }
 .cl-table__groupdot { width: 10px; height: 10px; flex-shrink: 0; border-radius: 50%; }
@@ -72,8 +80,6 @@
 .cl-table__spacer { flex: 1; }
 
 .cl-table__status { display: flex; align-items: center; gap: 12px; padding: 6px 4px; font-size: 12px; color: var(--text-muted); }
-.cl-table__nest { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
-.cl-table__nest input { accent-color: var(--accent); }
 
 /* column header menu, add-column button and the form */
 .cl-table__header.has-add { grid-template-columns: var(--cl-table-cols) 40px; width: calc(var(--cl-table-width) + 40px); }
@@ -82,8 +88,10 @@
 .cl-table__hmenu:hover { background: var(--bg-hover); }
 .cl-table__hsort { cursor: pointer; }
 .cl-table__hadd { display: flex; align-items: center; justify-content: center; border: 0; background: transparent; color: var(--text-secondary); font-size: 16px; cursor: pointer; }
-.cl-table__hadd:hover { background: var(--bg-hover); color: var(--text-primary); }
+.cl-table__hadd:hover { background: var(--bg-hover); color: var(--text); }
 .cl-colform { display: flex; flex-direction: column; gap: 12px; min-width: 280px; }
 .cl-colform__field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-secondary); }
-.cl-colform__options { font: inherit; padding: 6px 8px; border: 1px solid var(--border-medium); border-radius: 6px; background: var(--bg-primary); color: var(--text-primary); resize: vertical; }
+.cl-colform__options { font: inherit; padding: 6px 8px; border: 1px solid var(--border-medium); border-radius: 6px; background: var(--bg-solid); color: var(--text); resize: vertical; }
 .cl-table__empty { display: flex; align-items: center; gap: 8px; padding: 6px 12px; color: var(--text-secondary); font-size: 13px; }
+
+.cl-table__empty--blank { flex-direction: column; justify-content: center; padding: 18px 12px 10px; color: var(--text-muted); }
