@@ -28,6 +28,8 @@ export interface Platform {
   projects(): Array<{ id: string; name: string; canTasks: boolean; isOwner: boolean }>;
   statuses(): Array<{ id: string; name: string; color: string }>;
   members(projectId: string): Promise<Array<{ id: string; username: string; profileImage?: string }>>;
+  /** End the login (the "Log out" command). Optional so existing fakes keep compiling. */
+  logout?(): Promise<void>;
 }
 
 /** Fired on `window` after `navigate()` changed the URL (`popstate` covers back/forward). */
@@ -53,6 +55,7 @@ interface LegacyGlobals {
   >;
   Confirm?: { show(options: { message: string; type?: string; confirmText?: string }): Promise<boolean> };
   openSocket?: (path: string) => Promise<WebSocket>;
+  Auth?: { logout(): Promise<unknown> | unknown };
 }
 
 function legacy(): LegacyGlobals {
@@ -187,6 +190,12 @@ export function createLegacyPlatform(): Platform {
 
     statuses() {
       return (legacy().AppState?.statuses ?? []).map((s) => ({ id: s.id, name: s.name, color: s.color }));
+    },
+
+    async logout() {
+      const auth = legacy().Auth;
+      if (!auth) throw new Error('Platform: the legacy Auth module is not loaded');
+      await auth.logout();
     },
 
     async members(projectId) {

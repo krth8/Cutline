@@ -201,6 +201,13 @@ const Routes = (function () {
         const show = !!AppState.adminUser && !AppState.isShareLinkGuest;
         const home = document.getElementById('mainTabHome');
         if (home) home.classList.toggle('hidden', !show);
+        // The search button of the top bar (the palette is in the bundle)
+        const search = document.getElementById('searchBtn');
+        if (search) {
+            search.classList.toggle('hidden', !show);
+            const key = document.getElementById('searchBtnKey');
+            if (key && /Mac|iPhone|iPad/.test(navigator.platform)) key.textContent = '⌘K';
+        }
         if (tab.classList.contains('hidden') === show) {
             tab.classList.toggle('hidden', !show);
             if (typeof updateTabIndicator === 'function') updateTabIndicator();
