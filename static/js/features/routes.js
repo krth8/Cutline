@@ -153,6 +153,34 @@ const Routes = (function () {
         }
     }
 
+    // ============ Docs moved into Pages (migration 006) ============
+
+    const DOCS_MOVED_KEY = 'docsMoved';
+
+    /** True once the server has said the Docs now live in Pages (remembered so the next load starts without the tab). */
+    function docsMoved() {
+        try {
+            return localStorage.getItem(DOCS_MOVED_KEY) === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /** Hide the Docs tab (a saved Docs tab opens Pages instead: see initNavigation and apply). */
+    function setDocsMoved(moved) {
+        try {
+            localStorage.setItem(DOCS_MOVED_KEY, moved ? '1' : '0');
+        } catch (e) {}
+        hideDocsTab();
+    }
+
+    function hideDocsTab() {
+        const tab = document.querySelector('.main-tab[data-tab="docs"]');
+        if (!tab) return;
+        tab.classList.toggle('hidden', docsMoved());
+        if (typeof updateTabIndicator === 'function') updateTabIndicator();
+    }
+
     // ============ Tab <- URL ============
 
     /** Old /?project=<id>[&session=<id>] links become /p/<id>/review[?session=<id>]. */
@@ -190,6 +218,7 @@ const Routes = (function () {
         const initial = !!(options && options.initial);
         if (AppState.isShareLinkGuest || !AppState.authToken) return;
         refreshPagesTab();
+        hideDocsTab();
         rewriteLegacyLink();
 
         const route = current();
@@ -201,6 +230,7 @@ const Routes = (function () {
             // "/": keep today's behaviour. Back/forward restore the tab of that history entry.
             let tab = history.state && history.state.tab;
             if (!tab && !initial) tab = localStorage.getItem('activeTab');
+            if (tab === 'docs' && docsMoved()) tab = 'pages';
             if (tab && ROOT_TABS.includes(tab)) switchTab(tab, { history: 'none' });
             else if (!initial) switchTab('projects', { history: 'none' });
         }
@@ -237,7 +267,7 @@ const Routes = (function () {
     window.addEventListener('popstate', onNavigate);
     window.addEventListener('cutline:navigate', onNavigate);
 
-    return { parse, apply, sync, afterSwitch, refreshPagesTab, reviewUrl, isDeepLink, remember, restore };
+    return { parse, apply, sync, afterSwitch, refreshPagesTab, docsMoved, setDocsMoved, reviewUrl, isDeepLink, remember, restore };
 })();
 
 window.Routes = Routes;

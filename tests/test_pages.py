@@ -350,6 +350,18 @@ def test_needs_import_and_claim_is_granted_exactly_once(client, team):
     assert again.json() == {"granted": False}
 
 
+def test_an_unused_import_claim_expires_while_the_page_is_empty(client, team, monkeypatch):
+    import database.pages as pages_db
+    page = create(client, team["member"], team["space"], "Abandoned")
+    set_legacy(page["id"], "<p>Old</p>")
+    url = f"/api/pages/{page['id']}/claim-import"
+    assert client.post(url, headers=auth(team["member"])).json() == {"granted": True}
+    assert client.post(url, headers=auth(team["member"])).json() == {"granted": False}
+    # The claiming tab closed before writing: once the claim is old enough, the next opener gets it
+    monkeypatch.setattr(pages_db, "IMPORT_CLAIM_SECONDS", -1)
+    assert client.post(url, headers=auth(team["member"])).json() == {"granted": True}
+
+
 def test_claim_import_from_two_users_grants_one(client, admin, team):
     page = create(client, team["member"], team["space"], "Old doc")
     set_legacy(page["id"], "<p>Old</p>")

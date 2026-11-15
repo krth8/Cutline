@@ -26,8 +26,6 @@ and edits rows.
    (`(schema) => ({ ... })`). The shell merges it into the view when a user switches to your layout; keys the view
    already has are kept. Registering a name again replaces the earlier registration.
 4. Add one import line to `layouts/index.ts` (`import './board';`). That file is the only shared one.
-5. T6 only: delete the `registerLayout('table', FallbackLayout)` line in `layouts/index.ts` (and `layouts/fallback/`
-   if you like); registering `'table'` after it would replace it anyway.
 
 ## What a layout receives
 

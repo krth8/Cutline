@@ -11,6 +11,7 @@ from fastapi import (
     UploadFile,
 )
 from cache import cache_manager
+from database.docs_to_pages import docs_moved
 from database import (
     db_create_invite_link,
     db_create_user,
@@ -180,6 +181,8 @@ async def auth_me(user: dict = Depends(require_auth)):
         "permissions": get_role_permissions(user["role"]),
         **idle_settings(),
         "idleRemaining": auth_sessions.idle_remaining(user["sid"]),
+        # The legacy UI hides its Docs tab when true (the Docs now live in Pages)
+        "docsMoved": docs_moved(),
     }
 
 

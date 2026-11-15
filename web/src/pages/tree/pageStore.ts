@@ -13,6 +13,7 @@ import {
   createPage,
   deletePage,
   listPages,
+  movePageToSpace,
   updatePage,
   type PageInfo,
   type PageNode,
@@ -279,6 +280,30 @@ export class PageStore {
       return info;
     } catch (e) {
       this.fail('create the page', e);
+      return null;
+    } finally {
+      this.end();
+    }
+  }
+
+  /**
+   * Move a page with its sub-pages to another space. They leave this tree at once (put back with a toast if the
+   * server refuses) and the destination space's store reloads. Returns the page as it is now, or null.
+   */
+  async moveToSpace(id: string, destination: SpaceKey, parentId: string | null = null): Promise<PageInfo | null> {
+    const gone = new Set(subtreeIds(this.snap.model, id));
+    const removed = this.snap.pages.filter((p) => gone.has(p.id));
+    this.begin();
+    this.set({ pages: this.snap.pages.filter((p) => !gone.has(p.id)) });
+    try {
+      const info = await movePageToSpace(id, destination, parentId);
+      this.invalidateArchived();
+      getPageStore(destination).scheduleRefresh();
+      return info;
+    } catch (e) {
+      const have = new Set(this.snap.pages.map((p) => p.id));
+      this.set({ pages: [...this.snap.pages, ...removed.filter((p) => !have.has(p.id))] });
+      this.fail('move the page', e);
       return null;
     } finally {
       this.end();

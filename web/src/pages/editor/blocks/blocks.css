@@ -1,0 +1,159 @@
+/* Image and file blocks, upload placeholders and the lightbox. Colours come from the theme variables. */
+
+/* ---- image ---- */
+.cl-image { display: flex; margin: 0.4em 0; }
+.cl-image--left { justify-content: flex-start; }
+.cl-image--center { justify-content: center; }
+.cl-image__figure { position: relative; margin: 0; max-width: 100%; }
+.cl-image__img { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); cursor: zoom-in; }
+.cl-image[data-selected='true'] .cl-image__img { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cl-image__missing {
+  padding: 24px 16px;
+  border: 1px dashed var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 0.9em;
+}
+.cl-image__handle {
+  position: absolute;
+  right: -5px;
+  bottom: 26px;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--accent);
+  border: 2px solid var(--bg-solid, #fff);
+  cursor: nwse-resize;
+  opacity: 0;
+  touch-action: none;
+}
+.cl-image:hover .cl-image__handle,
+.cl-image[data-selected='true'] .cl-image__handle { opacity: 1; }
+.cl-image__controls {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.cl-image__alt {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  font: inherit;
+  font-size: 0.85em;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.cl-image__align {
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 0.8em;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.cl-image__align[aria-pressed='true'] { color: var(--text); background: var(--accent-bg-strong); border-color: var(--accent); }
+.cl-image__caption {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 2px 0;
+  font: inherit;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  outline: none;
+  text-align: center;
+}
+.cl-image__caption--text { margin-top: 4px; }
+.cl-image__caption[data-empty='true'] { opacity: 0; height: 0; min-height: 0; padding: 0; margin: 0; }
+.cl-image:hover .cl-image__caption[data-empty='true'],
+.cl-image[data-selected='true'] .cl-image__caption[data-empty='true'],
+.cl-image__caption[data-empty='true']:focus { opacity: 1; height: auto; padding: 2px 0; margin-top: 4px; }
+
+/* ---- file ---- */
+.cl-file { margin: 0.4em 0; }
+.cl-file__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+.cl-file[data-selected='true'] .cl-file__row { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cl-file__icon {
+  flex: none;
+  min-width: 36px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-bg-strong);
+  color: var(--text);
+  font-size: 0.7em;
+  font-weight: 650;
+  text-align: center;
+  letter-spacing: 0.03em;
+}
+.cl-file__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-file__size { flex: none; color: var(--text-muted); font-size: 0.85em; }
+.cl-file__download { flex: none; color: var(--accent); font-size: 0.9em; text-decoration: none; }
+.cl-file__download:hover { text-decoration: underline; }
+
+/* ---- upload placeholder (local only) ---- */
+.cl-upload {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0.4em 0;
+  padding: 8px 12px;
+  border: 1px dashed var(--border-medium);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+.cl-upload__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-upload__bar { flex: none; width: 120px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.cl-upload__fill { display: block; height: 100%; background: var(--accent); transition: width var(--transition-fast); }
+
+/* ---- lightbox ---- */
+.cl-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-overlay-heavy, rgba(0, 0, 0, 0.85));
+  cursor: zoom-out;
+}
+.cl-lightbox__img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: var(--radius-sm); }
+.cl-lightbox__close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}

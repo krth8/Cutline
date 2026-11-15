@@ -16,8 +16,10 @@ function initNavigation() {
 
     // Restore saved tab from localStorage. A deep link decides the tab itself (Routes.apply),
     // and Pages is only ever opened through its URL.
-    const savedTab = localStorage.getItem('activeTab');
-    if (savedTab && ['projects', 'review', 'docs', 'lounge'].includes(savedTab) && !Routes.isDeepLink()) {
+    let savedTab = localStorage.getItem('activeTab');
+    // The Docs moved into Pages: a saved Docs tab opens Pages instead
+    if (savedTab === 'docs' && Routes.docsMoved()) savedTab = 'pages';
+    if (savedTab && ['projects', 'review', 'docs', 'lounge', 'pages'].includes(savedTab) && !Routes.isDeepLink()) {
         // Delay to ensure DOM is ready
         requestAnimationFrame(() => {
             switchTab(savedTab, { history: 'replace' });

@@ -1,0 +1,76 @@
+/* Table layout. Column widths come in through --cl-table-cols / --cl-table-width set on .cl-table. */
+.cl-table { --cl-table-head-h: 36px; --cl-table-foot-h: 34px; display: flex; flex-direction: column; min-width: 0; font-size: 13px; color: var(--text); }
+.cl-table__scroll { position: relative; overflow: auto; height: var(--cl-table-height, auto); min-height: 160px; max-height: var(--cl-table-max-height, calc(100vh - 190px)); border: 1px solid var(--border-medium); border-radius: var(--radius-md); background: var(--bg-solid); }
+
+.cl-table__header, .cl-table__row, .cl-table__group, .cl-table__addrow, .cl-table__footer { display: grid; grid-template-columns: var(--cl-table-cols); width: var(--cl-table-width); min-width: 100%; box-sizing: border-box; }
+.cl-table__row, .cl-table__group, .cl-table__addrow { height: var(--cl-table-row-h); border-bottom: 1px solid var(--border-light); }
+
+.cl-table__header { position: sticky; top: 0; z-index: 3; height: var(--cl-table-head-h); background: var(--bg-secondary); border-bottom: 1px solid var(--border-medium); }
+.cl-table__footer { position: sticky; bottom: 0; z-index: 3; height: var(--cl-table-foot-h); background: var(--bg-secondary); border-top: 1px solid var(--border-medium); }
+.cl-table__body { position: relative; }
+.cl-table__window { position: absolute; top: 0; left: 0; right: 0; width: var(--cl-table-width); min-width: 100%; will-change: transform; }
+
+.cl-table__lead { display: flex; align-items: center; gap: 4px; padding: 0 8px 0 4px; min-width: 0; }
+.cl-table__check { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.cl-table__grip { width: 14px; font-size: 11px; line-height: 1; letter-spacing: -2px; text-align: center; color: var(--text-muted); cursor: grab; opacity: 0; user-select: none; }
+.cl-table__grip--off { cursor: default; }
+.cl-table__row:hover .cl-table__grip, .cl-table__row:focus-within .cl-table__grip { opacity: 0.8; }
+
+.cl-table__hcell { position: relative; display: flex; align-items: center; gap: 4px; min-width: 0; padding: 0 12px 0 8px; font-weight: 600; font-size: 12px; color: var(--text-secondary); border-left: 1px solid transparent; }
+.cl-table__hcell.is-drop-before { border-left-color: var(--accent-light); box-shadow: inset 2px 0 0 var(--accent-light); }
+.cl-table__hcell.is-drop-after { box-shadow: inset -2px 0 0 var(--accent-light); }
+.cl-table__hlabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: grab; }
+.cl-table__sort { color: var(--accent-lighter); }
+.cl-table__resize { position: absolute; top: 4px; right: 0; bottom: 4px; width: 8px; cursor: col-resize; touch-action: none; border-radius: 2px; }
+.cl-table__resize:hover, .cl-table__resize:focus-visible { background: var(--accent-bg-strong); outline: none; box-shadow: inset -2px 0 0 var(--accent-light); }
+
+.cl-table__row.is-selected { background: var(--accent-bg); }
+.cl-table__row:hover { background: var(--bg-hover); }
+.cl-table__row.is-selected:hover { background: var(--accent-bg-hover); }
+.cl-table__row.is-drop-before { box-shadow: inset 0 2px 0 var(--accent-light); }
+.cl-table__row.is-drop-after { box-shadow: inset 0 -2px 0 var(--accent-light); }
+
+.cl-table__cell { display: flex; align-items: center; min-width: 0; padding: 0 4px; overflow: hidden; }
+.cl-table__cell > .cl-cellhost { flex: 1; min-width: 0; }
+.cl-table__cell--title { gap: 2px; overflow: visible; }
+.cl-table__title { flex: 1; min-width: 0; overflow: hidden; }
+.cl-table__title > .cl-cellhost { width: 100%; box-sizing: border-box; }
+.cl-table__caret { flex: 0 0 18px; width: 18px; height: 22px; padding: 0; font-size: 12px; color: var(--text-secondary); background: none; border: none; border-radius: var(--radius-xs); cursor: pointer; transition: transform var(--transition-fast); }
+.cl-table__caret.is-open { transform: rotate(90deg); }
+.cl-table__caret:hover { background: var(--bg-hover); }
+.cl-table__caret--off { cursor: default; }
+.cl-table__rowtools { display: inline-flex; gap: 2px; flex: 0 0 auto; opacity: 0; }
+.cl-table__row:hover .cl-table__rowtools, .cl-table__row:focus-within .cl-table__rowtools { opacity: 1; }
+.cl-table__tool { width: 22px; height: 22px; padding: 0; font-size: 14px; line-height: 1; color: var(--text-secondary); background: none; border: none; border-radius: var(--radius-xs); cursor: pointer; }
+.cl-table__tool:hover { color: var(--text); background: var(--bg-hover); }
+.cl-table__tool:focus-visible, .cl-table__caret:focus-visible, .cl-table__grouphead:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.cl-table__group { align-items: center; background: var(--bg-secondary); }
+.cl-table__grouphead { grid-column: 1 / span 2; display: flex; align-items: center; gap: 8px; min-width: 0; height: 100%; padding: 0 10px; font: inherit; font-weight: 600; color: var(--text); text-align: left; background: none; border: none; cursor: pointer; }
+.cl-table__groupcaret { width: 12px; color: var(--text-secondary); }
+.cl-table__groupdot { width: 10px; height: 10px; flex-shrink: 0; border-radius: 50%; }
+.cl-table__grouplabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-table__groupcount { padding: 0 7px; font-size: 11px; font-weight: 500; line-height: 18px; color: var(--text-secondary); background: var(--bg-hover); border-radius: var(--radius-full); }
+
+.cl-table__summary { display: flex; align-items: center; min-width: 0; padding: 0 12px 0 8px; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.cl-table__addrow { align-items: center; }
+.cl-table__addicon { justify-content: center; color: var(--text-muted); }
+.cl-table__addcell { grid-column: 2 / -1; display: flex; align-items: center; gap: 8px; min-width: 0; padding-right: 8px; }
+.cl-table__addinput { flex: 1; min-width: 0; height: 26px; padding: 0 6px; font: inherit; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm); }
+.cl-table__addinput::placeholder { color: var(--text-muted); }
+.cl-table__addinput:hover { border-color: var(--border-medium); }
+.cl-table__addinput:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; background: var(--bg-solid); }
+.cl-table__select { height: 26px; max-width: 200px; padding: 0 6px; font: inherit; font-size: 12px; color: var(--text); background: var(--bg-solid); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); }
+.cl-table__select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.cl-table__bulk { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; padding: 6px 10px; background: var(--accent-bg-strong); border: 1px solid var(--border-glow); border-radius: var(--radius-md); }
+.cl-table__bulkcount { font-weight: 600; margin-right: 4px; }
+.cl-table__bulksep { width: 1px; height: 18px; background: var(--border-medium); }
+.cl-table__bulklabel { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+.cl-table__bulkvalue { display: inline-block; min-width: 140px; border: 1px solid var(--border-medium); border-radius: var(--radius-sm); background: var(--bg-solid); }
+.cl-table__spacer { flex: 1; }
+
+.cl-table__status { display: flex; align-items: center; gap: 12px; padding: 6px 4px; font-size: 12px; color: var(--text-muted); }
+.cl-table__nest { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.cl-table__nest input { accent-color: var(--accent); }
