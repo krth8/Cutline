@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { loadEditor, type EditorChunk } from './loadEditor';
 import type { PageStatus } from './PageProvider';
 import { usePage } from './usePage';
@@ -51,11 +51,18 @@ export interface CollabEditorProps {
   autoFocus?: boolean;
   /** Show the page without letting anyone type, even when the server allows editing (an archived page). */
   readOnly?: boolean;
+  /** Show the built-in "Saved / Saving..." bar (default true). A host that places `SyncStatus` itself passes false. */
+  showStatus?: boolean;
+  /** Called with the sync status whenever it changes, so a host can show it elsewhere. */
+  onStatusChange?: (status: PageStatus) => void;
 }
 
 /** The page editor connected to the sync server: content, remote carets and the status label. */
-export function CollabEditor({ pageId, placeholder, autoFocus, readOnly }: CollabEditorProps) {
+export function CollabEditor({ pageId, placeholder, autoFocus, readOnly, showStatus = true, onStatusChange }: CollabEditorProps) {
   const { doc, awareness, status, editable, ready, user } = usePage(pageId);
+  const report = useRef(onStatusChange);
+  report.current = onStatusChange;
+  useEffect(() => report.current?.(status), [status]);
   const chunk = useEditorChunk();
 
   let body;
@@ -80,9 +87,11 @@ export function CollabEditor({ pageId, placeholder, autoFocus, readOnly }: Colla
 
   return (
     <div className="cl-collab" data-page-id={pageId}>
-      <div className="cl-collab__bar">
-        <SyncStatus status={status} />
-      </div>
+      {showStatus ? (
+        <div className="cl-collab__bar">
+          <SyncStatus status={status} />
+        </div>
+      ) : null}
       <div className="cl-collab__body">{body}</div>
     </div>
   );

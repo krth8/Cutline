@@ -195,6 +195,7 @@ def test_a_row_opens_in_the_row_panel(scene, server):
     assert "row=tbl_" in admin.url
     admin.wait_for_function("() => [...document.querySelectorAll('[data-testid=row-panel] input')].some(i => i.value === 'Shot A')",
                             timeout=10000)
+    admin.click("[data-testid=row-panel] .cl-props__more")  # empty properties are collapsed until asked for
     props = admin.inner_text("[data-testid=row-panel] [data-testid=task-properties]")
     assert "Notes" in props and "Stage" in props
     admin.keyboard.press("Escape")
