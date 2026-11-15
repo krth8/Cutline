@@ -1,5 +1,7 @@
 import { mountApp, unmountApp } from './app';
 import { getPlatform } from './platform';
+import './pages/tree/register'; // sidebar tree and page views for the shell
+import './pages/pageBody'; // the editor inside a page view
 
 export const version = '0.1.0';
 

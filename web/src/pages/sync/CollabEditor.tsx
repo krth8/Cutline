@@ -49,10 +49,12 @@ export interface CollabEditorProps {
   pageId: string;
   placeholder?: string;
   autoFocus?: boolean;
+  /** Show the page without letting anyone type, even when the server allows editing (an archived page). */
+  readOnly?: boolean;
 }
 
 /** The page editor connected to the sync server: content, remote carets and the status label. */
-export function CollabEditor({ pageId, placeholder, autoFocus }: CollabEditorProps) {
+export function CollabEditor({ pageId, placeholder, autoFocus, readOnly }: CollabEditorProps) {
   const { doc, awareness, status, editable, ready, user } = usePage(pageId);
   const chunk = useEditorChunk();
 
@@ -68,7 +70,7 @@ export function CollabEditor({ pageId, placeholder, autoFocus }: CollabEditorPro
         doc={doc}
         awareness={awareness ?? undefined}
         user={user}
-        editable={editable}
+        editable={editable && !readOnly}
         {...(placeholder ? { placeholder } : {})}
         {...(autoFocus ? { autoFocus } : {})}
       />
