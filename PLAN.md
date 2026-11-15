@@ -748,11 +748,11 @@ Risks:
 | T10 | done | main | Merged. Status options have no done flag: the list matches names like Done or Completed. |
 | T11 | done | main | Merged. Parity checklist in PR #28. `GET /api/tables/{ref}/rows/{id}`, `useRow`. Migration 012: `is_done` on statuses (API only, no editor). The task body and the old `description` diverge after import. Open: comment edit, real activity log, the panel only exists where the bundle is mounted. |
 | T12 | done | main | Merged. Node `viewBlock`; its React content stays in the main bundle and is reached through `window.__clShared['view-block-host']`. `GET /api/views` lists views. "Open full page" goes to `/dev/view/<id>` until a real view route exists. |
-| T13 | not started | | |
+| T13 | first half done | main | Merged. Migration 013 (`pages.system_key`, a Tasks page per project). Routes `/p/<id>/tasks`, `/p/<id>/view/<viewId>`, `/me/view/<viewId>`. The old task code is NOT removed: it sits behind `localStorage.legacyTasks = '1'` until the owner has compared on production data. Parity checklist in PR #32. |
 | S2 | done | main | Merged. `live.watch(slot, { allTasks: true })` works end to end. No visible UI yet: project picker on create is left to the layouts (`projectsForCreate()`). |
 | S1 | done | main | Merged. `POST /api/pages/{id}/move`, `GET /api/pages/{id}/move-preview`; `page_changed` carries `pageIds` on a move. No parent picker in the dialog. |
 | S3 | done | main | Merged. Nodes `summary` and `summaryInline`; block hosts are a map in web/build.mjs. |
-| S4 | not started | | |
+| S4 | done | main | Merged. Migration 014 (`users.home_page_id`). `/home`; `/` goes there only when no tab is saved. Status filter operators `done` and `notDone`. Block `pageList` and `GET /api/pages/recent`. |
 | S5 | done | main | Merged. One `mention` node with a `kind`. Migration 010 (`page_refs`, `notifications.link`). Refs and notifications are produced at snapshot (about 3 to 8 s after a mention). |
 | S6 | done | main | Merged. Node `clipEmbed` keyed by project and base name. Migration 011 (`tasks.comment_id`, `clip_frame`). Review deep link `/p/<id>/review?clip=&v=&frame=`. Frame seek is untested (no video in the fixtures). |
 | C1 to C5 | not started | | |
