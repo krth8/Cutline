@@ -120,6 +120,14 @@ function syncLive(): void {
         if (typeof msg?.tableRef !== 'string') return;
         for (const t of tables.values()) if (t.active > 0 && refMatches(msg.tableRef, t.ref)) t.scheduleQueries();
       }),
+      // The user's rights in a project changed: the project options and visible rows of tasks:* change
+      live.on('projects_changed', () => {
+        const t = tables.get('tasks:*');
+        if (t && t.active > 0) {
+          t.scheduleSchema();
+          t.scheduleQueries();
+        }
+      }),
       live.on('schema_changed', (msg) => {
         if (typeof msg?.tableRef !== 'string') return;
         for (const t of tables.values()) {
@@ -136,23 +144,27 @@ function syncLive(): void {
   }
 }
 
-/** Keep the platform's watch slot on the projects of every mounted tasks table. */
+/**
+ * Keep the platform's watch slot on the mounted tasks tables: tasks:<id> watches that project,
+ * tasks:* switches on the server's all-tasks watch (every project the user may see tasks of).
+ */
 function syncWatch(): void {
   const platform = getPlatform();
   const projects = new Set<string>();
+  let allTasks = false;
   for (const t of tables.values()) {
     if (t.active === 0) continue;
-    if (t.ref === 'tasks:*') {
-      for (const p of platform.projects()) if (p.canTasks) projects.add(p.id);
-    } else if (t.ref.startsWith('tasks:')) {
-      projects.add(t.ref.slice('tasks:'.length));
-    }
+    if (t.ref === 'tasks:*') allTasks = true;
+    else if (t.ref.startsWith('tasks:')) projects.add(t.ref.slice('tasks:'.length));
   }
   const sorted = [...projects].sort();
-  const key = sorted.length ? sorted.join(',') : null;
+  const key = sorted.length || allTasks ? `${allTasks ? '*;' : ''}${sorted.join(',')}` : null;
   if (key === lastWatch) return;
   lastWatch = key;
-  platform.live.watch(WATCH_SLOT, key === null ? null : { projects: sorted });
+  platform.live.watch(
+    WATCH_SLOT,
+    key === null ? null : { ...(sorted.length ? { projects: sorted } : {}), ...(allTasks ? { allTasks: true } : {}) },
+  );
 }
 
 export function getTable(ref: string): TableEntry {

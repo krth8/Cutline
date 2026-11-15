@@ -8,6 +8,7 @@ export {
   type ViewPatch,
   type ViewSource,
 } from './viewSource';
+export { projectsForCreate } from './mutations';
 export { STORE_CONFIG, type QueryState, type SchemaState } from './registry';
 export { StoreDemo } from './StoreDemo';
 

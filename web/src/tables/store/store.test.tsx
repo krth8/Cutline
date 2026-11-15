@@ -5,6 +5,7 @@ import { createFakePlatform, type FakePlatform } from '../../testing/fakePlatfor
 import type { Query, Row } from '../types';
 import {
   createMemoryViewSource,
+  projectsForCreate,
   resetStores,
   setViewSource,
   STORE_CONFIG,
@@ -241,12 +242,21 @@ describe('watching and disposal', () => {
 
     const b = renderHook(() => useViewQuery(desc('tasks:*')));
     await flush();
-    expect(last()).toEqual({ slot: 'tables', target: { projects: ['p1', 'p2'] } });
+    expect(last()).toEqual({ slot: 'tables', target: { projects: ['p1'], allTasks: true } });
 
     b.unmount();
     expect(last()).toEqual({ slot: 'tables', target: { projects: ['p1'] } });
     a.unmount();
     expect(last()).toEqual({ slot: 'tables', target: null });
+  });
+
+  it('tasks:* alone uses the all-tasks watch and does not list projects', async () => {
+    serve([], 'tasks:*');
+    const a = renderHook(() => useViewQuery(desc('tasks:*')));
+    await flush();
+    expect(fake.watches).toEqual([{ slot: 'tables', target: { allTasks: true } }]);
+    a.unmount();
+    expect(fake.watches[fake.watches.length - 1]!.target).toBeNull();
   });
 
   it('uses one watch call for two views of the same project', async () => {
@@ -453,6 +463,24 @@ describe('optimistic mutations', () => {
       projectId: 'p1',
     });
     expect(hook.result.current.result?.rows.map((r) => r.id)).toEqual(['t1']); // filtered view: the refetch decides
+  });
+
+  it('createRow on tasks:* without a projectId rejects with a clear error and sends nothing', async () => {
+    serve([rowOf('t1', 'One')], 'tasks:*');
+    const hook = await mount(desc('tasks:*'));
+    await act(async () => {
+      await expect(hook.result.current.actions.createRow({ name: 'X' })).rejects.toThrow(/project/i);
+    });
+    expect(backend.calls.some((c) => c.method === 'POST' && c.path.endsWith('/rows'))).toBe(false);
+    expect(fake.toasts[fake.toasts.length - 1]?.kind).toBe('error');
+  });
+
+  it('projectsForCreate lists the projects where the user can edit tasks', () => {
+    fake.data.projects = [
+      { id: 'p1', name: 'One', canTasks: true, isOwner: true },
+      { id: 'p3', name: 'Three', canTasks: false, isOwner: false },
+    ];
+    expect(projectsForCreate()).toEqual([{ id: 'p1', name: 'One' }]);
   });
 
   it('createRow removes the temporary row, toasts and rejects on failure', async () => {

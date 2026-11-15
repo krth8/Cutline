@@ -19,8 +19,10 @@ async def live_socket(
 ):
     """One per browser tab, for logged-in users and share-link guests.
 
-    The tab sends {"type": "watch", "projects": [ids]} to choose the projects
-    it gets updates for, and {"type": "ping"} to check the line.
+    The tab sends {"type": "watch", "projects": [ids], "allTasks": bool} to choose
+    the projects it gets updates for (allTasks: task events of every project the
+    user has task access to; guests never get it), and {"type": "ping"} to check
+    the line.
     """
     principal = principal_from_ticket(ticket)
     await websocket.accept()
@@ -39,8 +41,10 @@ async def live_socket(
                 await websocket.send_json({"type": "pong"})
             elif kind == "watch":
                 wanted = message.get("projects")
-                denied = live.watch(conn, wanted if isinstance(wanted, list) else [])
-                await websocket.send_json({"type": "watching", "projects": list(conn.projects)})
+                denied = live.watch(conn, wanted if isinstance(wanted, list) else [],
+                                    all_tasks=message.get("allTasks") is True)
+                await websocket.send_json({"type": "watching", "projects": list(conn.projects),
+                                           "allTasks": conn.all_tasks})
                 for project_id in denied:
                     await websocket.send_json({"type": "access_removed", "project": project_id})
     except (WebSocketDisconnect, ValueError, RuntimeError):

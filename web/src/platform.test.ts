@@ -13,6 +13,7 @@ function stubLive() {
       (registered[type] ??= []).push(fn);
     }),
     watch: vi.fn(),
+    watchAllTasks: vi.fn(),
   };
   w.Live = live;
   return { live, fire: (type: string, msg: any) => registered[type]?.forEach((fn) => fn(msg)) };
@@ -148,9 +149,17 @@ describe('legacy platform bridge', () => {
       expect(live.watch).toHaveBeenCalledTimes(1);
       expect(live.watch).toHaveBeenCalledWith('pages:s1:a', null);
     });
-    it('throws a descriptive error for allTasks until the server supports it', () => {
-      stubLive();
-      expect(() => platform.live.watch('dash', { allTasks: true })).toThrow(/allTasks.*S2/);
+    it('allTasks turns the all-tasks watch on once and off again, per slot', () => {
+      const { live } = stubLive();
+      platform.live.watch('dash', { allTasks: true });
+      platform.live.watch('dash', { allTasks: true, projects: ['a'] });
+      expect(live.watchAllTasks).toHaveBeenCalledTimes(1);
+      expect(live.watchAllTasks).toHaveBeenCalledWith('pages:dash:*', true);
+      expect(live.watch).toHaveBeenCalledWith('pages:dash:a', 'a');
+      platform.live.watch('dash', { projects: ['a'] });
+      expect(live.watchAllTasks).toHaveBeenLastCalledWith('pages:dash:*', false);
+      platform.live.watch('dash', null);
+      expect(live.watchAllTasks).toHaveBeenCalledTimes(2);
     });
     it('throws when Live is not loaded', () => {
       expect(() => platform.live.watch('x', null)).toThrow(/Live/);
