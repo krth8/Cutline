@@ -186,3 +186,35 @@ def test_view_changed_for_all_projects_view_goes_to_the_creators_other_tabs(clie
         vid = client.post("/api/views", json={"tableRef": "tasks:*", "layout": "table"}, headers=h).json()["id"]
         assert other.receive_json() == {"type": "view_changed", "viewId": vid}
         assert nothing_pending(writer)
+
+
+def test_list_views_filters_and_permissions(api, admin, project, editor, make_user, grant):
+    ref = f"tasks:{project}"
+    page = api("POST", f"/api/spaces/p:{project}/pages", editor, {"title": "P"}).json()
+    owned = make_view(api, editor, ref, name="On the page", ownerPageId=page["id"])
+    free = make_view(api, editor, ref, name="Free")
+    other = make_view(api, admin, "tasks:*", name="Private")
+
+    res = api("GET", "/api/views", editor)
+    assert res.status_code == 200
+    rows = {v["id"]: v for v in res.json()["views"]}
+    assert set(rows) == {owned["id"], free["id"]}  # another user's tasks:* view is not listed
+    assert rows[owned["id"]] == {"id": owned["id"], "tableRef": ref, "name": "On the page", "layout": "table",
+                                 "ownerPageId": page["id"], "canEdit": True}
+
+    only_page = api("GET", f"/api/views?ownerPageId={page['id']}", editor).json()["views"]
+    assert [v["id"] for v in only_page] == [owned["id"]]
+    only_ref = api("GET", "/api/views?tableRef=tasks:*", admin).json()["views"]
+    assert other["id"] in [v["id"] for v in only_ref] and all(v["tableRef"] == "tasks:*" for v in only_ref)
+    assert owned["id"] not in [v["id"] for v in only_ref]
+
+    # Reads the page but has no task access: the view is not offered
+    reviewer = make_user()
+    grant(project, reviewer["user"]["id"], can_review=True, can_tasks=False)
+    assert api("GET", "/api/views", reviewer).json()["views"] == []
+    # No access to the project at all
+    assert api("GET", "/api/views", make_user()).json()["views"] == []
+
+
+def test_list_views_needs_login_and_refuses_guests(api, share):
+    assert api("GET", "/api/views", None).status_code == 401

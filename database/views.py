@@ -9,7 +9,7 @@ import secrets
 from datetime import datetime
 from typing import Optional
 
-from .engine import execute, fetchone
+from .engine import execute, fetchall, fetchone
 from .utils import get_db
 
 
@@ -65,3 +65,18 @@ def db_update_view(view_id: str, name: Optional[str] = None, layout: Optional[st
 def db_delete_view(view_id: str) -> bool:
     with get_db() as conn:
         return execute(conn, "DELETE FROM views WHERE id = ?", (view_id,)).rowcount > 0
+
+
+def db_list_views(table_ref: Optional[str] = None, owner_page_id: Optional[str] = None, limit: int = 1000) -> list:
+    """Views, newest change first, optionally of one table and/or owned by one page. No permission check."""
+    where, params = [], []
+    if table_ref is not None:
+        where.append("table_ref = ?")
+        params.append(table_ref)
+    if owner_page_id is not None:
+        where.append("owner_page_id = ?")
+        params.append(owner_page_id)
+    sql = "SELECT * FROM views" + (" WHERE " + " AND ".join(where) if where else "")
+    with get_db() as conn:
+        rows = fetchall(execute(conn, sql + " ORDER BY updated_at DESC LIMIT ?", tuple(params) + (limit,)))
+    return [_view(r) for r in rows]
