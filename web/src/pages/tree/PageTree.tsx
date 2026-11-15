@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import type { SpaceKey } from '../../api/pageTree';
+import { navigate } from '../../router';
 import type { SidebarSectionProps } from '../../shell/registry';
 import { Button, cx, Menu, type MenuItem } from '../../ui';
 import { ArchivedDialog } from './ArchivedList';
+import { MoveDialog } from './MoveDialog';
 import {
   canEditSpace,
   createAndOpen,
   activePageId,
   openPage,
+  pageRoute,
   spaceKeyOf,
   usePageStore,
 } from './space';
+import { getPageStore } from './pageStore';
 import {
   ancestorsOf,
   canDrop,
@@ -22,6 +26,9 @@ import {
 } from './treeModel';
 import { useExpanded } from './useExpanded';
 import './tree.css';
+
+/** The page being dragged and the space it comes from, so another space's tree can accept the drop. */
+let dragging: { space: SpaceKey; id: string } | null = null;
 
 export function DocIcon() {
   return (
@@ -92,6 +99,8 @@ export function PageTree({ space, route }: SidebarSectionProps) {
   const [drop, setDrop] = useState<{ id: string; position: DropPosition } | null>(null);
   const [tailActive, setTailActive] = useState(false);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [moving, setMoving] = useState<{ from: SpaceKey; id: string; destination?: SpaceKey } | null>(null);
+  const [moveTarget, setMoveTarget] = useState(false);
   const dragId = useRef<string | null>(null);
   const menuAnchor = useRef<HTMLElement | null>(null);
   const rowEls = useRef(new Map<string, HTMLElement>());
@@ -195,6 +204,7 @@ export function PageTree({ space, route }: SidebarSectionProps) {
         },
       });
     }
+    items.push({ id: 'move', label: 'Move to...', onSelect: () => setMoving({ from: key, id }) });
     items.push({ type: 'separator' }, { id: 'archive', label: 'Archive', danger: true, onSelect: () => void store.archive(id) });
     return items;
   }
@@ -203,6 +213,7 @@ export function PageTree({ space, route }: SidebarSectionProps) {
 
   function onDragStart(e: DragEvent<HTMLElement>, id: string) {
     dragId.current = id;
+    dragging = { space: key, id };
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', id);
   }
@@ -233,6 +244,7 @@ export function PageTree({ space, route }: SidebarSectionProps) {
 
   function endDrag() {
     dragId.current = null;
+    dragging = null;
     setDrop(null);
     setTailActive(false);
   }
@@ -432,12 +444,47 @@ export function PageTree({ space, route }: SidebarSectionProps) {
   }
 
   return (
-    <div className="cl-tree" data-space={key}>
+    <div
+      className={cx('cl-tree', moveTarget && 'is-move-target')}
+      data-space={key}
+      onDragOver={(e) => {
+        // A page from another space's tree: dropping asks to move it here
+        if (!canEdit || !dragging || dragging.space === key) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (!moveTarget) setMoveTarget(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setMoveTarget(false);
+      }}
+      onDrop={(e) => {
+        setMoveTarget(false);
+        if (!canEdit || !dragging || dragging.space === key) return;
+        e.preventDefault();
+        setMoving({ from: dragging.space, id: dragging.id, destination: key });
+        dragging = null;
+      }}
+    >
       {body}
       <button type="button" className="cl-tree__archived" onClick={() => setArchivedOpen(true)}>
         Archived
       </button>
       <ArchivedDialog space={key} open={archivedOpen} onClose={() => setArchivedOpen(false)} />
+      {moving ? (
+        <MoveDialog
+          open
+          onClose={() => setMoving(null)}
+          from={moving.from}
+          pageId={moving.id}
+          title={getPageStore(moving.from).snapshot().model.byId.get(moving.id)?.page.title ?? ''}
+          {...(moving.destination ? { initialDestination: moving.destination } : {})}
+          onMoved={(_info, destination, movedIds) => {
+            // The open page went along: follow it to its new place
+            const open = activePageId(moving.from, route);
+            if (open && movedIds.includes(open)) navigate(pageRoute(destination, open));
+          }}
+        />
+      ) : null}
       <Menu
         open={menu !== null}
         onOpenChange={(open) => !open && setMenu(null)}

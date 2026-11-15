@@ -40,6 +40,20 @@ export interface PageUpdate {
   archived?: boolean;
 }
 
+/** `GET /api/pages/{id}/move-preview`: what moving the page to another space changes. */
+export interface MovePreview {
+  from: string;
+  to: string;
+  /** Live sub-pages that move along (the page itself not counted). */
+  subPages: number;
+  /** People (not the caller) who can see the page after the move but not before. */
+  gain: { count: number; names: string[] };
+  /** People (not the caller) who can see the page now but not after the move. */
+  lose: { count: number; names: string[] };
+  /** Views on the pages that read tasks of one project, where some readers of the new space lack task access. */
+  limitedViews: Array<{ projectId: string; projectName: string; viewCount: number; readersWithoutAccess: number }>;
+}
+
 export class PageApiError extends Error {
   constructor(
     readonly status: number,
@@ -94,4 +108,13 @@ export function updatePage(id: string, patch: PageUpdate): Promise<PageInfo> {
 /** Delete an archived page and its sub-pages for good. */
 export async function deletePage(id: string): Promise<void> {
   await request<{ success: boolean }>(pagePath(id), { method: 'DELETE' });
+}
+
+export function getMovePreview(id: string, space: SpaceKey): Promise<MovePreview> {
+  return request<MovePreview>(`${pagePath(id)}/move-preview?space=${encodeURIComponent(space)}`);
+}
+
+/** Move a page with its sub-pages to another space (end of the top level, or under `parentId`). */
+export function movePageToSpace(id: string, space: SpaceKey, parentId?: string | null): Promise<PageInfo> {
+  return request<PageInfo>(`${pagePath(id)}/move`, json('POST', { space, ...(parentId ? { parentId } : {}) }));
 }

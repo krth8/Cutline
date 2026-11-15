@@ -301,6 +301,40 @@ describe('own changes', () => {
   });
 });
 
+describe('moving to another space', () => {
+  it('the subtree leaves this tree at once, the other space reloads and the new info is returned', async () => {
+    const store = getPageStore('me');
+    const other = getPageStore('p:p1');
+    store.acquire();
+    other.acquire();
+    let projectList: PageNode[] = [];
+    fake.routes['GET /api/spaces/p:p1/pages'] = () => json(projectList);
+    await settle();
+    fake.routes['POST /api/pages/a/move'] = () => {
+      projectList = [node('a', null, 0), node('a1', 'a', 0)];
+      return json(info(node('a', null, 0), { space: 'p:p1' }));
+    };
+    const done = store.moveToSpace('a', 'p:p1');
+    expect([...store.snapshot().model.byId.keys()]).toEqual(['b']);
+    expect((await done)!.space).toBe('p:p1');
+    const call = fake.fetchCalls.find((c) => c.path === '/api/pages/a/move')!;
+    expect(JSON.parse(call.init!.body as string)).toEqual({ space: 'p:p1' });
+    await vi.advanceTimersByTimeAsync(300);
+    expect([...other.snapshot().model.byId.keys()].sort()).toEqual(['a', 'a1']);
+    expect([...store.snapshot().model.byId.keys()]).toEqual(['b']);
+  });
+
+  it('a refusal puts the subtree back and shows a toast', async () => {
+    const store = getPageStore('me');
+    store.acquire();
+    await settle();
+    fake.routes['POST /api/pages/a/move'] = () => json({ detail: 'Access denied' }, 403);
+    expect(await store.moveToSpace('a', 'p:p1')).toBeNull();
+    expect([...store.snapshot().model.byId.keys()].sort()).toEqual(['a', 'a1', 'b']);
+    expect(fake.toasts[0]).toEqual({ kind: 'error', message: 'Could not move the page: Access denied' });
+  });
+});
+
 describe('archived pages', () => {
   const archivedList = [node('x', null, 0), node('x1', 'x', 0), node('y', null, 1)];
 
