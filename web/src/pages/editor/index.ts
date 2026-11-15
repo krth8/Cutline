@@ -10,3 +10,6 @@ export {
 } from './registry';
 export { Callout, CALLOUT_TONES, type CalloutTone } from './extensions/callout';
 export { filterSlashItems } from './filter';
+// For the collaboration client: the schema behind the editor, to turn legacy HTML into content.
+export { buildExtensions, type BuildOptions } from './buildExtensions';
+export { SlashStore } from './extensions/slash';

@@ -1,5 +1,6 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { DevUi } from './devUi';
+import { CollabEditor } from './pages/sync';
 import { getPlatform } from './platform';
 import { useRoute } from './router';
 import { Shell } from './shell/Shell';
@@ -10,6 +11,9 @@ export function App() {
   const route = useRoute();
   const user = getPlatform().user();
   if (route.kind === 'notFound' && route.path.split('?')[0] === '/dev/ui' && user?.role === 'admin') return <DevUi />;
+  // Dev-only: /dev/page/<pageId> shows just the collaborative editor, for any logged-in user (browser tests)
+  const devPage = route.kind === 'notFound' ? /^\/dev\/page\/([^/?#]+)$/.exec(route.path.split('?')[0] ?? '') : null;
+  if (devPage && user) return <CollabEditor key={devPage[1]} pageId={decodeURIComponent(devPage[1]!)} autoFocus />;
   return <Shell />;
 }
 

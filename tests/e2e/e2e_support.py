@@ -53,10 +53,11 @@ class ApiError(Exception):
 class Server:
     """A running Cutline instance plus a tiny JSON API client (bearer token, no cookies)."""
 
-    def __init__(self, proc, tmp, port):
+    def __init__(self, proc, tmp, port, env=None):
         self.proc = proc
         self.tmp = tmp
         self.port = port
+        self.env = env or {}
         self.base_url = f"http://127.0.0.1:{port}"
         self.token = None
         self.admin_id = None
@@ -137,6 +138,30 @@ class Server:
         return self.api(f"/api/projects/{project_id}/comment",
                         {"frame": frame, "text": text, "clipBaseName": None})
 
+    def create_page(self, project_id, title="Page", token=None):
+        """Create a page in a project space through the REST API. Returns its id."""
+        return self.api(f"/api/spaces/p:{project_id}/pages", {"title": title}, token=token)["id"]
+
+    def sql(self, query, params=()):
+        """Run SQL straight against the server's database file (for state no API can set up). Returns rows."""
+        import sqlite3
+        conn = sqlite3.connect(os.path.join(self.tmp, "e2e.db"), timeout=15)
+        try:
+            rows = conn.execute(query, params).fetchall()
+            conn.commit()
+            return rows
+        finally:
+            conn.close()
+
+    def restart(self):
+        """Stop the server process and start it again on the same port and data (a deploy or a crash).
+        Logins stay valid; page sync rooms and one-time WebSocket tickets are gone."""
+        self.stop()
+        log = open(os.path.join(self.tmp, "server.log"), "a")
+        self.proc = subprocess.Popen([sys.executable, "server.py"], cwd=REPO, env=self.env,
+                                     stdout=log, stderr=subprocess.STDOUT)
+        _wait_ready(self)
+
     def stop(self):
         if self.proc.poll() is None:
             self.proc.terminate()
@@ -169,19 +194,23 @@ def _start(extra_env=None):
     log = open(os.path.join(tmp, "server.log"), "w")
     proc = subprocess.Popen([sys.executable, "server.py"], cwd=REPO, env=env,
                             stdout=log, stderr=subprocess.STDOUT)
-    srv = Server(proc, tmp, port)
+    srv = Server(proc, tmp, port, env)
+    _wait_ready(srv)
+    srv.complete_setup()
+    return srv
+
+
+def _wait_ready(srv):
     deadline = time.time() + 30
     while True:
-        if proc.poll() is not None or time.time() > deadline:
+        if srv.proc.poll() is not None or time.time() > deadline:
             srv.stop()
             raise RuntimeError("server did not start:\n" + srv.log_tail())
         try:
             urllib.request.urlopen(srv.base_url + "/api/setup/status", timeout=1).read()
-            break
+            return
         except Exception:
             time.sleep(0.2)
-    srv.complete_setup()
-    return srv
 
 
 # -- page helpers (the login overlay is #loginOverlay, hidden when logged in)
