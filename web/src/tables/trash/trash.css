@@ -1,0 +1,14 @@
+/* The trash dialog: same look as the archived pages list (pages/tree/tree.css) */
+.cl-trash { list-style: none; margin: 0; padding: 0; min-width: 420px; max-height: 50vh; overflow-y: auto; }
+.cl-trash__row { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 2px 4px 2px 0; }
+.cl-trash__text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.cl-trash__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-trash__meta { color: var(--text-muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-trash__actions { display: inline-flex; gap: 6px; }
+.cl-trash__empty, .cl-trash__hint { margin: 0 0 8px; color: var(--text-muted); }
+
+/* The legacy confirm dialog (platform.confirm) is asked from inside this dialog: keep it on top */
+.confirm-overlay { z-index: 20000; }
+
+/* Toasts (with their Undo button) stay above dialogs and the full-screen dev view */
+.toast-container { z-index: 20001; }

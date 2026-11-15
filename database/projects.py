@@ -140,7 +140,7 @@ def db_get_project(project_id: str) -> Optional[dict]:
 
         # Comments that a task was made from carry the task's id (shown as a "Task" chip in review)
         cursor = execute(conn,
-            "SELECT id, comment_id FROM tasks WHERE project_id = ? AND comment_id IS NOT NULL",
+            "SELECT id, comment_id FROM tasks WHERE project_id = ? AND comment_id IS NOT NULL AND deleted_at IS NULL",
             (project_id,)
         )
         task_of_comment = {t_row["comment_id"]: t_row["id"] for t_row in fetchall(cursor)}

@@ -1,4 +1,5 @@
-import { Button, cx } from '../../ui';
+import { useRef, useState } from 'react';
+import { Button, Menu, cx } from '../../ui';
 import type { LayoutEntry } from '../layouts/registry';
 import type { Query, TableSchema, View } from '../types';
 import { orderedColumns } from '../viewColumns';
@@ -18,10 +19,14 @@ export interface ToolbarProps {
   onColumns(columns: NonNullable<View['config']['columns']>): void;
   onLayout(name: string): void;
   onNewRow?: (() => void) | undefined;
+  /** Adds a "Trash" entry to the overflow menu. */
+  onTrash?: (() => void) | undefined;
 }
 
 /** Layout switcher, filter, sort, group, columns, summaries, search and "New". */
-export function Toolbar({ schema, view, layouts, onQuery, onColumns, onLayout, onNewRow }: ToolbarProps) {
+export function Toolbar({ schema, view, layouts, onQuery, onColumns, onLayout, onNewRow, onTrash }: ToolbarProps) {
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
   const query = view.config.query ?? {};
   const hidden = orderedColumns(schema, view.config).filter((c) => c.hidden).length;
   return (
@@ -59,6 +64,30 @@ export function Toolbar({ schema, view, layouts, onQuery, onColumns, onLayout, o
       </ToolbarPopover>
       <span className="cl-toolbar__spacer" />
       <SearchBox value={query.search ?? ''} onChange={(search) => onQuery({ search: search || undefined })} />
+      {onTrash && (
+        <>
+          <Button
+            ref={moreRef}
+            size="sm"
+            variant="ghost"
+            aria-label="More"
+            aria-haspopup="menu"
+            aria-expanded={moreOpen}
+            data-testid="toolbar-more"
+            onClick={() => setMoreOpen((o) => !o)}
+          >
+            &#8943;
+          </Button>
+          <Menu
+            open={moreOpen}
+            onOpenChange={setMoreOpen}
+            anchorRef={moreRef}
+            placement="bottom-end"
+            aria-label="More view options"
+            items={[{ id: 'trash', label: 'Trash', onSelect: onTrash }]}
+          />
+        </>
+      )}
       {onNewRow && (
         <Button size="sm" variant="primary" data-testid="new-row" onClick={onNewRow}>
           New

@@ -733,7 +733,7 @@ const TaskListView = (function() {
         // Show confirmation dialog
         const confirmed = await showConfirmDialog(
             'Delete Tasks',
-            `Are you sure you want to delete ${count} task${count > 1 ? 's' : ''}? This action cannot be undone.`,
+            `Are you sure you want to delete ${count} task${count > 1 ? 's' : ''}? They go to the Trash and can be restored.`,
             'Delete',
             'danger'
         );

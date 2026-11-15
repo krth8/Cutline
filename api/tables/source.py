@@ -53,6 +53,29 @@ class TableSource:
     async def reorder(self, principal: dict, ids: List[str], before: Optional[str] = None) -> None:
         raise NotImplementedError
 
+    # ---- Trash (optional, WP H3) ----
+    # A source with a trash sets supports_trash = True, makes delete_row move the row to the trash instead of
+    # destroying it, and implements the four calls below. The routes answer 400 for sources without one.
+
+    supports_trash = False
+
+    def list_trash(self, principal: dict) -> List[dict]:
+        """Deleted rows the principal may restore: [{id, name, deletedAt, deletedBy, deletedByName,
+        parentId, parentName, subtaskCount, ...}], newest first."""
+        raise HTTPException(status_code=400, detail="This table has no trash")
+
+    async def restore_rows(self, principal: dict, ids: List[str]) -> List[str]:
+        """Bring rows back from the trash with everything attached. Returns the ids restored."""
+        raise HTTPException(status_code=400, detail="This table has no trash")
+
+    async def purge_rows(self, principal: dict, ids: List[str]) -> int:
+        """Delete rows in the trash for good. Returns how many were removed."""
+        raise HTTPException(status_code=400, detail="This table has no trash")
+
+    async def empty_trash(self, principal: dict) -> int:
+        """Delete the whole trash of the table for good (restricted to owners and admins by the source)."""
+        raise HTTPException(status_code=400, detail="This table has no trash")
+
 
 def custom_columns_for(table_ref: str) -> List[dict]:
     """Hook for WP T2: the user-defined columns of a table, as Column dicts (builtin: False).

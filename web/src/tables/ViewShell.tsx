@@ -1,9 +1,10 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { getPlatform } from '../platform';
 import { Input, cx } from '../ui';
 import { getViewSource, toLayoutProps, useView } from './store';
 import { getLayout, layoutDefaults, useLayouts } from './layouts/registry';
 import { Toolbar } from './toolbar';
+import { TrashDialog } from './trash';
 import type { Query, View } from './types';
 import './toolbar/toolbar.css';
 
@@ -16,6 +17,7 @@ export function ViewShell({ viewId, className }: { viewId: string; className?: s
   const data = useView(viewId);
   const layouts = useLayouts();
   const { schema, view, actions } = data;
+  const [trashOpen, setTrashOpen] = useState(false);
 
   const onQuery = useCallback(
     (patch: { [K in keyof Query]?: Query[K] | undefined }) => {
@@ -97,7 +99,11 @@ export function ViewShell({ viewId, className }: { viewId: string; className?: s
         onColumns={onColumns}
         onLayout={switchLayout}
         onNewRow={schema.capabilities.create ? newRow : undefined}
+        onTrash={canUseTrash(view.tableRef) ? () => setTrashOpen(true) : undefined}
       />
+      {canUseTrash(view.tableRef) && (
+        <TrashDialog tableRef={view.tableRef} open={trashOpen} onClose={() => setTrashOpen(false)} />
+      )}
       <div className="cl-viewshell__body">
         {!entry ? (
           <p className="cl-viewshell__state">The {view.layout} layout is not available yet.</p>
@@ -121,4 +127,13 @@ function projectOpts(): { projectId: string } | undefined {
     .projects()
     .find((p) => p.canTasks);
   return project ? { projectId: project.id } : undefined;
+}
+
+/** The trash of a tasks table is for people who can edit tasks there. */
+function canUseTrash(tableRef: string): boolean {
+  if (!tableRef.startsWith('tasks:')) return false;
+  const platform = getPlatform();
+  if (platform.user()?.role === 'viewer') return false;
+  const projectId = tableRef.slice('tasks:'.length);
+  return platform.projects().some((p) => p.canTasks && (projectId === '*' || p.id === projectId));
 }

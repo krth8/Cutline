@@ -175,7 +175,7 @@ function TaskContent({ taskId, tableRef }: { taskId: string; tableRef: string })
   };
 
   async function remove() {
-    const ok = await platform.confirm('Are you sure you want to delete this task? This cannot be undone.', {
+    const ok = await platform.confirm('Delete this task and its subtasks? They go to the Trash and can be restored.', {
       danger: true,
       confirmLabel: 'Delete',
     });

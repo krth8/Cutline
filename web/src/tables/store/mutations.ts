@@ -8,7 +8,7 @@ import * as api from '../../api/tables';
 import { getPlatform } from '../../platform';
 import type { QueryResult, Row } from '../types';
 import { applyOp, type Op } from './ops';
-import { addOp, invalidate, pendingOps, settleOp, toError, type QueryEntry } from './registry';
+import { addOp, cachedRows, invalidate, pendingOps, settleOp, toError, type QueryEntry } from './registry';
 
 let seq = 0;
 let tempCounter = 0;
@@ -123,8 +123,22 @@ export async function createRow(
   }
 }
 
+/** How long the "Deleted N tasks" toast offers Undo. */
+export const UNDO_TOAST_MS = 8000;
+
+/** Only the tasks tables have a trash so far (custom tables adopt it by being added here). */
+function hasTrash(ref: string): boolean {
+  return ref.startsWith('tasks:');
+}
+
+function deletedMessage(ref: string, count: number): string {
+  const noun = ref.startsWith('tasks:') ? 'task' : 'row';
+  return `Deleted ${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
 export async function deleteRows(ref: string, ids: string[]): Promise<void> {
   if (ids.length === 0) return;
+  const removed = cachedRows(ids); // kept so an undo can show the rows again at once
   const op: Op = { kind: 'delete', seq: ++seq, ids: [...ids] };
   addOp(op);
   const outcomes = await Promise.allSettled(ids.map((id) => api.deleteRow(ref, id)));
@@ -134,6 +148,34 @@ export async function deleteRows(ref: string, ids: string[]): Promise<void> {
   const gone: Op = { kind: 'delete', seq: op.seq, ids: done };
   settleOp(op, (q) => (q.base && done.length ? applyOp(q.base, gone, q.query, q.table.ref) : q.base));
   if (failed) fail(failed.reason);
+  if (done.length && hasTrash(ref)) {
+    const rows = removed.filter((r) => done.includes(r.id));
+    getPlatform().toast('success', deletedMessage(ref, done.length), {
+      actionLabel: 'Undo',
+      durationMs: UNDO_TOAST_MS,
+      onAction: () => void restoreRows(ref, done, rows),
+    });
+  }
+  invalidate([ref]);
+}
+
+/**
+ * Bring deleted rows back from the trash. `rows` (what the views showed before the delete) are put back
+ * at once; the queries are refetched afterwards, which puts them where the server says they belong.
+ */
+export async function restoreRows(ref: string, ids: string[], rows: Row[] = []): Promise<void> {
+  const ops: Op[] = rows.map((row) => ({ kind: 'create', seq: ++seq, ref, row }));
+  for (const op of ops) addOp(op);
+  try {
+    const restored = await api.restoreRows(ref, ids);
+    for (const op of ops) {
+      settleOp(op, (q) => (q.base && op.kind === 'create' ? applyOp(q.base, op, q.query, q.table.ref) : q.base));
+    }
+    if (restored.length < ids.length) getPlatform().toast('error', 'Some tasks could not be restored');
+  } catch (e) {
+    for (const op of ops) settleOp(op);
+    fail(e);
+  }
   invalidate([ref]);
 }
 

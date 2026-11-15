@@ -98,19 +98,19 @@ def db_create_task(project_id: str, name: str, created_by: str = None,
 
 
 def db_get_task(task_id: str) -> Optional[dict]:
-    """Get a task by ID with related info."""
+    """Get a live task by ID with related info (None for a task in the trash)."""
     with get_db() as conn:
         cursor = execute(conn, """
             SELECT t.*,
                    cs.name as status_name, cs.color as status_color,
                    c.base_name as clip_name,
                    ts.name as section_name, ts.color as section_color,
-                   (SELECT COUNT(*) FROM tasks WHERE parent_id = t.id) as child_count
+                   (SELECT COUNT(*) FROM tasks WHERE parent_id = t.id AND deleted_at IS NULL) as child_count
             FROM tasks t
             LEFT JOIN clip_statuses cs ON t.status_id = cs.id
             LEFT JOIN clips c ON t.clip_id = c.id
             LEFT JOIN task_sections ts ON t.section_id = ts.id
-            WHERE t.id = ?
+            WHERE t.id = ? AND t.deleted_at IS NULL
         """, (task_id,))
         row = fetchone(cursor)
 
@@ -201,12 +201,12 @@ def db_list_tasks(project_id: str, parent_id: str = None, include_children: bool
                    cs.name as status_name, cs.color as status_color,
                    c.base_name as clip_name,
                    ts.name as section_name, ts.color as section_color,
-                   (SELECT COUNT(*) FROM tasks WHERE parent_id = t.id) as child_count
+                   (SELECT COUNT(*) FROM tasks WHERE parent_id = t.id AND deleted_at IS NULL) as child_count
             FROM tasks t
             LEFT JOIN clip_statuses cs ON t.status_id = cs.id
             LEFT JOIN clips c ON t.clip_id = c.id
             LEFT JOIN task_sections ts ON t.section_id = ts.id
-            WHERE t.project_id = ?
+            WHERE t.project_id = ? AND t.deleted_at IS NULL
         """
         params = [project_id]
 
@@ -303,7 +303,7 @@ def db_list_tasks(project_id: str, parent_id: str = None, include_children: bool
 def db_get_task_by_comment(project_id: str, comment_id: str) -> Optional[str]:
     """The id of the task made from a review comment, or None."""
     with get_db() as conn:
-        cursor = execute(conn, "SELECT id FROM tasks WHERE project_id = ? AND comment_id = ?", (project_id, comment_id))
+        cursor = execute(conn, "SELECT id FROM tasks WHERE project_id = ? AND comment_id = ? AND deleted_at IS NULL", (project_id, comment_id))
         row = fetchone(cursor)
         return row["id"] if row else None
 
@@ -319,7 +319,7 @@ def db_get_clip_row_id(project_id: str, base_name: str) -> Optional[int]:
 def db_get_task_by_clip(clip_id: int) -> Optional[dict]:
     """Get the task associated with a clip."""
     with get_db() as conn:
-        cursor = execute(conn, "SELECT id FROM tasks WHERE clip_id = ?", (clip_id,))
+        cursor = execute(conn, "SELECT id FROM tasks WHERE clip_id = ? AND deleted_at IS NULL", (clip_id,))
         row = fetchone(cursor)
         if row:
             return db_get_task(row["id"])
@@ -381,7 +381,8 @@ def db_update_task(task_id: str, **kwargs) -> bool:
 
 
 def db_delete_task(task_id: str) -> bool:
-    """Delete a task (children will be cascaded)."""
+    """Delete a task for good (children are cascaded). Deleting from the app only moves a task to the
+    trash (database/task_trash.py); this is what "delete forever" and the automatic purge use."""
     with get_db() as conn:
         cursor = execute(conn, "DELETE FROM tasks WHERE id = ?", (task_id,))
         return cursor.rowcount > 0
@@ -477,7 +478,7 @@ def db_get_clip_tasks(clip_id: int) -> List[dict]:
             FROM task_clips tc
             JOIN tasks t ON tc.task_id = t.id
             LEFT JOIN clip_statuses cs ON t.status_id = cs.id
-            WHERE tc.clip_id = ?
+            WHERE tc.clip_id = ? AND t.deleted_at IS NULL
             ORDER BY tc.linked_at ASC
         """, (clip_id,))
         rows = fetchall(cursor)

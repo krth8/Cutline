@@ -42,3 +42,33 @@ export const updateColumn = (ref: string, key: string, patch: Partial<Column>) =
 
 export const deleteColumn = (ref: string, key: string) =>
   requestJson<unknown>('DELETE', `${base(ref)}/columns/${enc(key)}`);
+
+// ---- Trash (PLAN.md H3): deleted rows wait here until restored or deleted for good ----
+
+export interface TrashItem {
+  id: string;
+  name: string;
+  /** Concrete table of the row ('tasks:<projectId>'). */
+  tableRef: string;
+  projectId?: string;
+  projectName?: string | null;
+  deletedAt: string;
+  deletedBy: string | null;
+  deletedByName: string | null;
+  parentId: string | null;
+  parentName: string | null;
+  /** Subtasks deleted together with this row (they come back with it). */
+  subtaskCount: number;
+}
+
+export const listTrash = async (ref: string) => (await requestJson<{ items: TrashItem[] }>('GET', `${base(ref)}/trash`)).items;
+
+/** Bring rows back. Returns the ids restored (subtasks that came back with their parent are included). */
+export const restoreRows = async (ref: string, ids: string[]) =>
+  (await requestJson<{ restored: string[] }>('POST', `${base(ref)}/rows/restore`, { ids })).restored;
+
+/** Delete one row in the trash for good. */
+export const purgeRow = (ref: string, id: string) => requestJson<{ success: boolean }>('DELETE', `${base(ref)}/trash/${enc(id)}`);
+
+/** Delete everything in the trash of a table for good (project owner or admin). */
+export const emptyTrash = (ref: string) => requestJson<{ removed: number }>('DELETE', `${base(ref)}/trash`);

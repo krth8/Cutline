@@ -1,4 +1,4 @@
-import type { Platform } from '../platform';
+import type { Platform, ToastOptions } from '../platform';
 
 type RouteHandler = (path: string, init?: RequestInit) => Response;
 
@@ -6,7 +6,7 @@ export interface FakePlatform extends Platform {
   // ---- Test helpers ----
   /** Deliver a live event to everything subscribed with `live.on(type, ...)`. */
   emit(type: string, msg?: Record<string, unknown>): void;
-  toasts: Array<{ kind: string; message: string }>;
+  toasts: Array<{ kind: string; message: string } & ToastOptions>;
   navigations: string[];
   watches: Array<{ slot: string; target: { projects?: string[]; allTasks?: boolean } | null }>;
   confirmAnswer: boolean;
@@ -74,8 +74,8 @@ export function createFakePlatform(overrides: Partial<FakePlatform['data']> = {}
       },
     },
 
-    toast(kind, message) {
-      fake.toasts.push({ kind, message });
+    toast(kind, message, opts) {
+      fake.toasts.push({ kind, message, ...(opts ?? {}) });
     },
 
     async confirm(message, opts) {

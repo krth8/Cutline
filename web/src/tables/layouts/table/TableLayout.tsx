@@ -254,7 +254,7 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
   async function deleteSelected() {
     const ids = [...sel.ids];
     if (ids.length === 0) return;
-    const ok = await getPlatform().confirm(`Delete ${ids.length} ${ids.length === 1 ? 'row' : 'rows'}? This cannot be undone.`, {
+    const ok = await getPlatform().confirm(`Delete ${ids.length} ${ids.length === 1 ? 'row' : 'rows'}? Deleted tasks go to the Trash and can be restored.`, {
       danger: true,
       confirmLabel: 'Delete',
     });

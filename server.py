@@ -19,6 +19,7 @@ import uuid
 import shutil
 import asyncio
 from api.pagesync import start_snapshot_job, stop_snapshot_job
+from api.trash import start_trash_job
 from api.routes.pagesync import router as pagesync_router
 import secrets
 import json
@@ -168,6 +169,7 @@ async def startup_event():
     asyncio.create_task(backfill_html_previews())
     asyncio.create_task(end_idle_logins())
     start_snapshot_job()
+    start_trash_job()
 
 
 async def end_idle_logins():

@@ -1191,7 +1191,7 @@ function saveTaskChanges() {
 async function deleteCurrentTask() {
     if (!currentTask) return;
 
-    if (!confirm('Are you sure you want to delete this task? This cannot be undone.')) {
+    if (!confirm('Delete this task and its subtasks? They go to the Trash and can be restored.')) {
         return;
     }
 

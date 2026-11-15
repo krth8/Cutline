@@ -92,3 +92,14 @@ async def forget_deleted_tasks(project_id: str, task_ids: Iterable[str]) -> None
         if comment.get("taskId") in gone:
             comment.pop("taskId", None)
             await _tell_comment_changed(project_id, comment)
+
+
+async def relink_restored_tasks(project_id: str, restored: Iterable[dict]) -> None:
+    """Restored tasks made from a review comment show the "Task" chip on it again. When the comment has another
+    task by now, the database dropped the link (db_restore_tasks) and the comment is left alone."""
+    comments = {c["id"]: c for c in (projects.get(project_id) or {}).get("comments", [])}
+    for task in restored:
+        comment = comments.get(task.get("commentId"))
+        if comment and not comment.get("taskId"):
+            comment["taskId"] = task["id"]
+            await _tell_comment_changed(project_id, comment)

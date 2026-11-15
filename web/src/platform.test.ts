@@ -174,6 +174,12 @@ describe('legacy platform bridge', () => {
       expect(w.Toast.success).toHaveBeenCalledWith('Saved');
       expect(w.Toast.error).toHaveBeenCalledWith('Nope');
     });
+    it('passes an action button and a duration on to the legacy toast', () => {
+      w.Toast = { info: vi.fn(), success: vi.fn(), error: vi.fn() };
+      const onAction = vi.fn();
+      platform.toast('success', 'Deleted 3 tasks', { actionLabel: 'Undo', onAction, durationMs: 8000 });
+      expect(w.Toast.success).toHaveBeenCalledWith('Deleted 3 tasks', { duration: 8000, action: { label: 'Undo', onClick: onAction } });
+    });
     it('maps confirm options to the legacy dialog', async () => {
       w.Confirm = { show: vi.fn().mockResolvedValue(true) };
       await expect(platform.confirm('Delete?', { danger: true, confirmLabel: 'Delete' })).resolves.toBe(true);

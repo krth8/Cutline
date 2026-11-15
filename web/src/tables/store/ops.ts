@@ -47,7 +47,7 @@ export function applyOp(result: QueryResult, op: Op, query: Query, ref: string):
       return { ...result, rows, total: Math.max(0, result.total - (result.rows.length - rows.length)) };
     }
     case 'create': {
-      if (op.ref !== ref || !canInsertRow(query, op.row)) return result;
+      if (op.ref !== ref || !canInsertRow(query, op.row) || result.rows.some((r) => r.id === op.row.id)) return result;
       return { ...result, rows: [...result.rows, op.row], total: result.total + 1 };
     }
     case 'reorder': {
