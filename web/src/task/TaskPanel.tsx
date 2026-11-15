@@ -8,6 +8,7 @@ import { closeTask, openTask, useTaskId } from '../router';
 import { deleteRows, updateRow, useRow, useTableSchema } from '../tables/store';
 import type { Column, Row } from '../tables/types';
 import { useEscape } from '../ui/hooks';
+import { Backlinks } from '../pages/backlinks';
 import { Checklist } from './Checklist';
 import { Clips } from './Clips';
 import { Comments } from './Comments';
@@ -210,6 +211,7 @@ function TaskContent({ taskId, tableRef }: { taskId: string; tableRef: string })
           <Clips taskId={taskId} projectId={projectId} canEdit={row.canEdit} />
           <Subtasks tableRef={tableRef} taskId={taskId} count={row.childCount ?? 0} />
           <Checklist taskId={taskId} canEdit={row.canEdit} />
+          <Backlinks kind="task" id={taskId} />
         </div>
         <div className="cl-task__side">
           <Comments taskId={taskId} />
