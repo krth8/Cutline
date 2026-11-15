@@ -1,11 +1,11 @@
 .cl-dialog__backdrop {
   position: fixed;
   inset: 0;
-  z-index: 19000;
+  z-index: var(--z-dialog);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: var(--space-4);
   background: var(--bg-overlay-dark);
 }
 .cl-dialog {
@@ -20,13 +20,13 @@
   box-shadow: 0 16px 48px var(--shadow-heavy);
 }
 .cl-dialog:focus { outline: none; }
-.cl-dialog__header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; }
-.cl-dialog__title { margin: 0; font-size: 16px; font-weight: 600; }
+.cl-dialog__header { display: flex; align-items: center; justify-content: space-between; padding: 14px var(--space-4) var(--space-1-5); }
+.cl-dialog__title { margin: 0; font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); }
 .cl-dialog__close {
   width: 28px;
   height: 28px;
-  font-size: 20px;
-  line-height: 1;
+  font-size: var(--font-size-2xl);
+  line-height: var(--line-height-none);
   color: var(--text-muted);
   background: transparent;
   border: 0;
@@ -35,5 +35,5 @@
 }
 .cl-dialog__close:hover { background: var(--bg-hover); color: var(--text); }
 .cl-dialog__close:focus-visible { outline: 2px solid var(--accent); }
-.cl-dialog__body { padding: 8px 16px 16px; overflow: auto; font-size: 13px; color: var(--text-secondary); }
-.cl-dialog__footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+.cl-dialog__body { padding: var(--space-2) var(--space-4) var(--space-4); overflow: auto; font-size: var(--font-size-md); color: var(--text-secondary); }
+.cl-dialog__footer { display: flex; justify-content: flex-end; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border); }

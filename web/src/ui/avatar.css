@@ -4,8 +4,8 @@
   justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
-  font-weight: 600;
-  color: #fff;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-on-accent);
   border-radius: var(--radius-full);
   user-select: none;
 }

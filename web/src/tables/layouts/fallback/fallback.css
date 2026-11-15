@@ -1,6 +1,6 @@
 .cl-fallback { overflow: auto; }
-.cl-fallback__table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--text); }
-.cl-fallback__table th { padding: 6px 8px; text-align: left; font-weight: 600; color: var(--text-secondary); border-bottom: 1px solid var(--border-medium); white-space: nowrap; }
-.cl-fallback__table td { padding: 2px 4px; border-bottom: 1px solid var(--border-light); }
+.cl-fallback__table { width: 100%; border-collapse: collapse; font-size: var(--font-size-md); color: var(--text); }
+.cl-fallback__table th { padding: var(--space-1-5) var(--space-2); text-align: left; font-weight: var(--font-weight-semibold); color: var(--text-secondary); border-bottom: 1px solid var(--border-medium); white-space: nowrap; }
+.cl-fallback__table td { padding: var(--space-0-5) var(--space-1); border-bottom: 1px solid var(--border-light); }
 .cl-fallback__group th { padding-top: 14px; color: var(--text); }
-.cl-fallback__empty { padding: 16px 8px; color: var(--text-muted); }
+.cl-fallback__empty { padding: var(--space-4) var(--space-2); color: var(--text-muted); }

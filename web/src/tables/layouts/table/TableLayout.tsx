@@ -74,6 +74,12 @@ function posOf(host: HTMLElement, keys: readonly string[]): { rowId: string; col
   return rowId !== undefined && col >= 0 ? { rowId, col } : null;
 }
 
+/** 'me' or 'p:<projectId>' for the table of a schema: where its relation columns may point. Null when unknown. */
+function spaceOf(schema: LayoutProps['schema']): string | null {
+  if (schema.space) return schema.space.type === 'personal' ? 'me' : `p:${schema.space.projectId}`;
+  return schema.ref.startsWith('tasks:') && schema.ref !== 'tasks:*' ? `p:${schema.ref.slice('tasks:'.length)}` : null;
+}
+
 /**
  * The table layout: a virtualised grid with inline editing, resizable and reorderable columns,
  * groups with summaries, subtasks, multi-select with bulk edit and delete, quick add, drag to
@@ -454,7 +460,12 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
     const ref = schema.ref;
     const selectLike = v.type === 'select' || v.type === 'multiselect';
     if (form.mode === 'add') {
-      const body = { name: v.name, type: v.type, ...(selectLike ? { options: v.options.map((label) => ({ label })) } : {}) };
+      const body = {
+        name: v.name,
+        type: v.type,
+        ...(selectLike ? { options: v.options.map((label) => ({ label })) } : {}),
+        ...(v.relation ? { config: v.relation } : {}),
+      };
       await columnCall(() => tablesApi.createColumn(ref, body as never));
     } else if (form.mode === 'rename' && form.column) {
       await columnCall(() => tablesApi.updateColumn(ref, form.column!.key, { name: v.name }));
@@ -465,7 +476,7 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
         const same = old.find((o) => o.label === label);
         return same ? { label, value: same.value } : { label };
       });
-      const body = { type: v.type, ...(selectLike ? { options } : {}) };
+      const body = { type: v.type, ...(selectLike ? { options } : {}), ...(v.relation ? { config: v.relation } : {}) };
       await columnCall(() => tablesApi.updateColumn(ref, form.column!.key, body as never));
     }
   }
@@ -725,6 +736,7 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
         <ColumnForm
           mode={colForm.mode}
           {...(colForm.column ? { column: colForm.column } : {})}
+          space={spaceOf(schema)}
           onSubmit={(v) => submitColumn(colForm, v)}
           onClose={() => setColForm(null)}
         />

@@ -25,22 +25,48 @@ export interface Platform {
   toast(kind: 'info' | 'success' | 'error', message: string, opts?: ToastOptions): void;
   confirm(message: string, opts?: { danger?: boolean; confirmLabel?: string }): Promise<boolean>;
   navigate(route: string): void;
-  projects(): Array<{ id: string; name: string; canTasks: boolean; isOwner: boolean }>;
+  projects(): Array<{ id: string; name: string; canTasks: boolean; isOwner: boolean; clipCount?: number }>;
   statuses(): Array<{ id: string; name: string; color: string }>;
   members(projectId: string): Promise<Array<{ id: string; username: string; profileImage?: string }>>;
   /** End the login (the "Log out" command). Optional so existing fakes keep compiling. */
   logout?(): Promise<void>;
+  /** The legacy project dialogs the sidebar's project menu calls (create, share link, cover image, delete, access). */
+  projectTools?: ProjectTools;
+  /** Call `listener` whenever the project list changed (new project, deleted, access granted). Returns the unsubscribe. */
+  onProjectsChanged?(listener: () => void): () => void;
+}
+
+export interface ProjectTools {
+  canCreate(): boolean;
+  canShare(): boolean;
+  canDelete(): boolean;
+  /** Opens the legacy "Create New Project" dialog. */
+  create(): void;
+  /** Opens the legacy share-link dialog for the project. */
+  share(projectId: string): void;
+  /** Opens the file picker for the project's cover image. */
+  setCover(projectId: string): void;
+  /** Asks (legacy confirm dialog) and deletes the project. */
+  remove(projectId: string, name: string): void;
+  /** Opens Settings on the Users tab, where each user's access per project is set (admins). */
+  openAccess(): void;
 }
 
 /** Fired on `window` after `navigate()` changed the URL (`popstate` covers back/forward). */
 export const NAVIGATE_EVENT = 'cutline:navigate';
+
+/** Fired by the legacy page after it changed the URL itself (history.pushState/replaceState), so the sidebar follows. */
+export const URL_CHANGED_EVENT = 'cutline:url-changed';
+
+/** Fired by the legacy page after the project list was re-rendered. */
+export const PROJECTS_CHANGED_EVENT = 'cutline:projects-changed';
 
 // ---- The legacy globals, as far as the bridge uses them ----
 
 interface LegacyGlobals {
   AppState?: {
     adminUser?: { id?: string; username?: string; role?: string; isAdmin?: boolean; profileImage?: string | null } | null;
-    projects?: Array<{ id: string; name: string; canTasks?: boolean; isOwner?: boolean }>;
+    projects?: Array<{ id: string; name: string; canTasks?: boolean; isOwner?: boolean; clipCount?: number }>;
     statuses?: Array<{ id: string; name: string; color: string }>;
     isAdmin?: boolean;
   };
@@ -56,6 +82,15 @@ interface LegacyGlobals {
   Confirm?: { show(options: { message: string; type?: string; confirmText?: string }): Promise<boolean> };
   openSocket?: (path: string) => Promise<WebSocket>;
   Auth?: { logout(): Promise<unknown> | unknown };
+  canCreateProject?: () => boolean;
+  canShareProject?: () => boolean;
+  canDeleteProject?: () => boolean;
+  showCreateProject?: () => void;
+  showShareModalForProject?: (projectId: string) => void;
+  triggerCoverUpload?: (projectId: string) => void;
+  confirmDeleteProject?: (projectId: string, name: string) => void;
+  showSettingsPanel?: (tab?: string) => void;
+  switchSettingsTab?: (tab: string) => void;
 }
 
 function legacy(): LegacyGlobals {
@@ -185,7 +220,24 @@ export function createLegacyPlatform(): Platform {
         // The admin's project list is the unfiltered one and carries no per-project flags
         canTasks: p.canTasks ?? admin,
         isOwner: p.isOwner ?? admin,
+        ...(typeof p.clipCount === 'number' ? { clipCount: p.clipCount } : {}),
       }));
+    },
+
+    projectTools: {
+      canCreate: () => !!legacy().canCreateProject?.(),
+      canShare: () => !!legacy().canShareProject?.(),
+      canDelete: () => !!legacy().canDeleteProject?.(),
+      create: () => legacy().showCreateProject?.(),
+      share: (projectId) => legacy().showShareModalForProject?.(projectId),
+      setCover: (projectId) => legacy().triggerCoverUpload?.(projectId),
+      remove: (projectId, name) => legacy().confirmDeleteProject?.(projectId, name),
+      openAccess: () => legacy().showSettingsPanel?.('users'),
+    },
+
+    onProjectsChanged(listener) {
+      window.addEventListener(PROJECTS_CHANGED_EVENT, listener);
+      return () => window.removeEventListener(PROJECTS_CHANGED_EVENT, listener);
     },
 
     statuses() {

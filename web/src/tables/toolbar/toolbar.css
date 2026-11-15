@@ -1,10 +1,10 @@
 :root {
-  /* Sizes of the view head and bar in one place (to be remapped to the shared type and spacing tokens) */
-  --viewbar-font-size: 12px;
-  --viewbar-gap: 2px;
+  /* Sizes of the view head and bar, mapped to the shared tokens */
+  --viewbar-font-size: var(--font-size-sm);
+  --viewbar-gap: var(--space-0-5);
   --viewbar-height: 28px;
-  --viewhead-title-size: 16px;
-  --viewhead-page-title-size: 22px;
+  --viewhead-title-size: var(--font-size-xl);
+  --viewhead-page-title-size: var(--font-size-2xl);
 }
 
 /* The head of a view: its name and row count, and the toolbar. Class names start with cl-viewhead / cl-viewbar so
@@ -53,7 +53,7 @@
 .cl-viewhead--page .cl-viewbar__options { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; }
 @container (max-width: 640px) { .cl-viewbar__layout-label { display: none; } }
 
-.cl-viewbar__panel { position: fixed; z-index: 19000; box-sizing: border-box; min-width: 260px; max-width: calc(100vw - 16px); max-height: 70vh; overflow: auto; padding: 10px; color: var(--text); background: var(--modal-elevated); border: 1px solid var(--border-medium); border-radius: var(--radius-md); box-shadow: 0 8px 28px var(--shadow-medium); font-size: 13px; }
+.cl-viewbar__panel { position: fixed; z-index: var(--z-dialog); box-sizing: border-box; min-width: 260px; max-width: calc(100vw - 16px); max-height: 70vh; overflow: auto; padding: 10px; color: var(--text); background: var(--modal-elevated); border: 1px solid var(--border-medium); border-radius: var(--radius-md); box-shadow: 0 8px 28px var(--shadow-medium); font-size: 13px; }
 .cl-viewbar__panel:focus { outline: none; }
 .cl-viewbar__panel--wide { min-width: 520px; }
 .cl-viewbar__newform { display: flex; align-items: center; gap: 6px; }

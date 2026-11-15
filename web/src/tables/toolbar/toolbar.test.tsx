@@ -42,7 +42,7 @@ describe('queryModel', () => {
   it('offers operators by column type', () => {
     expect(opsFor('date')).toContain('relative');
     expect(opsFor('checkbox')).toEqual(['eq']);
-    expect(opsFor('relation')).toEqual(['empty', 'notEmpty']);
+    expect(opsFor('relation')).toEqual(['contains', 'empty', 'notEmpty']);
   });
 });
 
