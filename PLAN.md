@@ -755,5 +755,9 @@ Risks:
 | S4 | done | main | Merged. Migration 014 (`users.home_page_id`). `/home`; `/` goes there only when no tab is saved. Status filter operators `done` and `notDone`. Block `pageList` and `GET /api/pages/recent`. |
 | S5 | done | main | Merged. One `mention` node with a `kind`. Migration 010 (`page_refs`, `notifications.link`). Refs and notifications are produced at snapshot (about 3 to 8 s after a mention). |
 | S6 | done | main | Merged. Node `clipEmbed` keyed by project and base name. Migration 011 (`tasks.comment_id`, `clip_frame`). Review deep link `/p/<id>/review?clip=&v=&frame=`. Frame seek is untested (no video in the fixtures). |
-| C1 to C5 | not started | | |
-| H1 to H10 | not started | | |
+| C1, C2 | done | main | Merged. Migration 015. Table endpoints `GET/POST /api/tables`, `GET/PATCH/DELETE /api/tables/{ref}`; schema carries `space`; rows open with `?row=<ref>:<id>`. Schema changes on a project table are owner or admin only. Open: no rename control for a table in the UI, custom rows have no trash, orphan `table_columns` and `views` after a project is deleted. |
+| C3 to C5 | not started | | |
+| H1 | done | main | Merged. `GET /api/search`, palette in web/src/search/ with `registerCommand`. No index: LIKE over page text and in-memory scans. Page text lags typing by up to about 35 s. |
+| H2 | done | main | Merged. Migration 017 (`page_versions`). Automatic version at most every 10 min and when the last editor leaves; unnamed versions are thinned, capped at 200 per page. Restore rewrites the live document, so carets and local undo reset. |
+| H3 | done | main | Merged. Migration 018 (`tasks.deleted_at`). Deleted tasks are not loaded into memory; purge after 30 days. `TableSource` has optional trash methods; only tasks implement them. |
+| H4 to H10 | not started | | |
