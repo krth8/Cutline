@@ -731,15 +731,15 @@ Risks:
 | P1 | done | main | Merged. Adds `import_claimed_by`; `sort_order` is double precision; change `restored` exists; task pages are not in the tree. |
 | P2 | done | main | Merged. Router is included in server.py before the legacy `/ws/{session}/{user}` catch-all. Client notes are in the P2 commit and api/pagesync.py. |
 | P3 | done | main | Merged. Not imported by the bundle yet (about 230 KB gzip: lazy-load it). Image slash entry is left to P6. |
-| P4 | in progress | wp/P4-collab-client | |
-| P5 | in progress | wp/P5-page-tree | |
+| P4 | done | main | Merged. Editor is a separate chunk (`pages-editor.js`, shared modules through `window.__clShared`): a Tiptap `Node` defined in the main bundle gets another `@tiptap/core` copy, so blocks must register through `registerBlock`. Saved/saving uses ping/pong. Open: a claimed legacy import whose client dies leaves the page empty; updates over 5 MB are dropped silently. `test_viewer_sees_the_content_but_cannot_type` failed once in a full e2e run and passed on re-runs. |
+| P5 | done | main | Merged. Editor plugged in through `registerPageBody` (web/src/pages/pageBody.tsx). `api/pageTree.ts` does not use `api/http.ts`. Fractional `sortOrder` is never renumbered. |
 | P6 | not started | | |
 | P7 | not started | | |
 | P8 | not started | | |
 | T1 | done | main | Merged. Open: moving a row to another parent through the table API (proposed: `parentId` on PATCH). |
 | T2 | done | main | Merged. Migration 004. Column has no `sortOrder` in GET (order = position). Custom names may not clash with builtin names. Old `PATCH /api/tasks/{id}` still replaces `customFields` wholesale. |
 | T3 | done | main | Merged. API in web/src/tables/store/index.ts; T4 plugs its REST view source in through `setViewSource`. `loading` = no result yet, `refreshing` is separate. `tasks:*` watches every project until S2. |
-| T4 | in progress | wp/T4-views | Migration 005. |
+| T4 | done | main | Merged. Migration 005. Layouts register in web/src/tables/layouts/ (README there); `table` is a read-only fallback until T6. `canEdit` on a view is returned but not used by the shell. Deleting a page deletes its views. Dev route `/dev/view/<id>`. |
 | T5 | done | main | Merged. Value shapes in web/src/tables/cells/README.md. |
 | T6 | not started | | |
 | T7 | not started | | |
@@ -749,6 +749,7 @@ Risks:
 | T11 | not started | | |
 | T12 | not started | | |
 | T13 | not started | | |
-| S1 to S6 | not started | | |
+| S2 | done | main | Merged. `live.watch(slot, { allTasks: true })` works end to end. No visible UI yet: project picker on create is left to the layouts (`projectsForCreate()`). |
+| S1, S3 to S6 | not started | | |
 | C1 to C5 | not started | | |
 | H1 to H10 | not started | | |
