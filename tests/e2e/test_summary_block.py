@@ -154,7 +154,7 @@ def test_a_user_without_task_access_sees_a_dash_not_an_error(scene, server, new_
     carol = new_page(name="carol")
     open_page(carol, server, scene["page"], "carol")
     carol.wait_for_selector(f"{BLOCK} [data-state=denied]", timeout=15000)
-    assert values(carol)[0] == "—"
+    wait_for(lambda: values(carol)[0] == "—")  # each summary loads on its own
     wait_for(lambda: values(carol, INLINE) == ["—"])  # the inline number loads on its own
     assert carol.locator("[role=alert]").count() == 0
     assert carol.locator(".toast, .toast-container .toast").count() == 0

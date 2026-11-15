@@ -81,6 +81,7 @@ async def page_socket(websocket: WebSocket, page_id: str, ticket: Optional[str] 
                     await websocket.close(code=WS_BAD_DATA)
                     break
                 if changed:
+                    room.note_mentions(payload, principal["id"])
                     await room.relay(websocket, data)
                     await registry.store(room)
             elif kind == STATE_VECTOR:

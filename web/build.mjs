@@ -18,6 +18,7 @@ const blockHosts = new Map([
   [path.join(here, 'src/pages/editor/blocks/viewBlock/host'), 'view-block-host'],
   [path.join(here, 'src/pages/editor/blocks/summary/host'), 'summary-host'],
   [path.join(here, 'src/pages/editor/blocks/clipEmbed/host'), 'clip-embed-host'],
+  [path.join(here, 'src/pages/editor/blocks/mention/host'), 'mention-host'],
 ]);
 
 const EDITOR_CHUNK_URL = '/static/dist/pages-editor.js';

@@ -14,6 +14,7 @@ from typing import Dict, List, Optional, Tuple
 from pycrdt import Doc, XmlElement, XmlFragment, XmlText, merge_updates
 
 from api.auth import can_read_page
+from api.mentions import record_page_refs
 from api.state import WS_ACCESS_REMOVED, live_sockets
 from database.pages import (
     db_append_page_updates,
@@ -29,6 +30,7 @@ SYNC_STATE, UPDATE, AWARENESS, STATE_VECTOR = 0, 1, 2, 3
 MAX_FRAME_BYTES = 5 * 1024 * 1024
 SNAPSHOT_IDLE_SECONDS = 30
 SNAPSHOT_MAX_ROWS = 200
+MENTION_IDLE_SECONDS = 3  # a page with a fresh mention is snapshotted sooner, so the person hears about it sooner
 JOB_INTERVAL_SECONDS = 5
 
 _INLINE_TAGS = {"hardBreak", "mention", "pageLink", "taskChip"}
@@ -134,6 +136,14 @@ class PageRoom:
         self.queue: List[bytes] = []  # applied but not yet stored
         self.pending_rows = pending_rows  # rows in page_updates since the last snapshot
         self.last_update = time.monotonic()
+        self.mention_authors: set = set()  # users whose edits since the last snapshot added a mention
+        self.has_new_mention = False
+
+    def note_mentions(self, update: bytes, user_id: str) -> None:
+        """Remember who sent an update that creates a mention node (its type name is in the encoded bytes)."""
+        if b"mention" in update:
+            self.mention_authors.add(user_id)
+            self.has_new_mention = True
 
     def apply(self, update: bytes) -> bool:
         """Apply a client update. True if it changed the document (then it is queued for storing).
@@ -252,6 +262,10 @@ class PageRegistry:
         text = extract_text(doc)
         last_id = rows[-1][0]
         await asyncio.to_thread(db_write_page_snapshot, page_id, merged, text, last_id)
+        authors = room.mention_authors if room is not None else ()
+        if room is not None:
+            room.mention_authors, room.has_new_mention = set(), False
+        await record_page_refs(page_id, doc, authors)  # page_refs and mention notifications (api/mentions.py)
         if room is not None:
             room.pending_rows = max(0, room.pending_rows - len(rows))
         return len(rows)
@@ -268,8 +282,8 @@ class PageRegistry:
         plus pages with rows left over from a crash that nobody has open."""
         now = time.monotonic()
         for page_id, room in list(self.rooms.items()):
-            if room.pending_rows > 0 and (room.pending_rows > SNAPSHOT_MAX_ROWS
-                                          or now - room.last_update >= SNAPSHOT_IDLE_SECONDS):
+            idle = MENTION_IDLE_SECONDS if room.has_new_mention else SNAPSHOT_IDLE_SECONDS
+            if room.pending_rows > 0 and (room.pending_rows > SNAPSHOT_MAX_ROWS or now - room.last_update >= idle):
                 try:
                     await self.snapshot(page_id)
                 except Exception as exc:

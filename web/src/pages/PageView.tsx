@@ -17,6 +17,7 @@ import {
 } from 'react';
 import { getPage, PageApiError, type PageInfo, type SpaceKey } from '../api/pageTree';
 import { getPlatform } from '../platform';
+import { Backlinks } from './backlinks';
 import { buildRoute, navigate, type Route } from '../router';
 import { Button, cx, Menu, Popover, type MenuItem } from '../ui';
 import {
@@ -467,6 +468,7 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
       <div className="cl-page__body" ref={bodyRef} tabIndex={-1}>
         {Body ? <Body pageId={pageId} editable={editable} /> : <div className="cl-page__placeholder">The editor is not loaded</div>}
       </div>
+      {archived ? null : <Backlinks kind="page" id={pageId} />}
     </article>
   );
 }

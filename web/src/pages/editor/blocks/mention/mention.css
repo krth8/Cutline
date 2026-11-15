@@ -1,0 +1,25 @@
+/* Mention chips (inline) and the @ menu. The menu reuses the .cl-slash classes of the editor. */
+.cl-mention-node { display: inline; }
+.cl-mention {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  max-width: 28em;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.95em;
+  line-height: 1.5;
+  text-decoration: none;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+.cl-mention.is-link { cursor: pointer; }
+.cl-mention.is-link:hover { background: var(--bg-hover); border-color: var(--border-medium); }
+.cl-mention__icon { flex: none; font-size: 0.9em; color: var(--text-secondary); }
+.cl-mention__label { overflow: hidden; text-overflow: ellipsis; }
+.cl-mention__note { flex: none; font-size: 0.75em; color: var(--text-muted); }
+.cl-mention.is-denied { color: var(--text-muted); background: transparent; border-style: dashed; cursor: not-allowed; }
+.ProseMirror-selectednode .cl-mention { outline: 2px solid var(--accent, #3b82f6); outline-offset: 1px; }
