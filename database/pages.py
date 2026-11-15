@@ -5,6 +5,7 @@ Pages form a tree per space; siblings are ordered by a fractional sort_order so
 that inserting between two siblings never renumbers the others.
 """
 
+import html
 import uuid
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
@@ -269,14 +270,33 @@ def db_get_task_page(task_id: str) -> Optional[dict]:
     return _page(row) if row else None
 
 
+def description_to_html(description: Optional[str]) -> Optional[str]:
+    """A plain-text task description as HTML for the legacy import: a paragraph per blank-line block,
+    line breaks inside a block. None for an empty description."""
+    text = (description or "").replace("\r\n", "\n").strip()
+    if not text:
+        return None
+    blocks = [b for b in text.split("\n\n") if b.strip()]
+    return "".join("<p>" + html.escape(b.strip("\n")).replace("\n", "<br>") + "</p>" for b in blocks)
+
+
+def _task_description(task_id: str) -> Optional[str]:
+    with get_db() as conn:
+        row = fetchone(execute(conn, "SELECT description FROM tasks WHERE id = ?", (task_id,)))
+    return row["description"] if row else None
+
+
 def db_get_or_create_task_page(task_id: str, project_id: str, title: str, created_by: Optional[str]) -> dict:
-    """The page of a task, created in the task's project on first use. Safe against two callers at once."""
+    """The page of a task, created in the task's project on first use. Safe against two callers at once.
+    The task's old plain-text description becomes the page's legacy content, imported by the first editor
+    (the description itself stays on the task until the old task UI is removed)."""
     page = db_get_task_page(task_id)
     if page:
         return page
     try:
         return db_create_page("project", project_id, None, created_by, title=title or "Untitled",
-                              kind="task", task_id=task_id)
+                              kind="task", task_id=task_id,
+                              legacy_html=description_to_html(_task_description(task_id)))
     except Exception:
         # Lost the race against the unique index on task_id: the winner's page is there now
         page = db_get_task_page(task_id)

@@ -103,7 +103,7 @@ def test_schema_options(table, admin, editor, project, api):
     api("POST", f"/api/projects/{project}/tasks", admin, {"name": "t", "stageTag": "Zzz"})
     cols = {c["key"]: c for c in table(admin, f"tasks:{project}").schema().json()["columns"]}
 
-    assert {"value": status["id"], "label": "Schema status", "color": "#123456"} in cols["status"]["options"]
+    assert {"value": status["id"], "label": "Schema status", "color": "#123456", "done": False} in cols["status"]["options"]
     assert [o["value"] for o in cols["priority"]["options"]] == ["low", "medium", "high"]
     assert cols["priority"]["options"][2]["color"]
     stages = [o["value"] for o in cols["stage"]["options"]]

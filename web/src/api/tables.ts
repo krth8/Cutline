@@ -16,6 +16,9 @@ export interface CreateRowBody {
   /** Required for `tasks:*`. */
   projectId?: string;
 }
+/** One row by id (404 when it does not exist or may not be read). `tasks:*` finds a task in any project. */
+export const getRow = (ref: string, id: string) => requestJson<Row>('GET', `${base(ref)}/rows/${enc(id)}`);
+
 export const createRow = (ref: string, body: CreateRowBody) => requestJson<Row>('POST', `${base(ref)}/rows`, body);
 
 export const updateRow = (ref: string, id: string, values: Record<string, unknown>) =>

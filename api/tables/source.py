@@ -31,6 +31,10 @@ class TableSource:
         """QueryResult for a Query, limited to what the principal may read."""
         raise NotImplementedError
 
+    def get_row(self, principal: dict, row_id: str) -> dict:
+        """One Row; 404 when it does not exist or may not be read."""
+        raise NotImplementedError
+
     async def create_row(self, principal: dict, values: dict, parent_id: Optional[str] = None,
                          project_id: Optional[str] = None) -> dict:
         raise NotImplementedError

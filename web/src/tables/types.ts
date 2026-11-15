@@ -11,7 +11,7 @@ export interface Column {
   type: ColumnType;
   builtin: boolean; // builtin columns cannot be deleted or retyped
   readonly?: boolean;
-  options?: Array<{ value: string; label: string; color?: string }>; // select-like types
+  options?: Array<{ value: string; label: string; color?: string; done?: boolean }>; // select-like types; done: the status counts as done
   config?: Record<string, unknown>;
 }
 

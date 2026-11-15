@@ -52,11 +52,14 @@ async def create_status(data: dict, user: dict = Depends(require_auth)):
     """Create a new clip status (requires authentication)."""
     name = data.get("name")
     color = data.get("color", "#6366f1")
+    is_done = data.get("isDone")
 
     if not name:
         raise HTTPException(status_code=400, detail="Status name is required")
+    if is_done is not None and not isinstance(is_done, bool):
+        raise HTTPException(status_code=400, detail="isDone must be true or false")
 
-    status = db_create_status(name, color)
+    status = db_create_status(name, color, is_done=is_done)
     return {"status": status}
 
 
@@ -65,8 +68,11 @@ async def update_status(status_id: str, data: dict, user: dict = Depends(require
     """Update a clip status (requires authentication)."""
     name = data.get("name")
     color = data.get("color")
+    is_done = data.get("isDone")
+    if is_done is not None and not isinstance(is_done, bool):
+        raise HTTPException(status_code=400, detail="isDone must be true or false")
 
-    success = db_update_status(status_id, name=name, color=color)
+    success = db_update_status(status_id, name=name, color=color, is_done=is_done)
     if not success:
         raise HTTPException(status_code=404, detail="Status not found")
 

@@ -4,11 +4,21 @@ import { CollabEditor } from './pages/sync';
 import { getPlatform } from './platform';
 import { useRoute } from './router';
 import { Shell } from './shell/Shell';
+import { TaskPanelHost } from './task';
 import { DevView } from './tables/DevView';
 import './app.css';
 
 /** What the bundle renders: the component demo at /dev/ui (admins), the Pages shell elsewhere. */
 export function App() {
+  return (
+    <>
+      <AppView />
+      <TaskPanelHost />
+    </>
+  );
+}
+
+function AppView() {
   const route = useRoute();
   const user = getPlatform().user();
   if (route.kind === 'notFound' && route.path.split('?')[0] === '/dev/ui' && user?.role === 'admin') return <DevUi />;

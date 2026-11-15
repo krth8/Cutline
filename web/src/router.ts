@@ -146,3 +146,38 @@ export function useRoute(): Route {
   const url = useSyncExternalStore(subscribe, currentUrl, currentUrl);
   return useMemo(() => parseRoute(url), [url]);
 }
+
+// ---- Task panel (`?task=<taskId>` on any URL, including paths the router does not know) ----
+
+/** The task id in a URL, or null. Works for every path, so /dev/view/<id>?task=... counts too. */
+export function taskIdOfUrl(url: string): string | null {
+  try {
+    return new URL(url, 'http://cutline.invalid').searchParams.get('task') || null;
+  } catch {
+    return null;
+  }
+}
+
+/** `url` with `task` set to `taskId`, or removed when `taskId` is null. Everything else is kept. */
+export function withTaskParam(url: string, taskId: string | null): string {
+  const parsed = new URL(url, 'http://cutline.invalid');
+  if (taskId) parsed.searchParams.set('task', taskId);
+  else parsed.searchParams.delete('task');
+  return parsed.pathname + parsed.search + parsed.hash;
+}
+
+/** Open the task panel over the current page. */
+export function openTask(taskId: string): void {
+  getPlatform().navigate(withTaskParam(currentUrl(), taskId));
+}
+
+/** Close the task panel (the page underneath stays). */
+export function closeTask(): void {
+  getPlatform().navigate(withTaskParam(currentUrl(), null));
+}
+
+/** The id of the task the URL asks to show, or null. Re-renders on navigation. */
+export function useTaskId(): string | null {
+  const url = useSyncExternalStore(subscribe, currentUrl, currentUrl);
+  return taskIdOfUrl(url);
+}
