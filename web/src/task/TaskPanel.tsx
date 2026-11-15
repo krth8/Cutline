@@ -85,7 +85,8 @@ function Ancestors({ tableRef, parentId, depth = 0 }: { tableRef: string; parent
   );
 }
 
-function Title({ row, canEdit, onSave }: { row: Row; canEdit: boolean; onSave: (name: string) => void }) {
+/** The editable title of a row (shared with the row panel of custom tables). */
+export function Title({ row, canEdit, onSave, label = 'Task name' }: { row: Row; canEdit: boolean; onSave: (name: string) => void; label?: string }) {
   const name = String(row.values.name ?? '');
   const [draft, setDraft] = useState(name);
   const focused = useRef(false);
@@ -101,8 +102,8 @@ function Title({ row, canEdit, onSave }: { row: Row; canEdit: boolean; onSave: (
   return (
     <input
       className="cl-task__title"
-      aria-label="Task name"
-      placeholder="Task name"
+      aria-label={label}
+      placeholder={label}
       value={draft}
       readOnly={!canEdit}
       onFocus={() => (focused.current = true)}
@@ -138,7 +139,7 @@ function Activity({ columns, row }: { columns: Column[]; row: Row }) {
   );
 }
 
-function Unavailable({ message, onClose, onRetry }: { message: string; onClose: () => void; onRetry?: () => void }) {
+export function Unavailable({ message, onClose, onRetry }: { message: string; onClose: () => void; onRetry?: () => void }) {
   return (
     <div className="cl-task__state" data-testid="task-unavailable">
       <p>{message}</p>

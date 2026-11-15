@@ -4,7 +4,7 @@ import { CollabEditor } from './pages/sync';
 import { getPlatform } from './platform';
 import { useRoute } from './router';
 import { Shell } from './shell/Shell';
-import { TaskPanelHost } from './task';
+import { RowPanelHost, TaskPanelHost } from './task';
 import { DevView } from './tables/DevView';
 import './app.css';
 
@@ -14,6 +14,7 @@ export function App() {
     <>
       <AppView />
       <TaskPanelHost />
+      <RowPanelHost />
     </>
   );
 }

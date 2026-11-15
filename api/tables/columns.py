@@ -16,7 +16,7 @@ import json
 import math
 import secrets
 from datetime import date
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from fastapi import HTTPException
 
@@ -146,13 +146,14 @@ def clean_config(raw: Any) -> dict:
     return dict(raw)
 
 
-def clean_name(raw: Any, columns: List[dict], own_key: Optional[str] = None) -> str:
+def clean_name(raw: Any, columns: List[dict], own_key: Optional[str] = None,
+               reserved: Optional[set] = None) -> str:
     if not isinstance(raw, str) or not raw.strip():
         raise _bad(f"A column name of 1-{MAX_NAME} characters is required")
     name = raw.strip()
     if len(name) > MAX_NAME:
         raise _bad(f"A column name has at most {MAX_NAME} characters")
-    taken = {c["name"].casefold() for c in columns if c["key"] != own_key} | BUILTIN_NAMES
+    taken = {c["name"].casefold() for c in columns if c["key"] != own_key} | (BUILTIN_NAMES if reserved is None else reserved)
     if name.casefold() in taken:
         raise HTTPException(status_code=409, detail=f"A column named '{name}' already exists in this table")
     return name
@@ -170,8 +171,16 @@ def _user_has_access(user_id: str, project_id: str) -> bool:
     return bool(db_get_user_by_id(user_id)) and db_check_project_access(user_id, project_id)
 
 
-def validate_value(col: dict, value: Any, project_id: str) -> Any:
-    """The normalised value for a custom column (the empty value for 'nothing'), or HTTP 400."""
+def project_user_check(project_id: str) -> Callable[[str], bool]:
+    """May this user id be picked in a person column of a table of the project?"""
+    return lambda user_id: _user_has_access(user_id, project_id)
+
+
+def validate_value(col: dict, value: Any, user_ok: Callable[[str], bool]) -> Any:
+    """The normalised value for a custom column (the empty value for 'nothing'), or HTTP 400.
+
+    ``user_ok`` says which user ids a person / people column of this table accepts.
+    """
     ctype, name = col["type"], col["name"]
     if ctype in TEXT_TYPES:
         if value is None:
@@ -217,8 +226,8 @@ def validate_value(col: dict, value: Any, project_id: str) -> Any:
             return None
         if not isinstance(value, str):
             raise _bad(f"'{name}' must be a user id or null")
-        if not _user_has_access(value, project_id):
-            raise _bad(f"'{name}': that user does not have access to this project")
+        if not user_ok(value):
+            raise _bad(f"'{name}': that user does not have access to this table")
         return value
     if ctype in MULTI_TYPES:
         if value is None:
@@ -229,8 +238,8 @@ def validate_value(col: dict, value: Any, project_id: str) -> Any:
         for v in value:
             if ctype == "multiselect" and v not in options:
                 raise _bad(f"'{name}': unknown option {v!r}")
-            if ctype == "people" and not _user_has_access(v, project_id):
-                raise _bad(f"'{name}': user {v!r} does not have access to this project")
+            if ctype == "people" and not user_ok(v):
+                raise _bad(f"'{name}': user {v!r} does not have access to this table")
         return value
     raise _bad(f"Unsupported column type {ctype!r}")
 
@@ -241,23 +250,28 @@ def split_values(values: dict) -> Tuple[dict, dict]:
     return {k: v for k, v in values.items() if k not in custom}, custom
 
 
-def checked_custom_values(project_id: str, custom: dict, base: Optional[dict] = None) -> dict:
-    """Validate row values for custom columns and merge them over ``base`` (the stored custom_fields).
+def checked_values(cols: Dict[str, dict], custom: dict, base: Optional[dict], user_ok: Callable[[str], bool]) -> dict:
+    """Validate row values for custom columns (``cols``: key -> Column) and merge them over ``base``.
 
-    Returns the complete custom_fields object to store (empty values removed).
+    Returns the complete object to store (empty values removed).
     """
-    cols = {c["key"]: c for c in list_columns(table_ref(project_id))}
     merged = dict(base or {})
     for key, value in custom.items():
         col = cols.get(key)
         if not col:
             raise _bad(f"Unknown column '{key}'")
-        normal = validate_value(col, value, project_id)
+        normal = validate_value(col, value, user_ok)
         if is_empty_value(normal):
             merged.pop(key, None)
         else:
             merged[key] = normal
     return merged
+
+
+def checked_custom_values(project_id: str, custom: dict, base: Optional[dict] = None) -> dict:
+    """checked_values for the custom columns of a project's tasks (the stored custom_fields)."""
+    cols = {c["key"]: c for c in list_columns(table_ref(project_id))}
+    return checked_values(cols, custom, base, project_user_check(project_id))
 
 
 def row_values(task: dict, cols: List[dict]) -> dict:
@@ -355,6 +369,44 @@ def convert_value(old_type: str, old_options: List[dict], new_type: str, new_opt
 
 # ---------------------------------------------------------------- endpoint logic
 
+class ColumnHost:
+    """Where the columns of one table and the values in its rows live.
+
+    The create / update / delete logic below is the same for every table kind; a host supplies
+    what differs: who may change the schema, who a person column accepts, where the row values
+    are read and written, and which live events go out. Values are plain ``{column key: value}``
+    objects per row id.
+    """
+
+    ref: str
+    reserved_keys: set = BUILTIN_KEYS
+    reserved_names: set = BUILTIN_NAMES
+
+    def need_edit_schema(self, principal: dict) -> None:
+        raise NotImplementedError
+
+    def user_ok(self, user_id: str) -> bool:
+        raise NotImplementedError
+
+    def stored_values(self) -> Dict[str, dict]:
+        """row id -> stored values object, for every row that has any."""
+        raise NotImplementedError
+
+    def save_column(self, key: str, fields: dict, updated: Dict[str, dict]) -> None:
+        """Change the column (fields as in db_update_table_column) and write ``updated`` (row id -> complete values)."""
+        raise NotImplementedError
+
+    def remove_column(self, key: str, updated: Dict[str, dict]) -> None:
+        raise NotImplementedError
+
+    def reload(self, ids: List[str]) -> None:
+        """Bring in-memory copies of the changed rows in step with the database."""
+
+    async def announce(self, changed_ids: List[str]) -> None:
+        """schema_changed, plus rows_changed (updated) when values changed."""
+        raise NotImplementedError
+
+
 def need_edit_schema(principal: dict, project_id: str) -> None:
     """Project owner or admin; everyone else 403."""
     if principal.get("is_guest"):
@@ -368,24 +420,45 @@ def need_edit_schema(principal: dict, project_id: str) -> None:
         raise HTTPException(status_code=403, detail="Only the project owner or an admin can change columns")
 
 
-async def _announce(project_id: str, changed_ids: List[str]) -> None:
-    await live.to_project(project_id, {"type": "schema_changed", "tableRef": table_ref(project_id)}, tasks_only=True)
-    if changed_ids:
-        await task_api.rows_changed(project_id, changed_ids, "updated")
+class TasksColumnHost(ColumnHost):
+    """The custom columns of ``tasks:<projectId>``; values live in ``tasks.custom_fields``."""
+
+    def __init__(self, project_id: str):
+        self.project_id = project_id
+        self.ref = table_ref(project_id)
+
+    def need_edit_schema(self, principal: dict) -> None:
+        need_edit_schema(principal, self.project_id)
+
+    def user_ok(self, user_id: str) -> bool:
+        return _user_has_access(user_id, self.project_id)
+
+    def stored_values(self) -> Dict[str, dict]:
+        return db_project_custom_fields(self.project_id)
+
+    def save_column(self, key: str, fields: dict, updated: Dict[str, dict]) -> None:
+        db_update_table_column(self.ref, key, fields, updated)
+
+    def remove_column(self, key: str, updated: Dict[str, dict]) -> None:
+        db_delete_table_column(self.ref, key, updated)
+
+    def reload(self, ids: List[str]) -> None:
+        for task_id in ids:
+            task_api.reload_task(task_id)
+
+    async def announce(self, changed_ids: List[str]) -> None:
+        await live.to_project(self.project_id, {"type": "schema_changed", "tableRef": self.ref}, tasks_only=True)
+        if changed_ids:
+            await task_api.rows_changed(self.project_id, changed_ids, "updated")
 
 
-def _reload(ids: List[str]) -> None:
-    for task_id in ids:
-        task_api.reload_task(task_id)
-
-
-async def create_column(principal: dict, project_id: str, data: Any) -> dict:
-    need_edit_schema(principal, project_id)
+async def create_column_in(host: ColumnHost, principal: dict, data: Any) -> dict:
+    host.need_edit_schema(principal)
     if not isinstance(data, dict):
         raise _bad("The body must be an object with name and type")
-    ref = table_ref(project_id)
+    ref = host.ref
     col_type = check_type(data.get("type"))
-    name = clean_name(data.get("name"), list_columns(ref))
+    name = clean_name(data.get("name"), list_columns(ref), reserved=host.reserved_names)
     config = clean_config(data["config"]) if data.get("config") is not None else {}
     if col_type in SELECT_TYPES:
         config["options"] = clean_options(data.get("options") or [])
@@ -393,32 +466,32 @@ async def create_column(principal: dict, project_id: str, data: Any) -> dict:
         raise _bad(f"Options only apply to select and multiselect columns, not {col_type}")
     key = KEY_PREFIX + secrets.token_hex(4)
     stored = db_create_table_column(ref, key, name, col_type, config, principal.get("id"))
-    await _announce(project_id, [])
+    await host.announce([])
     return to_column(stored)
 
 
-def _find(project_id: str, key: str) -> dict:
-    if key in BUILTIN_KEYS:
+def _find(host: ColumnHost, key: str) -> dict:
+    if key in host.reserved_keys:
         raise _bad(f"'{key}' is a builtin column and cannot be changed or deleted")
-    stored = db_get_table_column(table_ref(project_id), key)
+    stored = db_get_table_column(host.ref, key)
     if not stored:
         raise HTTPException(status_code=404, detail="Column not found")
     return stored
 
 
-async def update_column(principal: dict, project_id: str, key: str, data: Any) -> dict:
-    need_edit_schema(principal, project_id)
-    stored = _find(project_id, key)
+async def update_column_in(host: ColumnHost, principal: dict, key: str, data: Any) -> dict:
+    host.need_edit_schema(principal)
+    stored = _find(host, key)
     if not isinstance(data, dict):
         raise _bad("The body must be an object")
-    ref = table_ref(project_id)
+    ref = host.ref
     old_type = stored["type"]
     config = dict(stored["config"] or {})
     old_options = list(config.get("options") or [])
     fields: dict = {}
 
     if "name" in data:
-        fields["name"] = clean_name(data["name"], list_columns(ref), own_key=key)
+        fields["name"] = clean_name(data["name"], list_columns(ref), own_key=key, reserved=host.reserved_names)
     if "sortOrder" in data:
         so = data["sortOrder"]
         if isinstance(so, bool) or not isinstance(so, (int, float)) or not math.isfinite(so):
@@ -433,18 +506,18 @@ async def update_column(principal: dict, project_id: str, key: str, data: Any) -
     if options_given and new_type not in SELECT_TYPES:
         raise _bad(f"Options only apply to select and multiselect columns, not {new_type}")
 
-    values = db_project_custom_fields(project_id)
+    values = host.stored_values()
     updated: Dict[str, dict] = {}
 
-    def set_value(task_id: str, new_value: Any) -> None:
-        current = updated.get(task_id)
+    def set_value(row_id: str, new_value: Any) -> None:
+        current = updated.get(row_id)
         if current is None:
-            current = dict(values.get(task_id) or {})
+            current = dict(values.get(row_id) or {})
         if is_empty_value(new_value):
             current.pop(key, None)
         else:
             current[key] = new_value
-        updated[task_id] = current
+        updated[row_id] = current
 
     # ----- options of the new column
     new_options = list(old_options)
@@ -455,8 +528,8 @@ async def update_column(principal: dict, project_id: str, key: str, data: Any) -
             new_options = []
             if old_type in TEXT_TYPES:
                 distinct: Dict[str, str] = {}
-                for task_values in values.values():
-                    v = task_values.get(key)
+                for stored_row in values.values():
+                    v = stored_row.get(key)
                     if isinstance(v, str) and v.strip():
                         distinct.setdefault(v.strip().casefold(), v.strip())
                 if len(distinct) > MAX_OPTIONS:
@@ -470,39 +543,51 @@ async def update_column(principal: dict, project_id: str, key: str, data: Any) -
 
     # ----- values
     if retype:
-        for task_id, task_values in values.items():
-            if key in task_values:
-                set_value(task_id, convert_value(old_type, old_options, new_type, new_options, task_values[key]))
+        for row_id, stored_row in values.items():
+            if key in stored_row:
+                set_value(row_id, convert_value(old_type, old_options, new_type, new_options, stored_row[key]))
     elif options_given:
         keep = {o["value"] for o in new_options}
-        for task_id, task_values in values.items():
-            v = task_values.get(key)
+        for row_id, stored_row in values.items():
+            v = stored_row.get(key)
             if v is None:
                 continue
             if new_type == "select":
                 if v not in keep:
-                    set_value(task_id, None)
+                    set_value(row_id, None)
             else:
                 kept = [x for x in v if x in keep]
                 if kept != v:
-                    set_value(task_id, kept)
+                    set_value(row_id, kept)
 
     if retype:
         fields["type"] = new_type
     if retype or "config" in data or options_given:
         fields["config"] = config
     if fields or updated:
-        db_update_table_column(ref, key, fields, updated)
-    _reload(list(updated))
-    await _announce(project_id, list(updated))
+        host.save_column(key, fields, updated)
+    host.reload(list(updated))
+    await host.announce(list(updated))
     return to_column(db_get_table_column(ref, key))
 
 
+async def delete_column_in(host: ColumnHost, principal: dict, key: str) -> None:
+    host.need_edit_schema(principal)
+    _find(host, key)
+    updated = {row_id: {k: v for k, v in stored_row.items() if k != key}
+               for row_id, stored_row in host.stored_values().items() if key in stored_row}
+    host.remove_column(key, updated)
+    host.reload(list(updated))
+    await host.announce(list(updated))
+
+
+async def create_column(principal: dict, project_id: str, data: Any) -> dict:
+    return await create_column_in(TasksColumnHost(project_id), principal, data)
+
+
+async def update_column(principal: dict, project_id: str, key: str, data: Any) -> dict:
+    return await update_column_in(TasksColumnHost(project_id), principal, key, data)
+
+
 async def delete_column(principal: dict, project_id: str, key: str) -> None:
-    need_edit_schema(principal, project_id)
-    _find(project_id, key)
-    updated = {task_id: {k: v for k, v in task_values.items() if k != key}
-               for task_id, task_values in db_project_custom_fields(project_id).items() if key in task_values}
-    db_delete_table_column(table_ref(project_id), key, updated)
-    _reload(list(updated))
-    await _announce(project_id, list(updated))
+    await delete_column_in(TasksColumnHost(project_id), principal, key)

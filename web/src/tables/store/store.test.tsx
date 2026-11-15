@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setPlatform } from '../../platform';
 import { createFakePlatform, type FakePlatform } from '../../testing/fakePlatform';
-import type { Query, Row } from '../types';
+import type { Query, Row, TableSchema } from '../types';
 import {
   createMemoryViewSource,
   projectsForCreate,
@@ -248,6 +248,40 @@ describe('watching and disposal', () => {
     expect(last()).toEqual({ slot: 'tables', target: { projects: ['p1'] } });
     a.unmount();
     expect(last()).toEqual({ slot: 'tables', target: null });
+  });
+
+  it('a custom table of a project watches that project once its schema has arrived; a personal one needs no watch', async () => {
+    const withSpace = (ref: string, space: TableSchema['space']) => {
+      backend.on(`GET /api/tables/${ref}/schema`, () => ({ body: { ...schemaOf(ref), space } }));
+      backend.on(`POST /api/tables/${ref}/query`, () => ({ body: resultOf([]) }));
+    };
+    withSpace('tbl_a', { type: 'project', projectId: 'p2' });
+    withSpace('tbl_me', { type: 'personal' });
+    const a = renderHook(() => useViewQuery(desc('tbl_a')));
+    await flush();
+    expect(fake.watches[fake.watches.length - 1]).toEqual({ slot: 'tables', target: { projects: ['p2'] } });
+    const before = fake.watches.length;
+    const b = renderHook(() => useViewQuery(desc('tbl_me', {}, 'v2')));
+    await flush();
+    expect(fake.watches).toHaveLength(before); // nothing to add for a personal table
+    a.unmount();
+    expect(fake.watches[fake.watches.length - 1]!.target).toBeNull();
+    b.unmount();
+  });
+
+  it('live events of a custom table refetch only that table', async () => {
+    serve([], 'tbl_a');
+    serve([], 'tasks:p1');
+    const a = renderHook(() => useViewQuery(desc('tbl_a')));
+    const t = renderHook(() => useViewQuery(desc('tasks:p1', {}, 'v2')));
+    await flush();
+    const [custom, tasks] = [queries('tbl_a'), queries('tasks:p1')];
+    fake.emit('rows_changed', { tableRef: 'tbl_a', ids: ['r1'], change: 'created', project: null });
+    await flush(1000);
+    expect(queries('tbl_a')).toBe(custom + 1);
+    expect(queries('tasks:p1')).toBe(tasks);
+    a.unmount();
+    t.unmount();
   });
 
   it('tasks:* alone uses the all-tasks watch and does not list projects', async () => {

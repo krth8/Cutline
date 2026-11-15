@@ -1,17 +1,57 @@
 """Table API (PLAN.md 5.6): schema, query and row endpoints for every table source.
 
-``{ref}`` is a table ref such as ``tasks:<projectId>`` or ``tasks:*``; the colon and the
-star work both written plainly and URL-encoded. Column endpoints (WP T2) exist for
-``tasks:<projectId>`` only.
+``{ref}`` is a table ref such as ``tasks:<projectId>``, ``tasks:*`` or ``tbl_<id>`` (a custom
+table); the colon and the star work both written plainly and URL-encoded. Column endpoints (WP T2,
+C1) exist for ``tasks:<projectId>`` and custom tables. Custom tables also have table endpoints
+(create, list, info, rename, delete; WP C1) next to the row endpoints.
 """
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 
 from api.auth import require_auth
 from api.tables import columns as custom_columns
+from api.tables import custom_source
+from api.tables.custom_source import CustomTableSource
 from api.tables.source import QueryError, resolve_source
 
 router = APIRouter()
+
+
+# ---- custom tables: create, list, info, rename, delete ----
+
+@router.get("/api/tables")
+async def list_tables(space: str, user: dict = Depends(require_auth)):
+    """Custom tables of a space ('me' or 'p:<projectId>') the caller may read: ``{"tables": [...]}``."""
+    return {"tables": custom_source.list_tables(user, space)}
+
+
+@router.post("/api/tables")
+async def create_table(data: dict = Body(...), user: dict = Depends(require_auth)):
+    """Body ``{name, space, columns?: [{name, type, options?}]}``; returns the table summary (``ref`` is ``tbl_<id>``)."""
+    return await custom_source.create_table(user, data)
+
+
+def _custom_id(ref: str) -> str:
+    if not isinstance(resolve_source(ref), CustomTableSource):
+        raise HTTPException(status_code=404, detail="Not a custom table")
+    return ref
+
+
+@router.get("/api/tables/{ref}")
+async def table_info(ref: str, user: dict = Depends(require_auth)):
+    """A custom table's summary with ``rowCount`` and ``viewCount`` (what deleting it would remove)."""
+    return custom_source.table_info(user, _custom_id(ref))
+
+
+@router.patch("/api/tables/{ref}")
+async def rename_table(ref: str, data: dict = Body(...), user: dict = Depends(require_auth)):
+    return await custom_source.rename_table(user, _custom_id(ref), data)
+
+
+@router.delete("/api/tables/{ref}")
+async def delete_table(ref: str, user: dict = Depends(require_auth)):
+    """Delete the table with its rows, columns and views: ``{success, deletedViews}``."""
+    return await custom_source.delete_table(user, _custom_id(ref))
 
 
 @router.get("/api/tables/{ref}/schema")
@@ -59,25 +99,27 @@ async def delete_row(ref: str, row_id: str, user: dict = Depends(require_auth)):
     return {"success": True}
 
 
-def _column_project(ref: str) -> str:
-    """The project id of a ``tasks:<projectId>`` ref; other refs have no custom columns here."""
-    resolve_source(ref)  # unknown or malformed refs: 404
+def _column_host(ref: str) -> custom_columns.ColumnHost:
+    """Where the custom columns of a table live: a project's tasks, or a custom table."""
+    source = resolve_source(ref)  # unknown or malformed refs: 404
+    if isinstance(source, CustomTableSource):
+        return source.column_host()
     if ref == "tasks:*":
         raise HTTPException(status_code=400, detail="Columns belong to a project: use tasks:<projectId>")
-    return ref.split(":", 1)[1]
+    return custom_columns.TasksColumnHost(ref.split(":", 1)[1])
 
 
 @router.post("/api/tables/{ref}/columns")
 async def create_column(ref: str, data: dict = Body(...), user: dict = Depends(require_auth)):
-    return await custom_columns.create_column(user, _column_project(ref), data)
+    return await custom_columns.create_column_in(_column_host(ref), user, data)
 
 
 @router.patch("/api/tables/{ref}/columns/{key}")
 async def update_column(ref: str, key: str, data: dict = Body(...), user: dict = Depends(require_auth)):
-    return await custom_columns.update_column(user, _column_project(ref), key, data)
+    return await custom_columns.update_column_in(_column_host(ref), user, key, data)
 
 
 @router.delete("/api/tables/{ref}/columns/{key}")
 async def delete_column(ref: str, key: str, user: dict = Depends(require_auth)):
-    await custom_columns.delete_column(user, _column_project(ref), key)
+    await custom_columns.delete_column_in(_column_host(ref), user, key)
     return {"success": True}

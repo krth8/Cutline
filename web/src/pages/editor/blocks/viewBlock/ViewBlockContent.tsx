@@ -5,7 +5,7 @@ import { buildRoute, viewRoute } from '../../../../router';
 import { ViewShell } from '../../../../tables/ViewShell';
 import { Button, Input } from '../../../../ui';
 import { clampHeight, MAX_HEIGHT, MIN_HEIGHT, type PageContext } from './model';
-import { confirmAndDeleteViewOf } from './viewApi';
+import { confirmAndDeleteViewOf, createViewOnTable } from './viewApi';
 import { useViewAccess } from './useViewAccess';
 import { ViewPicker } from './ViewPicker';
 import './viewBlock.css';
@@ -131,9 +131,18 @@ export function ViewBlockContent(props: ViewBlockContentProps) {
       <ViewPicker
         open={picking}
         onClose={() => setPicking(false)}
+        context={context}
         onPick={(v) => {
           setPicking(false);
           setAttrs({ viewId: v.id });
+        }}
+        onPickTable={(table) => {
+          setPicking(false);
+          if (!context) return;
+          createViewOnTable(table.ref, table.name, context).then(
+            (v) => setAttrs({ viewId: v.id }),
+            (e: unknown) => getPlatform().toast('error', e instanceof Error ? e.message : 'Could not create the view'),
+          );
         }}
       />
     </div>

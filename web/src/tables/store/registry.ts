@@ -145,8 +145,10 @@ function syncLive(): void {
 }
 
 /**
- * Keep the platform's watch slot on the mounted tasks tables: tasks:<id> watches that project,
- * tasks:* switches on the server's all-tasks watch (every project the user may see tasks of).
+ * Keep the platform's watch slot on the mounted tables: tasks:<id> watches that project, tbl_<id> of a
+ * project watches the table's project (known from its schema; a personal table needs no watch, its
+ * events go straight to the owner's tabs), tasks:* switches on the server's all-tasks watch (every
+ * project the user may see tasks of).
  */
 function syncWatch(): void {
   const platform = getPlatform();
@@ -156,6 +158,7 @@ function syncWatch(): void {
     if (t.active === 0) continue;
     if (t.ref === 'tasks:*') allTasks = true;
     else if (t.ref.startsWith('tasks:')) projects.add(t.ref.slice('tasks:'.length));
+    else if (t.schemaState.schema?.space?.type === 'project') projects.add(t.schemaState.schema.space.projectId);
   }
   const sorted = [...projects].sort();
   const key = sorted.length || allTasks ? `${allTasks ? '*;' : ''}${sorted.join(',')}` : null;
@@ -445,6 +448,7 @@ export class TableEntry {
       return;
     }
     this.setSchemaState({ schema: schema ?? this.schemaState.schema, loading: false, error });
+    syncWatch(); // a custom table's project is only known now
   }
 
   destroy(): void {

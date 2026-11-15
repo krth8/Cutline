@@ -4,7 +4,10 @@ Who may do what:
 - a view that belongs to a page follows the page (``can_read_page`` / ``can_edit_page``);
 - a view on ``tasks:<projectId>`` without a page: read with any access to the project,
   create / change / delete with ``can_edit_tasks``;
-- a view on ``tasks:*`` without a page is private to its creator (admins may touch it too).
+- a view on ``tasks:*`` without a page is private to its creator (admins may touch it too);
+- a view on a custom table (``tbl_<id>``) without a page follows the table: read with the right to read
+  its rows, change with the right to edit them (a personal table: the owner only). A view that belongs to a
+  page follows the page, but cannot be created on a table the caller may not read.
 Share-link guests get 403 everywhere (``require_auth``).
 """
 
@@ -14,11 +17,20 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api.auth import can_edit_page, can_edit_tasks, can_read_page, require_auth
+from api.auth import (
+    can_edit_custom_rows,
+    can_edit_page,
+    can_edit_tasks,
+    can_read_custom_table,
+    can_read_page,
+    require_auth,
+)
 from api.events import current_client_id, live
 from api.state import projects
+from api.tables.custom_source import load_table
 from api.tables.source import resolve_source
 from database import db_check_project_access
+from database.custom_tables import db_get_custom_table
 from database.pages import db_get_page
 from database.views import db_create_view, db_delete_view, db_get_view, db_list_views, db_update_view
 
@@ -38,10 +50,18 @@ def _project_of(table_ref: str):
     return None
 
 
+def _custom_table(table_ref: str):
+    """The custom table a ref names, or None (tasks refs, and tables that no longer exist)."""
+    return db_get_custom_table(table_ref) if table_ref.startswith("tbl_") else None
+
+
 def _may(user: dict, view: dict, write: bool) -> bool:
     page = db_get_page(view["ownerPageId"]) if view.get("ownerPageId") else None
     if page:
         return can_edit_page(user, page) if write else can_read_page(user, page)
+    table = _custom_table(view["tableRef"])
+    if table:
+        return can_edit_custom_rows(user, table) if write else can_read_custom_table(user, table)
     project_id = _project_of(view["tableRef"])
     if project_id:
         return can_edit_tasks(user, project_id) if write else db_check_project_access(user["id"], project_id)
@@ -98,12 +118,16 @@ async def _notify(view: dict) -> None:
     if page and page["spaceType"] == "project":
         await live.to_project(page["projectId"], message)
         return
+    table = None if page else _custom_table(view["tableRef"])
+    if table and table["spaceType"] == "project":
+        await live.to_project(table["projectId"], message)
+        return
     project_id = _project_of(view["tableRef"]) if not page else None
     if project_id:
         await live.to_project(project_id, message)
         return
-    # Personal page or tasks:*: only the owner's other tabs
-    owner = page["ownerId"] if page else view["createdBy"]
+    # Personal page, personal table or tasks:*: only the owner's other tabs
+    owner = page["ownerId"] if page else table["ownerId"] if table else view["createdBy"]
     origin = current_client_id.get()
     for conn in list(live.connections.values()):
         if conn.principal["id"] == owner and not (origin and conn.client_id == origin):
@@ -128,6 +152,9 @@ async def list_views(tableRef: Optional[str] = None, ownerPageId: Optional[str] 
         project_id = _project_of(view["tableRef"])
         if project_id and not db_check_project_access(user["id"], project_id, require_tasks=True):
             continue
+        table = _custom_table(view["tableRef"])
+        if view["tableRef"].startswith("tbl_") and not (table and can_read_custom_table(user, table)):
+            continue
         out.append({
             "id": view["id"], "tableRef": view["tableRef"], "name": view["name"], "layout": view["layout"],
             "ownerPageId": view["ownerPageId"], "canEdit": _may(user, view, True),
@@ -147,6 +174,8 @@ async def create_view(data: dict, user: dict = Depends(require_auth)):
     if not isinstance(table_ref, str):
         raise HTTPException(status_code=400, detail="tableRef is required")
     resolve_source(table_ref)  # unknown refs: 404
+    if table_ref.startswith("tbl_"):
+        load_table(user, table_ref)  # 404 / 403 unless the caller may read the table
     project_id = _project_of(table_ref)
     if project_id and project_id not in projects:
         raise HTTPException(status_code=404, detail="Project not found")

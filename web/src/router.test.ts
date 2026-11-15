@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRoute, parseRoute, routeProjectId, taskIdOfUrl, withTaskParam, type Route } from './router';
+import { buildRoute, parseRoute, routeProjectId, rowOfUrl, taskIdOfUrl, withRowParam, withTaskParam, type Route } from './router';
 
 const samples: Array<[string, Route]> = [
   ['/home', { kind: 'home' }],
@@ -85,5 +85,22 @@ describe('task param helpers', () => {
     expect(withTaskParam('/p/p1/review?clip=7&task=t9', null)).toBe('/p/p1/review?clip=7');
     expect(withTaskParam('/dev/view/v1?task=a', 'b')).toBe('/dev/view/v1?task=b');
     expect(withTaskParam('/me?task=a', null)).toBe('/me');
+  });
+});
+
+describe('row param helpers', () => {
+  it('reads ?row=<ref>:<id> from any path', () => {
+    expect(rowOfUrl('/p/p1/page/x?row=tbl_a1:r1')).toEqual({ ref: 'tbl_a1', id: 'r1' });
+    expect(rowOfUrl('/me?row=tbl_a1:a-b_c')).toEqual({ ref: 'tbl_a1', id: 'a-b_c' });
+    expect(rowOfUrl('/me?row=tbl_a1')).toBeNull();
+    expect(rowOfUrl('/me?row=:r1')).toBeNull();
+    expect(rowOfUrl('/me?row=tbl_a1:')).toBeNull();
+    expect(rowOfUrl('/me')).toBeNull();
+  });
+
+  it('sets and removes the param and keeps the rest of the URL (including the task param)', () => {
+    expect(withRowParam('/p/p1/pages?x=1', { ref: 'tbl_a1', id: 'r1' })).toBe('/p/p1/pages?x=1&row=tbl_a1%3Ar1');
+    expect(rowOfUrl(withRowParam('/p/p1/pages', { ref: 'tbl_a1', id: 'r 1' }))).toEqual({ ref: 'tbl_a1', id: 'r 1' });
+    expect(withRowParam('/p/p1/pages?task=t1&row=tbl_a1:r1', null)).toBe('/p/p1/pages?task=t1');
   });
 });

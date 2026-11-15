@@ -13,6 +13,7 @@ from fastapi import Depends, HTTPException, Request, Response, status
 from typing import Dict, List, Optional
 from database import (
     db_check_project_access,
+    db_get_project_access,
     db_get_share_link,
     db_get_user_by_id,
     db_list_revoked_tokens,
@@ -471,6 +472,40 @@ def can_edit_page(principal: Optional[dict], page: dict) -> bool:
     if page["spaceType"] == "personal":
         return page["ownerId"] == principal["id"]
     return can_edit_tasks(principal, page["projectId"])
+
+
+# ============ Custom tables (PLAN.md 5.5, WP C1) ============
+# A custom table follows its space like a page does. ``table`` is a dict from database/custom_tables.py.
+
+def can_read_custom_table(principal: Optional[dict], table: dict) -> bool:
+    """Personal tables: the owner only. Project tables: task access on the project (rows are task-like data)."""
+    if not principal or principal.get("is_guest"):
+        return False
+    if table["spaceType"] == "personal":
+        return table["ownerId"] == principal["id"]
+    return db_check_project_access(principal["id"], table["projectId"], require_tasks=True)
+
+
+def can_edit_custom_rows(principal: Optional[dict], table: dict) -> bool:
+    """Personal tables: the owner only. Project tables: can_edit_tasks (the right that edits pages and tasks)."""
+    if not principal or principal.get("is_guest"):
+        return False
+    if table["spaceType"] == "personal":
+        return table["ownerId"] == principal["id"]
+    return can_edit_tasks(principal, table["projectId"])
+
+
+def can_edit_custom_schema(principal: Optional[dict], table: dict) -> bool:
+    """Columns, rename and delete. Personal tables: the owner only. Project tables: the project owner or an
+    admin, the same people who may change the columns of the project's tasks."""
+    if not principal or principal.get("is_guest"):
+        return False
+    if table["spaceType"] == "personal":
+        return table["ownerId"] == principal["id"]
+    if principal.get("role") == "admin" or principal.get("is_admin"):
+        return True
+    access = db_get_project_access(principal["id"], table["projectId"])
+    return bool(access and access["isOwner"])
 
 
 def require_project_viewer(principal: Optional[dict], project_id: str) -> dict:
