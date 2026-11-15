@@ -10,16 +10,16 @@ from .utils import get_db
 
 
 def db_create_notification(user_id: str, notification_type: str, title: str,
-                          message: str = None, project_id: str = None) -> dict:
+                          message: str = None, project_id: str = None, link: str = None) -> dict:
     """Create a new notification for a user."""
     notification_id = secrets.token_urlsafe(8)
     created_at = datetime.now().isoformat()
 
     with get_db() as conn:
         execute(conn, """
-            INSERT INTO notifications (id, user_id, type, title, message, related_project_id, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (notification_id, user_id, notification_type, title, message, project_id, created_at))
+            INSERT INTO notifications (id, user_id, type, title, message, related_project_id, created_at, link)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (notification_id, user_id, notification_type, title, message, project_id, created_at, link))
 
     return {
         "id": notification_id,
@@ -28,6 +28,7 @@ def db_create_notification(user_id: str, notification_type: str, title: str,
         "title": title,
         "message": message,
         "projectId": project_id,
+        "link": link,
         "isRead": False,
         "createdAt": created_at
     }
@@ -47,6 +48,7 @@ def db_list_notifications(user_id: str, limit: int = 50) -> List[dict]:
             "title": row["title"],
             "message": row["message"],
             "projectId": row["related_project_id"],
+            "link": row.get("link"),
             "isRead": bool(row["is_read"]),
             "createdAt": row["created_at"]
         } for row in fetchall(cursor)]

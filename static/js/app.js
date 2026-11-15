@@ -4389,6 +4389,12 @@ async function handleNotificationClick(notificationId) {
 
         // Update local state
         const notification = AppState.notifications?.find(n => n.id === notificationId);
+        // A notification with a link (e.g. a mention on a page) opens that route
+        if (notification && notification.link && notification.link.startsWith('/') && !notification.link.startsWith('//')) {
+            closeNotificationsPanel();
+            history.pushState({}, '', notification.link);
+            window.dispatchEvent(new CustomEvent('cutline:navigate', { detail: { route: notification.link } }));
+        }
         if (notification && !notification.isRead) {
             notification.isRead = true;
             AppState.unreadNotificationCount = Math.max(0, (AppState.unreadNotificationCount || 0) - 1);
