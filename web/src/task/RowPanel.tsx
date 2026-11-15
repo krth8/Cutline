@@ -1,25 +1,23 @@
-import { useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { ApiError } from '../api/http';
 import { getPlatform } from '../platform';
 import { closeCustomRow, useCustomRow } from '../router';
 import { deleteRows, updateRow, useRow, useTableSchema } from '../tables/store';
-import { useEscape } from '../ui/hooks';
+import type { MenuItem } from '../ui';
+import { PanelHeader, Title } from './PanelHeader';
+import { PanelShell, PanelSkeleton, Unavailable } from './PanelShell';
 import { Properties } from './Properties';
-import { Title, Unavailable } from './TaskPanel';
 import './task.css';
-import './rowPanel.css';
 
 const isGone = (e: Error | null) => e instanceof ApiError && (e.status === 403 || e.status === 404);
 
 function RowContent({ tableRef, rowId }: { tableRef: string; rowId: string }) {
-  const { row, loading, error } = useRow(tableRef, rowId);
+  const { row, error } = useRow(tableRef, rowId);
   const { schema } = useTableSchema(tableRef);
 
   if (isGone(error)) return <Unavailable message="This row is not available" onClose={closeCustomRow} />;
   if (!row || !schema) {
     if (error) return <Unavailable message="Could not load this row" onClose={closeCustomRow} />;
-    return <div className="cl-task__state">{loading || !schema ? 'Loading...' : null}</div>;
+    return <PanelSkeleton label="Loading row" />;
   }
 
   const save = (values: Record<string, unknown>) => {
@@ -38,22 +36,23 @@ function RowContent({ tableRef, rowId }: { tableRef: string; rowId: string }) {
     await deleteRows(tableRef, [rowId]);
   }
 
+  const projectId = schema.space?.type === 'project' ? schema.space.projectId : null;
+  const projectName = projectId ? getPlatform().projects().find((p) => p.id === projectId)?.name : undefined;
+  const menu: MenuItem[] = row.canEdit && schema.capabilities.delete ? [{ id: 'delete', label: 'Delete row', danger: true, onSelect: () => void remove() }] : [];
+
   return (
     <>
-      <header className="cl-task__header">
-        <div className="cl-task__titlerow">
-          <Title row={row} canEdit={row.canEdit} onSave={(name) => save({ [schema.titleColumn]: name })} label="Row name" />
-          {row.canEdit && schema.capabilities.delete ? (
-            <button type="button" className="cl-task__iconbtn cl-task__danger" aria-label="Delete row" title="Delete row" onClick={() => void remove()}>
-              &#128465;
-            </button>
-          ) : null}
-          <button type="button" className="cl-task__iconbtn" aria-label="Close row" title="Close (Esc)" onClick={closeCustomRow}>
-            &times;
-          </button>
-        </div>
-        <p className="cl-rowpanel__table">{schema.name}</p>
-      </header>
+      <PanelHeader
+        crumbs={
+          <nav className="cl-task__trail" aria-label="Table">
+            {projectName ? <span className="cl-task__crumb is-static">{projectName}</span> : null}
+            <span className="cl-task__crumb is-static">{schema.name}</span>
+          </nav>
+        }
+        title={<Title row={row} canEdit={row.canEdit} onSave={(name) => save({ [schema.titleColumn]: name })} label="Row name" />}
+        menu={menu}
+        closeLabel="Close row"
+      />
       <div className="cl-task__scroll">
         <div className="cl-task__main">
           <Properties columns={schema.columns} row={row} onChange={(key, value) => save({ [key]: value })} />
@@ -63,51 +62,17 @@ function RowContent({ tableRef, rowId }: { tableRef: string; rowId: string }) {
   );
 }
 
-function Panel({ tableRef, rowId }: { tableRef: string; rowId: string }) {
-  const swallowEscape = useRef(false);
-
-  // Escape closes the panel, unless it was meant for a field: that first Escape only leaves the field
-  useEscape(true, () => {
-    if (swallowEscape.current) {
-      swallowEscape.current = false;
-      const active = document.activeElement as HTMLElement | null;
-      if (active && active.matches('input, textarea, select, [contenteditable]')) active.blur();
-      return;
-    }
-    closeCustomRow();
-  });
-
-  return createPortal(
-    <>
-      <div className="cl-task__scrim" data-testid="row-scrim" onMouseDown={closeCustomRow} />
-      <aside
-        className="cl-task cl-rowpanel"
-        role="dialog"
-        aria-label="Row"
-        aria-modal="false"
-        data-testid="row-panel"
-        data-row-id={rowId}
-        onKeyDownCapture={(e) => {
-          if (e.key !== 'Escape') return;
-          const target = e.target as HTMLElement;
-          swallowEscape.current = !!target.closest('.is-editing, input, textarea, select, [contenteditable]');
-          setTimeout(() => (swallowEscape.current = false), 0);
-        }}
-      >
-        <RowContent key={`${tableRef}:${rowId}`} tableRef={tableRef} rowId={rowId} />
-      </aside>
-    </>,
-    document.body,
-  );
-}
-
 /**
- * The side panel of a row of a custom table: shown over whatever route is open while the URL has
- * `?row=<tableRef>:<rowId>`. It shows the title and every column as a property; a custom row has no
+ * The side panel of a row of a custom table: shown beside whatever route is open while the URL has
+ * `?row=<tableRef>:<rowId>`. It has the task panel's frame, header and property list; a custom row has no
  * body, comments or subtasks.
  */
 export function RowPanelHost() {
   const target = useCustomRow();
   if (!target || !getPlatform().user()) return null;
-  return <Panel tableRef={target.ref} rowId={target.id} />;
+  return (
+    <PanelShell label="Row" testId="row-panel" idAttr="data-row-id" rowId={target.id} onClose={closeCustomRow}>
+      <RowContent key={`${target.ref}:${target.id}`} tableRef={target.ref} rowId={target.id} />
+    </PanelShell>
+  );
 }

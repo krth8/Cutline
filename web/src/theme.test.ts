@@ -17,7 +17,6 @@ const THEME_CSS = path.resolve(SRC, '../../static/css/theme.css');
  */
 const COLOUR_ALLOW_LIST = new Set([
   'pages/tree/tree.css',
-  'task/task.css',
   'tables/toolbar/toolbar.css',
 ]);
 
