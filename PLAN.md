@@ -746,11 +746,14 @@ Risks:
 | T8 | done | main | Merged. `config.calendar.mode` is not in the View type. Draws the whole result; no range query. |
 | T9 | done | main | Merged. Migration 007 (`tasks.start_date`, column `startDate`). The server does not force start before due. Dependencies not built. |
 | T10 | done | main | Merged. Status options have no done flag: the list matches names like Done or Completed. |
-| T11 | not started | | |
+| T11 | done | main | Merged. Parity checklist in PR #28. `GET /api/tables/{ref}/rows/{id}`, `useRow`. Migration 012: `is_done` on statuses (API only, no editor). The task body and the old `description` diverge after import. Open: comment edit, real activity log, the panel only exists where the bundle is mounted. |
 | T12 | done | main | Merged. Node `viewBlock`; its React content stays in the main bundle and is reached through `window.__clShared['view-block-host']`. `GET /api/views` lists views. "Open full page" goes to `/dev/view/<id>` until a real view route exists. |
 | T13 | not started | | |
 | S2 | done | main | Merged. `live.watch(slot, { allTasks: true })` works end to end. No visible UI yet: project picker on create is left to the layouts (`projectsForCreate()`). |
 | S1 | done | main | Merged. `POST /api/pages/{id}/move`, `GET /api/pages/{id}/move-preview`; `page_changed` carries `pageIds` on a move. No parent picker in the dialog. |
-| S3 to S6 | not started | | |
+| S3 | done | main | Merged. Nodes `summary` and `summaryInline`; block hosts are a map in web/build.mjs. |
+| S4 | not started | | |
+| S5 | done | main | Merged. One `mention` node with a `kind`. Migration 010 (`page_refs`, `notifications.link`). Refs and notifications are produced at snapshot (about 3 to 8 s after a mention). |
+| S6 | done | main | Merged. Node `clipEmbed` keyed by project and base name. Migration 011 (`tasks.comment_id`, `clip_frame`). Review deep link `/p/<id>/review?clip=&v=&frame=`. Frame seek is untested (no video in the fixtures). |
 | C1 to C5 | not started | | |
 | H1 to H10 | not started | | |
