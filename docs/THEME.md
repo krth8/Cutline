@@ -52,8 +52,8 @@ every element with a `data-theme` attribute, so nothing else needs to change.
 
 ## Light theme and the switch
 
-- The choice is stored in `localStorage["theme"]`: `light`, `dark` or `custom` (the old colour picker); nothing
-  stored means **System**, which follows `prefers-color-scheme` and reacts when the OS preference changes.
+- `localStorage["theme"]` holds `dark`, `light`, `system` or `custom`. Nothing stored means **Dark**.
+  **System** follows `prefers-color-scheme` and reacts when the OS preference changes.
 - A small inline script at the top of `<head>` in `static/index.html` resolves the choice and sets
   `<html data-theme="light|dark|custom">` before the stylesheets load, so there is no flash of the wrong theme.
   It also defines `window.CutlineTheme = { get(), resolved(), set(choice) }` and fires a `cutline-theme` event on
@@ -71,8 +71,8 @@ every element with a `data-theme` attribute, so nothing else needs to change.
 These files are being restyled by other work and still contain literal colours. The list is in
 `web/src/theme.test.ts` (`COLOUR_ALLOW_LIST`) and must shrink to zero.
 
-- `web/src/pages/editor/editor.css`
-- `web/src/pages/sync/sync.css` (sync status dot colours; can use `--success`, `--warning`, `--danger`)
+
+
 - `web/src/pages/tree/tree.css`
 - `web/src/task/task.css`
 - `web/src/tables/toolbar/toolbar.css`

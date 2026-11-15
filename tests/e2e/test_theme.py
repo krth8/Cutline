@@ -46,9 +46,14 @@ def test_theme_css_is_served_and_loaded_before_main_css(scene, browser, new_page
     assert "--bg-dark:" not in css
 
 
-def test_system_preference_is_followed_when_nothing_is_stored(scene, browser, new_page):
+def test_dark_is_the_default_and_system_follows_the_os_when_chosen(scene, browser, new_page):
+    # Nothing stored: dark, whatever the operating system prefers
+    page = new_page(new_context(browser, "light"))
+    page.goto(scene.base_url + "/")
+    assert page.evaluate("document.documentElement.getAttribute('data-theme')") == "dark"
+    assert page.evaluate("window.CutlineTheme.get()") == "dark"
     for scheme, expected in (("light", "light"), ("dark", "dark")):
-        page = new_page(new_context(browser, scheme))
+        page = new_page(new_context(browser, scheme, stored="system"))
         page.goto(scene.base_url + "/")
         assert page.evaluate("document.documentElement.getAttribute('data-theme')") == expected
         assert page.evaluate("window.CutlineTheme.get()") == "system"
@@ -87,7 +92,7 @@ def test_switching_to_light_survives_a_reload_without_a_dark_flash(scene, browse
 
 
 def test_system_choice_follows_a_change_of_the_os_preference(scene, browser, new_page):
-    page = new_page(new_context(browser, "dark"))
+    page = new_page(new_context(browser, "dark", stored="system"))
     page.goto(scene.base_url + "/")
     page.emulate_media(color_scheme="light")
     page.wait_for_function("document.documentElement.getAttribute('data-theme') === 'light'")
@@ -106,7 +111,7 @@ def test_switch_theme_command_cycles_system_light_dark(scene, browser, new_page)
         page.keyboard.press("Enter")
         page.wait_for_timeout(300)
         seen.append(page.evaluate("window.CutlineTheme.get()"))
-    assert seen == ["light", "dark", "system"], seen
+    assert seen == ["system", "light", "dark"], seen
 
 
 def test_dev_theme_page_is_for_admins_only(scene, browser, new_page):

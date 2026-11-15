@@ -16,8 +16,6 @@ const THEME_CSS = path.resolve(SRC, '../../static/css/theme.css');
  * from theme.css and delete the entry.
  */
 const COLOUR_ALLOW_LIST = new Set([
-  'pages/editor/editor.css',
-  'pages/sync/sync.css',
   'pages/tree/tree.css',
   'task/task.css',
   'tables/toolbar/toolbar.css',

@@ -11,12 +11,12 @@
     <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Theme: applied before the stylesheets load so the first paint is already in the right theme.
-         localStorage "theme" holds the choice: system (default), light, dark or custom.
+         localStorage "theme" holds the choice: dark (default, also when nothing is stored), system, light or custom.
          <html data-theme> holds the resolved theme (light, dark or custom). window.CutlineTheme = { get, set, resolved }. -->
     <script>
     (function () {
         var root = document.documentElement, mq = window.matchMedia && matchMedia('(prefers-color-scheme: light)');
-        function read() { try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark' || t === 'custom') return t; } catch (e) {} return 'system'; }
+        function read() { try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark' || t === 'custom' || t === 'system') return t; } catch (e) {} return 'dark'; }
         function resolve(pref) { return pref === 'system' ? (mq && mq.matches ? 'light' : 'dark') : pref; }
         function apply() {
             var r = resolve(read());
@@ -36,7 +36,7 @@
             /** Store a choice and apply it. */
             set: function (pref) {
                 if (pref !== 'system' && pref !== 'light' && pref !== 'dark' && pref !== 'custom') return;
-                try { if (pref === 'system') localStorage.removeItem('theme'); else localStorage.setItem('theme', pref); } catch (e) {}
+                try { localStorage.setItem('theme', pref); } catch (e) {}
                 apply(); notify();
             }
         };

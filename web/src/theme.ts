@@ -31,9 +31,9 @@ export const THEME_LABELS: Record<ThemeChoice, string> = {
   custom: 'Custom',
 };
 
-/** The stored choice ('system' when nothing is stored or the page has no theme helper). */
+/** The stored choice ('dark' when nothing is stored or the page has no theme helper). */
 export function getThemeChoice(): ThemeChoice {
-  return window.CutlineTheme?.get() ?? 'system';
+  return window.CutlineTheme?.get() ?? 'dark';
 }
 
 /** The theme in effect right now. */
