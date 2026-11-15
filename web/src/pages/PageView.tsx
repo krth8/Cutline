@@ -28,6 +28,7 @@ import {
   usePageStore,
 } from './tree/space';
 import { ancestorsOf } from './tree/treeModel';
+import { MoveDialog } from './tree/MoveDialog';
 import './PageView.css';
 
 // ---- the body slot ----
@@ -256,6 +257,7 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
   const Body = usePageBody();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const menuAnchor = useRef<HTMLButtonElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const [focusTitle] = useState(() => consumeTitleFocus(pageId));
@@ -283,7 +285,8 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
     };
     const offs = [
       platform.live.on('page_changed', (msg) => {
-        if (msg.pageId !== pageId) return;
+        const touched = msg.pageId === pageId || (Array.isArray(msg.pageIds) && msg.pageIds.includes(pageId));
+        if (!touched) return;
         if (msg.change === 'deleted') {
           if (timer) clearTimeout(timer);
           setState({ status: 'unavailable' });
@@ -345,6 +348,7 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
   const items: MenuItem[] = [];
   if (editable) {
     items.push({ id: 'add', label: 'Add subpage', onSelect: () => void createAndOpen(space, pageId) });
+    items.push({ id: 'move', label: 'Move to...', onSelect: () => setMoveOpen(true) });
     items.push({
       id: 'archive',
       label: 'Archive',
@@ -412,6 +416,16 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
           &hellip;
         </Button>
         <Menu open={menuOpen} onOpenChange={setMenuOpen} anchorRef={menuAnchor} items={items} placement="bottom-end" aria-label="Page menu" />
+        {moveOpen ? (
+          <MoveDialog
+            open
+            onClose={() => setMoveOpen(false)}
+            from={space}
+            pageId={pageId}
+            title={title}
+            onMoved={(_info, destination) => navigate(pageRoute(destination, pageId))}
+          />
+        ) : null}
       </div>
 
       {archived ? (

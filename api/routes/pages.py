@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from api.auth import can_access_space, can_edit_page, can_read_page, require_auth
 from api.events import live
-from api.pagesync import close_unavailable_rooms
+from api.pagesync import close_rooms_without_access, close_unavailable_rooms
 from api.state import projects, tasks
-from database import db_check_project_access
+from database import db_check_project_access, db_list_users
+from database.access import db_list_project_access
 from database.pages import (
     db_claim_page_import,
     db_create_page,
@@ -16,8 +17,11 @@ from database.pages import (
     db_get_or_create_task_page,
     db_get_page,
     db_list_pages,
+    db_move_page,
     db_page_has_content,
     db_set_archived,
+    db_subtree_ids,
+    db_subtree_summary,
     db_update_page,
     parse_space,
     space_of,
@@ -79,12 +83,12 @@ def _body(page: dict, user: dict) -> dict:
     return body
 
 
-async def _notify(page: dict, change: str) -> None:
+async def _notify(page: dict, change: str, **extra) -> None:
     """Tell the people who can see the page: project pages go to the project's tabs,
     personal pages to the owner's tabs. Task pages send no events."""
     if page["kind"] == "task":
         return
-    message = {"type": "page_changed", "pageId": page["id"], "change": change}
+    message = {"type": "page_changed", "pageId": page["id"], "change": change, **extra}
     if page["spaceType"] == "project":
         await live.to_project(page["projectId"], message)
     else:
@@ -189,6 +193,91 @@ async def update_page(page_id: str, data: dict, user: dict = Depends(require_aut
     for change in changes:
         await _notify(page, change)
     return _body(page, user)
+
+
+# ============ Moving between spaces ============
+
+def _readers(space_type: str, project_id, owner_id) -> dict:
+    """{user id: username} of the people who can read pages of a space: the owner of a personal space,
+    or everyone with access to the project (members and admins)."""
+    if space_type == "personal":
+        users = {u["id"]: u["username"] for u in db_list_users()}
+        return {owner_id: users.get(owner_id, "")}
+    readers = {a["userId"]: a["username"] for a in db_list_project_access(project_id)}
+    readers.update({u["id"]: u["username"] for u in db_list_users() if u["role"] == "admin"})
+    return readers
+
+
+def _destination(data: dict, user: dict):
+    """Validate {space, parentId?} of a move: the caller may create pages there. Returns (space_type, project_id, parent_id)."""
+    space = data.get("space")
+    if not isinstance(space, str):
+        raise HTTPException(status_code=400, detail="space is required")
+    space_type, project_id = _space(space, user, write=True)
+    return space_type, project_id, _clean_parent(data.get("parentId"))
+
+
+def _owner_for(space_type: str, user: dict):
+    return user["id"] if space_type == "personal" else None
+
+
+@router.get("/api/pages/{page_id}/move-preview")
+async def move_preview(page_id: str, space: str, user: dict = Depends(require_auth)):
+    """What moving the page to `space` ('me' or 'p:<id>') changes: how many sub-pages move, who gains and who
+    loses access (the caller never counts), and views whose rows some readers of the new space cannot see."""
+    page = _load(page_id, user, write=True)
+    if page["kind"] == "task":
+        raise HTTPException(status_code=400, detail="A task page cannot be moved")
+    space_type, project_id, _parent = _destination({"space": space}, user)
+    before = _readers(page["spaceType"], page["projectId"], page["ownerId"])
+    after = _readers(space_type, project_id, user["id"])
+    summary = db_subtree_summary(page_id)
+
+    def people(ids):
+        names = sorted(after.get(i) or before.get(i) or "" for i in ids)
+        return {"count": len(names), "names": names[:10]}
+
+    gain = [i for i in after if i not in before and i != user["id"]]
+    lose = [i for i in before if i not in after and i != user["id"]]
+    limited = []
+    for table_ref, count in summary["views"].items():
+        if not table_ref.startswith("tasks:") or table_ref == "tasks:*":
+            continue
+        table_project = table_ref.split(":", 1)[1]
+        without = [i for i in after if i != user["id"] and not db_check_project_access(i, table_project, require_tasks=True)]
+        if without and table_project in projects:
+            limited.append({"projectId": table_project, "projectName": projects[table_project].get("name", ""),
+                            "viewCount": count, "readersWithoutAccess": len(without)})
+    return {
+        "from": space_of(page),
+        "to": space,
+        "subPages": summary["subPages"],
+        "gain": people(gain),
+        "lose": people(lose),
+        "limitedViews": limited,
+    }
+
+
+@router.post("/api/pages/{page_id}/move")
+async def move_page(page_id: str, data: dict, user: dict = Depends(require_auth)):
+    """Move a page and its sub-pages to another space. Body: {space: 'me' | 'p:<projectId>', parentId?}.
+    The caller must be able to edit the page where it is and to create pages in the new space; the page lands
+    at the end of the top level (or of parentId's children). A project page moved to 'me' becomes the caller's.
+    Connected editors who lose access are disconnected; both spaces get a page_changed event."""
+    page = _load(page_id, user, write=True)
+    space_type, project_id, parent_id = _destination(data, user)
+    subtree = db_subtree_ids(page_id)
+    try:
+        moved = db_move_page(page_id, space_type, project_id, _owner_for(space_type, user), parent_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if moved is None:
+        raise HTTPException(status_code=404, detail="Page not found")
+    await close_rooms_without_access(subtree)
+    event_ids = subtree[:500]
+    for where in (page, moved):
+        await _notify(where, "moved", pageIds=event_ids)
+    return _body(moved, user)
 
 
 @router.delete("/api/pages/{page_id}")

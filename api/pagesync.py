@@ -13,7 +13,8 @@ from typing import Dict, List, Optional, Tuple
 
 from pycrdt import Doc, XmlElement, XmlFragment, XmlText, merge_updates
 
-from api.state import WS_ACCESS_REMOVED
+from api.auth import can_read_page
+from api.state import WS_ACCESS_REMOVED, live_sockets
 from database.pages import (
     db_append_page_updates,
     db_get_page,
@@ -293,12 +294,42 @@ class PageRegistry:
                     pass
 
 
+    async def close_without_access(self, page_ids) -> None:
+        """Close the sockets of people who can no longer read their page (after a move between spaces)."""
+        for page_id in page_ids:
+            room = self.rooms.get(page_id)
+            if room is None:
+                continue
+            page = await asyncio.to_thread(db_get_page, page_id)
+            for websocket in list(room.members):
+                user_id = _socket_user(websocket)
+                if page and not page["archivedAt"] and user_id and can_read_page({"id": user_id}, page):
+                    continue
+                try:
+                    await websocket.close(code=WS_ACCESS_REMOVED)
+                except Exception:
+                    pass
+
+
+def _socket_user(websocket) -> Optional[str]:
+    """The user id a tracked socket belongs to."""
+    for user_id, entries in live_sockets.items():
+        if any(entry[0] is websocket for entry in entries):
+            return user_id
+    return None
+
+
 registry = PageRegistry()
 
 
 async def close_unavailable_rooms() -> None:
     """Call after archiving or deleting pages: connected editors of those pages are disconnected."""
     await registry.close_unavailable()
+
+
+async def close_rooms_without_access(page_ids) -> None:
+    """Call after pages changed space: connected editors who may no longer read them are disconnected."""
+    await registry.close_without_access(page_ids)
 
 
 _job: Optional[asyncio.Task] = None

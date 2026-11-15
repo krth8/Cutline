@@ -134,3 +134,16 @@
 
 /* The legacy confirm dialog (platform.confirm) is asked from inside the archived list dialog: keep it on top */
 .confirm-overlay { z-index: 20000; }
+
+/* Move to... dialog */
+.cl-move { display: flex; flex-direction: column; gap: 12px; min-width: 340px; max-width: 480px; }
+.cl-move__choices { margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 6px; }
+.cl-move__legend { padding: 0; margin-bottom: 6px; color: var(--text-muted); font-size: 12px; }
+.cl-move__choice { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.cl-move__note { margin: 0; color: var(--text-muted); }
+.cl-move__warning { padding: 10px 12px; border-radius: var(--radius-sm); background: var(--bg-hover); border-left: 3px solid var(--accent); }
+.cl-move__warning p { margin: 0 0 6px; }
+.cl-move__warning p:last-child { margin-bottom: 0; }
+
+/* A page dragged over another space's tree */
+.cl-tree.is-move-target { outline: 2px dashed var(--accent); outline-offset: -2px; border-radius: var(--radius-sm); }

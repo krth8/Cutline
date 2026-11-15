@@ -191,6 +191,50 @@ def db_update_page(page_id: str, title=_UNSET, icon=_UNSET, parent_id=_UNSET, so
     return db_get_page(page_id)
 
 
+def db_subtree_ids(page_id: str) -> List[str]:
+    """The page and all its sub-pages (archived ones included), root first."""
+    with get_db() as conn:
+        return [r["id"] for r in fetchall(execute(conn, _SUBTREE + " SELECT id FROM sub", (page_id,)))]
+
+
+def db_subtree_summary(page_id: str) -> dict:
+    """Counts for the move warning: sub-pages (not counting the root, archived ones left out) and the
+    views owned by the subtree, as {tableRef: count}."""
+    with get_db() as conn:
+        n = fetchone(execute(conn, _SUBTREE + " SELECT COUNT(*) AS n FROM pages WHERE id IN (SELECT id FROM sub) "
+                             "AND id != ? AND archived_at IS NULL", (page_id, page_id)))
+        view_rows = fetchall(execute(conn, _SUBTREE + " SELECT table_ref, COUNT(*) AS n FROM views "
+                                     "WHERE owner_page_id IN (SELECT id FROM sub) GROUP BY table_ref", (page_id,)))
+    return {"subPages": n["n"] if n else 0, "views": {r["table_ref"]: r["n"] for r in view_rows}}
+
+
+def db_move_page(page_id: str, space_type: str, project_id: Optional[str], owner_id: Optional[str],
+                 parent_id: Optional[str] = None) -> Optional[dict]:
+    """Move a page with its whole subtree into another space (project or personal), to the end of the
+    siblings under parent_id (top level when None). Views owned by the pages keep their owner page, so they
+    follow it. Raises ValueError for a task page, an archived page, the page's own space or a bad parent."""
+    project_id = project_id if space_type == "project" else None
+    owner_id = owner_id if space_type == "personal" else None
+    with get_db() as conn:
+        row = fetchone(execute(conn, f"SELECT {_META_COLUMNS} FROM pages WHERE id = ?", (page_id,)))
+        if not row:
+            return None
+        if row["kind"] == "task":
+            raise ValueError("A task page cannot be moved")
+        if row["archived_at"]:
+            raise ValueError("Restore the page before moving it")
+        if (row["space_type"], row["project_id"], row["owner_id"]) == (space_type, project_id, owner_id):
+            raise ValueError("The page is already in that space")
+        if parent_id:
+            _check_parent(conn, None, parent_id, space_type, project_id, owner_id)
+        sort_order = _next_sort_order(conn, space_type, project_id, owner_id, parent_id)
+        now = datetime.now().isoformat()
+        execute(conn, _SUBTREE + " UPDATE pages SET space_type = ?, project_id = ?, owner_id = ?, updated_at = ? "
+                "WHERE id IN (SELECT id FROM sub)", (page_id, space_type, project_id, owner_id, now))
+        execute(conn, "UPDATE pages SET parent_id = ?, sort_order = ? WHERE id = ?", (parent_id, sort_order, page_id))
+    return db_get_page(page_id)
+
+
 def db_set_archived(page_id: str, archived: bool) -> Optional[dict]:
     """Archive or restore a page together with all its sub-pages.
     A restored page whose parent is still archived moves to the top level."""
