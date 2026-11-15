@@ -285,14 +285,14 @@ describe('read-only', () => {
     current = infoOf(tree[2]!, { canEdit: false });
   });
 
-  it('shows a plain heading, no icon picker and only Copy link in the menu', async () => {
+  it('shows a plain heading, no icon picker and only History and Copy link in the menu', async () => {
     const user = userEvent.setup();
     render(<PageView route={route} />);
     expect(await screen.findByRole('heading', { name: 'Budget' })).toBeTruthy();
     expect(screen.queryByRole('textbox', { name: 'Page title' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add icon' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Page menu' }));
-    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Copy link']);
+    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['History', 'Copy link']);
   });
 
   it('passes editable=false to the body', async () => {

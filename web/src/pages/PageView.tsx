@@ -31,6 +31,7 @@ import {
 } from './tree/space';
 import { ancestorsOf } from './tree/treeModel';
 import { MoveDialog } from './tree/MoveDialog';
+import { HistoryDialog } from './history';
 import './PageView.css';
 
 // ---- the body slot ----
@@ -260,6 +261,7 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [menuOpen, setMenuOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const menuAnchor = useRef<HTMLButtonElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const [focusTitle] = useState(() => consumeTitleFocus(pageId));
@@ -369,6 +371,7 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
   if (space === 'me' && page.canEdit && !archived && homeId !== pageId) {
     items.push({ id: 'set-home', label: 'Set as home', onSelect: () => void setHomePage(pageId) });
   }
+  items.push({ id: 'history', label: 'History', onSelect: () => setHistoryOpen(true) });
   items.push({
     id: 'copy',
     label: 'Copy link',
@@ -426,6 +429,7 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
           &hellip;
         </Button>
         <Menu open={menuOpen} onOpenChange={setMenuOpen} anchorRef={menuAnchor} items={items} placement="bottom-end" aria-label="Page menu" />
+        {historyOpen ? <HistoryDialog open pageId={pageId} canEdit={editable} onClose={() => setHistoryOpen(false)} /> : null}
         {moveOpen ? (
           <MoveDialog
             open

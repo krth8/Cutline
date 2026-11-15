@@ -13,12 +13,14 @@ from typing import Dict, List, Optional, Tuple
 
 from pycrdt import Doc, XmlElement, XmlFragment, XmlText, merge_updates
 
+from api import pagehistory
 from api.auth import can_read_page
 from api.mentions import record_page_refs
 from api.state import WS_ACCESS_REMOVED, live_sockets
 from database.pages import (
     db_append_page_updates,
     db_get_page,
+    db_get_page_text,
     db_load_page_state,
     db_pages_with_updates,
     db_write_page_snapshot,
@@ -138,6 +140,7 @@ class PageRoom:
         self.last_update = time.monotonic()
         self.mention_authors: set = set()  # users whose edits since the last snapshot added a mention
         self.has_new_mention = False
+        self.editors: set = set()  # users who edited since the last version (page history)
 
     def note_mentions(self, update: bytes, user_id: str) -> None:
         """Remember who sent an update that creates a mention node (its type name is in the encoded bytes)."""
@@ -209,6 +212,7 @@ class PageRegistry:
                 return
             try:
                 await self._snapshot_locked(room.page_id, room)
+                await self._version_on_leave_locked(room)
             except Exception as exc:
                 print(f"Page snapshot failed for {room.page_id}: {exc}")
             if not room.members and self.rooms.get(room.page_id) is room:
@@ -249,7 +253,16 @@ class PageRegistry:
         async with self.lock(page_id):
             return await self._snapshot_locked(page_id, self.rooms.get(page_id))
 
-    async def _snapshot_locked(self, page_id: str, room: Optional[PageRoom]) -> int:
+    async def _version_on_leave_locked(self, room: PageRoom) -> None:
+        """The last editor left: take a history version if anything changed since the last one."""
+        snapshot, _rows = await asyncio.to_thread(db_load_page_state, room.page_id)
+        if not snapshot:
+            return
+        text = await asyncio.to_thread(db_get_page_text, room.page_id)
+        if await pagehistory.on_last_editor_left(room.page_id, snapshot, text or "", room.editors):
+            room.editors = set()
+
+    async def _snapshot_locked(self, page_id: str, room: Optional[PageRoom], versions: bool = True) -> int:
         if room is not None:
             await self._flush_locked(room)
         snapshot, rows = await asyncio.to_thread(db_load_page_state, page_id)
@@ -262,6 +275,9 @@ class PageRegistry:
         text = extract_text(doc)
         last_id = rows[-1][0]
         await asyncio.to_thread(db_write_page_snapshot, page_id, merged, text, last_id)
+        if versions and await pagehistory.after_snapshot(page_id, merged, text, room.editors if room else set()):
+            if room is not None:
+                room.editors = set()
         authors = room.mention_authors if room is not None else ()
         if room is not None:
             room.mention_authors, room.has_new_mention = set(), False
@@ -269,6 +285,35 @@ class PageRegistry:
         if room is not None:
             room.pending_rows = max(0, room.pending_rows - len(rows))
         return len(rows)
+
+    # ---- restoring a version (page history) ----
+
+    async def restore(self, page_id: str, state: bytes, user_id: str) -> None:
+        """Make the page's content equal to the version `state` while people stay connected.
+
+        The live Doc is kept: its content is replaced by one ordinary change (pagehistory.replace_content),
+        which is relayed to every socket and stored like any edit. The state before the restore is saved
+        first as a `before_restore` version (taken in the same step as the change, so no edit is lost)."""
+        async with self.lock(page_id):
+            room = self.rooms.get(page_id)
+            transient = room is None  # nobody is connected: load the page just for this
+            if transient:
+                room = await self._load(page_id)
+            await self._flush_locked(room)
+            # no await between reading the old state and changing the document
+            before = room.doc.get_update()
+            before_text = extract_text(room.doc)
+            editors, room.editors = room.editors, set()
+            update = pagehistory.replace_content(room.doc, state)
+            room.queue.append(update)
+            room.pending_rows += 1
+            room.last_update = time.monotonic()
+            room.editors.add(user_id)
+            await pagehistory.save_version(page_id, before, before_text, "before_restore", created_by=user_id,
+                                           editors=editors)
+            await room.relay(None, bytes([UPDATE]) + update)
+            await self._flush_locked(room)
+            await self._snapshot_locked(page_id, room, versions=False)
 
     async def snapshot_all(self) -> None:
         for page_id in list(self.rooms):
