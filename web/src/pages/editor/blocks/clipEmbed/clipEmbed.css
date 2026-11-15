@@ -1,0 +1,114 @@
+/* The clip block in a page: a card with the thumbnail, name, version, status and comment count */
+.cl-clipembed {
+  margin: 12px 0;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary, transparent);
+  overflow: hidden;
+}
+.ProseMirror-selectednode > .cl-clipembed,
+.cl-clipembed:focus-within { border-color: var(--accent); }
+
+.cl-clipembed__card { display: flex; align-items: stretch; gap: 8px; }
+.cl-clipembed__link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+.cl-clipembed__link:hover { background: var(--bg-hover); }
+
+.cl-clipembed__thumb {
+  flex: none;
+  width: 128px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  overflow: hidden;
+}
+.cl-clipembed__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.cl-clipembed__info { min-width: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.cl-clipembed__name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.cl-clipembed__meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--text-muted); }
+
+.cl-clipembed__status {
+  --cl-status: var(--text-muted);
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--cl-status);
+  color: var(--cl-status);
+}
+.cl-clipembed__status--none { border-style: dashed; }
+
+.cl-clipembed__actions { flex: none; display: flex; align-items: center; gap: 4px; padding-right: 8px; }
+
+.cl-clipembed__state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px;
+  color: var(--text-muted);
+}
+.cl-clipembed__state p { margin: 0; }
+
+/* The picker dialog */
+.cl-clippicker { width: min(520px, 94vw); }
+.cl-clippicker__fields { display: flex; gap: 8px; margin-bottom: 8px; }
+.cl-clippicker__search,
+.cl-clippicker__frame {
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+}
+.cl-clippicker__search { flex: 1; min-width: 0; }
+.cl-clippicker__frame { width: 80px; }
+.cl-clippicker__frame[aria-invalid] { border-color: var(--danger, #e03131); }
+.cl-clippicker__groups { max-height: 360px; overflow: auto; }
+.cl-clippicker__project { margin: 8px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.cl-clippicker__list { list-style: none; margin: 0; padding: 0; }
+.cl-clippicker__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.cl-clippicker__item:hover,
+.cl-clippicker__item:focus-visible { background: var(--bg-hover); }
+.cl-clippicker__item:disabled { opacity: 0.5; cursor: not-allowed; }
+.cl-clippicker__thumb {
+  flex: none;
+  width: 64px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  overflow: hidden;
+}
+.cl-clippicker__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cl-clippicker__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-clippicker__meta { font-size: 12px; color: var(--text-muted); }
+.cl-clippicker__state { color: var(--text-muted); margin: 8px 0; }

@@ -2,7 +2,8 @@
  * Routes - the URL decides which top tab is shown (PLAN.md 5.3).
  *
  *   /                          legacy behaviour: the last tab (Projects, Docs, Lounge, ...)
- *   /p/<id>/review[?session=]  Review tab with that project loaded
+ *   /p/<id>/review[?session=][&clip=<name>[&v=<n>][&frame=<n>]]
+ *                              Review tab with that project loaded, on that clip version and frame
  *   /me, /me/page/<id>,
  *   /p/<id>/pages, /p/<id>/page/<id>   Pages tab (the React bundle mounts in #viewPages)
  *   /?project=<id>[&session=]  old link, rewritten to /p/<id>/review
@@ -195,19 +196,51 @@ const Routes = (function () {
         history.replaceState(history.state, '', rest ? `${base}?${rest}` : base);
     }
 
+    /** `?clip=<baseName>[&v=<version>][&frame=<n>]` of the current URL, or null. */
+    function clipTarget() {
+        const params = new URLSearchParams(location.search);
+        const clip = params.get('clip');
+        if (!clip) return null;
+        const version = parseInt(params.get('v'), 10);
+        const frame = parseInt(params.get('frame'), 10);
+        return {
+            clip,
+            version: Number.isFinite(version) ? version : null,
+            frame: Number.isFinite(frame) && frame >= 0 ? frame : null,
+        };
+    }
+
+    /** Select the clip (and version, and frame) a review link names. Does nothing when the clip is not in the project. */
+    function showClipTarget(target) {
+        const clip = AppState.clips && AppState.clips[target.clip];
+        if (!clip) return;
+        const version = clip.versions.some(v => v.version === target.version) ? target.version : clip.activeVersion;
+        selectClipVersion(target.clip, version);
+        if (target.frame === null || AppState.currentMediaType !== 'video') return;
+        // A freshly selected clip has no metadata yet: seek once it has
+        const video = elements.video;
+        const seek = () => goToFrame(target.frame);
+        if (video.readyState >= 1) seek();
+        else video.addEventListener('loadedmetadata', seek, { once: true });
+    }
+
     async function openReview(projectId) {
+        // Read before loading: loading the project rewrites the URL and drops the query
+        const target = clipTarget();
         const sessionId = new URLSearchParams(location.search).get('session');
         if (sessionId) {
             if (AppState.sessionId !== sessionId || AppState.projectId !== projectId) {
                 await joinSessionFromUrl(sessionId, projectId);
-                return;
+            } else {
+                switchTab('review', { history: 'none' });
             }
         } else if (AppState.projectId !== projectId || !AppState.currentProject) {
             AppState.projectId = projectId;
             await loadProject(projectId);
-            return;
+        } else {
+            switchTab('review', { history: 'none' });
         }
-        switchTab('review', { history: 'none' });
+        if (target) showClipTarget(target);
     }
 
     /**

@@ -133,6 +133,16 @@ def db_get_project(project_id: str) -> Optional[dict]:
                 comment["anchor"] = json.loads(c_row["anchor_json"])
             project["comments"].append(comment)
 
+        # Comments that a task was made from carry the task's id (shown as a "Task" chip in review)
+        cursor = execute(conn,
+            "SELECT id, comment_id FROM tasks WHERE project_id = ? AND comment_id IS NOT NULL",
+            (project_id,)
+        )
+        task_of_comment = {t_row["comment_id"]: t_row["id"] for t_row in fetchall(cursor)}
+        for comment in project["comments"]:
+            if comment["id"] in task_of_comment:
+                comment["taskId"] = task_of_comment[comment["id"]]
+
         # Get annotations
         cursor = execute(conn,
             "SELECT * FROM annotations WHERE project_id = ? ORDER BY created_at",

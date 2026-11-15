@@ -427,6 +427,14 @@ function renderComments() {
                    title="Select for bulk delete">
         ` : '';
 
+        // "Create task" for people who can edit tasks; a comment that has a task shows a "Task" chip instead
+        const taskBtn = (!c.taskId && canMakeTasksFromComments())
+            ? `<button class="comment-action-btn comment-task-btn" onclick="event.stopPropagation(); createTaskFromComment('${c.id}')" title="Create task"><svg class="icon icon-sm"><use href="/static/icons.svg?v=3#icon-checkbox"/></svg></button>`
+            : '';
+        const taskChip = (c.taskId && canMakeTasksFromComments())
+            ? `<button class="comment-task-chip" onclick="event.stopPropagation(); openCommentTask('${c.taskId}')" title="Open the task">Task</button>`
+            : '';
+
         // Check if this is a reply (has parentId)
         const isReply = c.parentId ? true : false;
         const replyIndent = isReply ? 'comment-reply' : '';
@@ -443,10 +451,12 @@ function renderComments() {
                         <span class="comment-author-name">${escapeHtml(displayName)}</span>
                         <span class="comment-frame-badge">${getFrameDisplay(c.frame)}</span>
                         ${pinBadge}
+                        ${taskChip}
                     </div>
                     <div class="comment-header-right">
                         ${drawingIndicator}
                         ${resolvedBtn}
+                        ${taskBtn}
                         ${replyBtn}
                         ${deleteBtn}
                     </div>
@@ -1336,6 +1346,45 @@ async function deleteComment(commentId) {
     }
 }
 
+// ============ Comments to tasks ============
+
+// Only people who can edit tasks in this project get "Create task" (the server checks it again)
+function canMakeTasksFromComments() {
+    if (AppState.isShareLinkGuest || !AppState.projectId) return false;
+    if (AppState.adminUser && AppState.adminUser.role === 'viewer') return false;
+    return typeof UserManager !== 'undefined' && UserManager.canTasks(AppState.projectId);
+}
+
+// Make the task of a comment (one per comment: asking again returns the same task) and show its chip
+async function createTaskFromComment(commentId) {
+    const comment = AppState.comments.find(c => c.id === commentId);
+    if (!comment) return;
+    if (comment.taskId) {
+        openCommentTask(comment.taskId);
+        return;
+    }
+    try {
+        const response = await fetch(`/api/projects/${AppState.projectId}/comments/${commentId}/task`, { method: 'POST' });
+        if (!response.ok) {
+            showCommentError(response, 'Could not create the task');
+            return;
+        }
+        const data = await response.json();
+        comment.taskId = data.task.id;
+        renderComments();
+        if (typeof Toast !== 'undefined') Toast.success(data.created ? 'Task created' : 'This comment already has a task');
+        // The task list of this project follows the tab that made the change
+        if (window.TaskManager && TaskManager.getProjectId() === AppState.projectId) TaskManager.loadTasks();
+    } catch (err) {
+        console.error('Failed to create task from comment:', err);
+    }
+}
+
+// Open the task behind a comment's chip in the task detail
+function openCommentTask(taskId) {
+    if (typeof openTaskFromClip === 'function') openTaskFromClip(taskId);
+}
+
 // A comment is gone (deleted here or, via the live connection, by someone else)
 function handleCommentDeleted(commentId) {
     if (!AppState.comments.some(c => c.id === commentId)) return;
@@ -1358,6 +1407,8 @@ window.handleCommentClick = handleCommentClick;
 window.showCommentDrawing = showCommentDrawing;
 window.showFrameDrawings = showFrameDrawings;
 window.deleteComment = deleteComment;
+window.createTaskFromComment = createTaskFromComment;
+window.openCommentTask = openCommentTask;
 window.startReply = startReply;
 window.submitInlineReply = submitInlineReply;
 window.cancelReply = cancelReply;

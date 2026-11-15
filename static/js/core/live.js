@@ -185,10 +185,16 @@ window.Live = Live;
     Live.on('comment_updated', (msg) => {
         if (!isReviewProject(msg)) return;
         const comment = AppState.comments.find(c => c.id === msg.commentId);
-        if (comment && comment.resolved !== msg.resolved) {
-            comment.resolved = msg.resolved;
-            renderComments();
+        if (!comment) return;
+        let changed = comment.resolved !== msg.resolved;
+        comment.resolved = msg.resolved;
+        // Only events about a task link carry taskId (null: the task is gone)
+        if ('taskId' in msg && (msg.taskId || undefined) !== comment.taskId) {
+            if (msg.taskId) comment.taskId = msg.taskId;
+            else delete comment.taskId;
+            changed = true;
         }
+        if (changed) renderComments();
     });
 
     // ----- Clips -----

@@ -14,6 +14,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const registryFile = path.join(here, 'src/pages/editor/registry');
 // The part of the view block that needs main-bundle code (React content, API, platform): see viewBlock/host.ts
 const viewBlockHostFile = path.join(here, 'src/pages/editor/blocks/viewBlock/host');
+// Same for the clip block: see clipEmbed/host.ts
+const clipEmbedHostFile = path.join(here, 'src/pages/editor/blocks/clipEmbed/host');
 
 const EDITOR_CHUNK_URL = '/static/dist/pages-editor.js';
 const SHARED = new Set(['react', 'react/jsx-runtime', 'react/jsx-dev-runtime', 'react-dom', 'yjs', 'y-protocols/awareness']);
@@ -39,6 +41,9 @@ const sharedFromMainBundle = {
       // Same for the view block's host: its React content, the row store and the layouts exist once, in the main bundle
       if (args.path.startsWith('.') && path.resolve(args.resolveDir, args.path) === viewBlockHostFile) {
         return { path: 'view-block-host', namespace: 'cl-shared' };
+      }
+      if (args.path.startsWith('.') && path.resolve(args.resolveDir, args.path) === clipEmbedHostFile) {
+        return { path: 'clip-embed-host', namespace: 'cl-shared' };
       }
       return undefined;
     });
