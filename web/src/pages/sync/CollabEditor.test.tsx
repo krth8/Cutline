@@ -78,3 +78,19 @@ describe('<CollabEditor>', () => {
     expect(h.server.last.closedByClient).toBe(1000);
   });
 });
+
+describe('peersOf', () => {
+  it('lists each other person once and leaves out yourself', async () => {
+    const { Awareness } = await import('y-protocols/awareness');
+    const Y = await import('yjs');
+    const { peersOf } = await import('./CollabEditor');
+    const mine = new Awareness(new Y.Doc());
+    mine.setLocalStateField('user', { id: 'me', name: 'Me', color: '#111' });
+    expect(peersOf(mine)).toEqual([]);
+    const states = mine.getStates() as Map<number, any>;
+    states.set(101, { user: { id: 'ben', name: 'Ben', color: '#222' } });
+    states.set(102, { user: { id: 'ben', name: 'Ben', color: '#222' } }); // a second tab of the same person
+    states.set(103, { user: { id: 'me', name: 'Me', color: '#111' } }); // my own other tab
+    expect(peersOf(mine).map((p) => p.name)).toEqual(['Ben']);
+  });
+});
