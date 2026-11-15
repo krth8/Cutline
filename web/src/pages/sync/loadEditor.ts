@@ -12,6 +12,7 @@ import * as ReactDom from 'react-dom';
 import * as AwarenessProtocol from 'y-protocols/awareness';
 import * as Y from 'yjs';
 import * as summaryHost from '../editor/blocks/summary/host';
+import * as clipEmbedHost from '../editor/blocks/clipEmbed/host';
 import * as viewBlockHost from '../editor/blocks/viewBlock/host';
 import * as editorRegistry from '../editor/registry';
 
@@ -30,6 +31,7 @@ if (lazy) {
     'editor-registry': editorRegistry,
     'view-block-host': viewBlockHost,
     'summary-host': summaryHost,
+    'clip-embed-host': clipEmbedHost,
   };
 }
 

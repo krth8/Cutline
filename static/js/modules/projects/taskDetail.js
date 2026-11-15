@@ -538,7 +538,7 @@ async function unlinkClip(clipId) {
  * Navigate to a clip in the Review tab
  */
 function navigateToClip(clipId) {
-    // Find clip by ID - look in versions
+    // Find clip by ID - look in versions, then in the clips linked to the open task
     let targetClip = null;
     let baseName = null;
     let version = null;
@@ -556,28 +556,42 @@ function navigateToClip(clipId) {
         if (targetClip) break;
     }
 
+    if (!targetClip) {
+        const linked = currentLinkedClips.find(c => c.id === clipId);
+        if (linked && AppState.clips && AppState.clips[linked.baseName]) {
+            baseName = linked.baseName;
+            targetClip = AppState.clips[baseName];
+        }
+    }
+
     if (!targetClip || !baseName) {
         console.error('Clip not found:', clipId);
         return;
     }
 
+    // A task made from a review comment remembers the frame of that comment
+    const frame = currentTask && currentTask.clipId === clipId && Number.isInteger(currentTask.clipFrame)
+        ? currentTask.clipFrame
+        : null;
+
     // Close modal
     closeTaskDetail();
 
-    // Switch to Review tab and select the clip
+    // Switch to Review tab and select the clip (at the frame, when the task has one)
+    const show = () => {
+        if (typeof selectClipVersion !== 'function') return;
+        selectClipVersion(baseName, version || targetClip.activeVersion);
+        if (frame !== null && AppState.currentMediaType === 'video' && typeof goToFrame === 'function') {
+            const video = elements.video;
+            if (video.readyState >= 1) goToFrame(frame);
+            else video.addEventListener('loadedmetadata', () => goToFrame(frame), { once: true });
+        }
+    };
     if (typeof switchToReviewTab === 'function') {
-        switchToReviewTab(() => {
-            if (typeof selectClipVersion === 'function') {
-                selectClipVersion(baseName, version || targetClip.activeVersion);
-            }
-        });
+        switchToReviewTab(show);
     } else if (typeof switchTab === 'function') {
         switchTab('review');
-        setTimeout(() => {
-            if (typeof selectClipVersion === 'function') {
-                selectClipVersion(baseName, version || targetClip.activeVersion);
-            }
-        }, 100);
+        setTimeout(show, 100);
     }
 }
 

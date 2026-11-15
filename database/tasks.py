@@ -41,8 +41,8 @@ def db_create_task(project_id: str, name: str, created_by: str = None,
                    section_id: str = None, description: str = None, status_id: str = None,
                    assignee_id: str = None, assignee_ids: List[str] = None,
                    priority: str = None, due_date: str = None, custom_fields: dict = None,
-                   start_date: str = None) -> dict:
-    """Create a new task."""
+                   start_date: str = None, comment_id: str = None, clip_frame: int = None) -> dict:
+    """Create a new task. comment_id and clip_frame are set for a task made from a review comment."""
     task_id = secrets.token_urlsafe(12)
     created_at = datetime.now().isoformat()
     custom_fields_json = json.dumps(custom_fields) if custom_fields else None
@@ -63,11 +63,11 @@ def db_create_task(project_id: str, name: str, created_by: str = None,
         execute(conn, """
             INSERT INTO tasks (id, project_id, parent_id, clip_id, section_id, stage_tag, name, description,
                                status_id, assignee_id, priority, start_date, due_date, custom_fields, sort_order,
-                               created_at, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                               created_at, created_by, comment_id, clip_frame)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (task_id, project_id, parent_id, clip_id, section_id, stage_tag, name, description,
               status_id, first_assignee, priority, start_date, due_date, custom_fields_json, sort_order,
-              created_at, created_by))
+              created_at, created_by, comment_id, clip_frame))
 
     # Set all assignees in junction table
     if final_assignee_ids:
@@ -78,6 +78,8 @@ def db_create_task(project_id: str, name: str, created_by: str = None,
         "projectId": project_id,
         "parentId": parent_id,
         "clipId": clip_id,
+        "commentId": comment_id,
+        "clipFrame": clip_frame,
         "sectionId": section_id,
         "stageTag": stage_tag,
         "name": name,
@@ -121,6 +123,8 @@ def db_get_task(task_id: str) -> Optional[dict]:
             "parentId": row["parent_id"],
             "clipId": row["clip_id"],
             "clipName": row["clip_name"],
+            "commentId": row["comment_id"],
+            "clipFrame": row["clip_frame"],
             "sectionId": row["section_id"],
             "stageTag": row["stage_tag"],
             "name": row["name"],
@@ -252,6 +256,8 @@ def db_list_tasks(project_id: str, parent_id: str = None, include_children: bool
             "parentId": row["parent_id"],
             "clipId": row["clip_id"],
             "clipName": row["clip_name"],
+            "commentId": row["comment_id"],
+            "clipFrame": row["clip_frame"],
             "sectionId": row["section_id"],
             "stageTag": row["stage_tag"],
             "name": row["name"],
@@ -292,6 +298,22 @@ def db_list_tasks(project_id: str, parent_id: str = None, include_children: bool
         tasks.append(task)
 
     return tasks
+
+
+def db_get_task_by_comment(project_id: str, comment_id: str) -> Optional[str]:
+    """The id of the task made from a review comment, or None."""
+    with get_db() as conn:
+        cursor = execute(conn, "SELECT id FROM tasks WHERE project_id = ? AND comment_id = ?", (project_id, comment_id))
+        row = fetchone(cursor)
+        return row["id"] if row else None
+
+
+def db_get_clip_row_id(project_id: str, base_name: str) -> Optional[int]:
+    """The database id of a clip (tasks link to clips by this id), or None."""
+    with get_db() as conn:
+        cursor = execute(conn, "SELECT id FROM clips WHERE project_id = ? AND base_name = ?", (project_id, base_name))
+        row = fetchone(cursor)
+        return row["id"] if row else None
 
 
 def db_get_task_by_clip(clip_id: int) -> Optional[dict]:

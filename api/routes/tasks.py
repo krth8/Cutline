@@ -99,7 +99,9 @@ def stage_tags(project_id: str) -> dict:
 # Permission checks stay with the callers; these validate, save to the database, bring the
 # in-memory copy in step and tell watching tabs (task_* event and rows_changed).
 
-async def create_task_record(user: dict, project_id: str, data: dict) -> dict:
+async def create_task_record(user: dict, project_id: str, data: dict, link: Optional[dict] = None) -> dict:
+    """`link` is set by the server only (commentId, clipFrame of a task made from a review comment)."""
+    link = link or {}
     name = data.get("name")
     if not name:
         raise HTTPException(status_code=400, detail="Task name is required")
@@ -125,7 +127,9 @@ async def create_task_record(user: dict, project_id: str, data: dict) -> dict:
         priority=data.get("priority", "medium"),
         start_date=data.get("startDate") or None,
         due_date=data.get("dueDate"),
-        custom_fields=data.get("customFields")
+        custom_fields=data.get("customFields"),
+        comment_id=link.get("commentId"),
+        clip_frame=link.get("clipFrame"),
     )
 
     full_task = reload_task(task["id"])
@@ -214,6 +218,9 @@ async def delete_task_record(task: dict) -> None:
 
     if parent_id:
         reload_task(parent_id)
+
+    from api.routes.comment_tasks import forget_deleted_tasks  # imported here: that module imports this one
+    await forget_deleted_tasks(task["projectId"], ids_to_remove)
 
     await live.to_project(task["projectId"], {"type": "task_deleted", "taskId": task_id, "parentId": parent_id}, tasks_only=True)
     await rows_changed(task["projectId"], ids_to_remove, "deleted")

@@ -1,0 +1,23 @@
+/* Review comments that become tasks: the "Create task" button and the "Task" chip on a comment */
+
+/* The shared comment button turns red on hover (it is the delete colour): this one is not destructive */
+.comment-action-btn.comment-task-btn:hover {
+    color: var(--primary);
+    background: var(--primary-bg);
+}
+
+.comment-task-chip {
+    font-size: 11px;
+    line-height: 1;
+    padding: 3px 8px;
+    border: 1px solid var(--primary);
+    border-radius: 4px;
+    background: var(--primary-bg);
+    color: var(--primary);
+    cursor: pointer;
+}
+
+.comment-task-chip:hover {
+    background: var(--primary);
+    color: #fff;
+}
