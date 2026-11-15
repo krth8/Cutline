@@ -1,7 +1,7 @@
 .cl-list { container-type: inline-size; font-size: var(--font-size-md); color: var(--text); min-width: 0; }
 .cl-list__rows { list-style: none; margin: 0; padding: 0; }
 .cl-list__row {
-  display: flex; align-items: center; gap: var(--space-2); min-height: 30px; padding: 3px var(--space-1-5);
+  display: flex; align-items: center; gap: var(--space-2); min-height: 32px; padding: 3px var(--space-1-5);
   border-bottom: 1px solid var(--border-light); border-radius: var(--radius-xs); outline: none;
 }
 .cl-list__row:hover { background: var(--bg-hover); }
@@ -29,10 +29,12 @@
 .cl-list__group { display: flex; align-items: center; gap: var(--space-1-5); margin: var(--space-3) 0 var(--space-0-5); padding: 0 var(--space-1-5); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--text-secondary); }
 .cl-list__dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .cl-list__group-count { color: var(--text-muted); font-weight: var(--font-weight-regular); }
-.cl-list__empty { padding: var(--space-3) var(--space-1-5); color: var(--text-muted); }
+.cl-list__empty { display: flex; align-items: center; gap: var(--space-2-5); margin: 0; padding: var(--space-3) var(--space-1-5); color: var(--text-muted); }
+.cl-list__empty-new { font: inherit; font-size: var(--font-size-sm); padding: 3px var(--space-2-5); color: var(--text); background: var(--bg-hover); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); cursor: pointer; }
 
 .cl-list__add { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-1-5); }
 .cl-list__plus { width: 16px; text-align: center; color: var(--text-muted); }
 .cl-list__new { flex: 1 1 auto; min-width: 0; font: inherit; color: inherit; background: transparent; border: 0; border-bottom: 1px solid transparent; padding: 3px 0; outline: none; }
 .cl-list__new:focus { border-bottom-color: var(--accent); }
-.cl-list__project { flex: 0 1 40%; min-width: 0; font: inherit; color: inherit; background: transparent; border: 1px solid var(--border-medium); border-radius: var(--radius-xs); }
+/* the picker itself is .cl-addproject */
+.cl-list__project { flex: 0 1 40%; min-width: 0; }

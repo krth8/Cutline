@@ -11,6 +11,12 @@ export type MenuItem =
       icon?: ReactNode;
       disabled?: boolean;
       danger?: boolean;
+      /** Marks a toggle (shown with a check mark when on). */
+      checked?: boolean;
+      /** Stable hook for tests. */
+      testId?: string;
+      /** Renders the item as a link that opens in a new tab; `onSelect` still runs when it is chosen. */
+      href?: string;
       onSelect: () => void;
     };
 
@@ -33,7 +39,7 @@ export function Menu({ open, onOpenChange, anchorRef, items, placement, ...aria 
   const actions = items.filter((i): i is ActionItem => 'id' in i);
   const enabled = actions.filter((a) => !a.disabled);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const itemRefs = useRef(new Map<string, HTMLButtonElement>());
+  const itemRefs = useRef(new Map<string, HTMLElement>());
   const typeahead = useRef({ text: '', at: 0 });
 
   // Start on the first enabled item whenever the menu opens
@@ -109,29 +115,72 @@ export function Menu({ open, onOpenChange, anchorRef, items, placement, ...aria 
       <div onKeyDown={onKeyDown}>
         {items.map((item, i) =>
           'id' in item ? (
-            <button
+            <MenuEntry
               key={item.id}
-              ref={(el) => {
+              item={item}
+              active={item.id === activeId}
+              register={(el) => {
                 if (el) itemRefs.current.set(item.id, el);
                 else itemRefs.current.delete(item.id);
               }}
-              type="button"
-              role="menuitem"
-              tabIndex={item.id === activeId ? 0 : -1}
-              disabled={item.disabled}
-              aria-disabled={item.disabled || undefined}
-              className={cx('cl-menu__item', item.danger && 'cl-menu__item--danger', item.id === activeId && 'is-active')}
-              onMouseEnter={() => !item.disabled && setActiveId(item.id)}
-              onClick={() => select(item)}
-            >
-              {item.icon && <span className="cl-menu__icon">{item.icon}</span>}
-              {item.label}
-            </button>
+              onHover={() => !item.disabled && setActiveId(item.id)}
+              onChoose={() => select(item)}
+            />
           ) : (
             <div key={`sep${i}`} role="separator" className="cl-menu__separator" />
           ),
         )}
       </div>
     </Popover>
+  );
+}
+
+function MenuEntry({
+  item,
+  active,
+  register,
+  onHover,
+  onChoose,
+}: {
+  item: ActionItem;
+  active: boolean;
+  register: (el: HTMLElement | null) => void;
+  onHover: () => void;
+  onChoose: () => void;
+}) {
+  const common = {
+    role: item.checked === undefined ? 'menuitem' : 'menuitemcheckbox',
+    ...(item.checked === undefined ? {} : { 'aria-checked': item.checked }),
+    tabIndex: active ? 0 : -1,
+    className: cx('cl-menu__item', item.danger && 'cl-menu__item--danger', active && 'is-active'),
+    'data-testid': item.testId,
+    onMouseEnter: onHover,
+  };
+  const content = (
+    <>
+      {(item.icon || item.checked !== undefined) && (
+        <span className="cl-menu__icon">{item.icon ?? (item.checked ? '✓' : '')}</span>
+      )}
+      {item.label}
+    </>
+  );
+  if (item.href && !item.disabled) {
+    return (
+      <a ref={register} href={item.href} target="_blank" rel="noopener" {...common} onClick={onChoose}>
+        {content}
+      </a>
+    );
+  }
+  return (
+    <button
+      ref={register}
+      type="button"
+      {...common}
+      disabled={item.disabled}
+      aria-disabled={item.disabled || undefined}
+      onClick={onChoose}
+    >
+      {content}
+    </button>
   );
 }

@@ -16,7 +16,25 @@ import './index'; // registers the block
 
 // The real shell needs the whole store; the block only has to put it in the right place
 vi.mock('../../../../tables/ViewShell', () => ({
-  ViewShell: ({ viewId }: { viewId: string }) => <div data-testid="shell-stub">{viewId}</div>,
+  // The stub shows the host's menu items (open as page, remove block) the way the "..." menu does
+  ViewShell: ({ viewId, variant, menuItems }: { viewId: string; variant?: string; menuItems?: Array<Record<string, any>> }) => (
+    <div data-testid="shell-stub" data-variant={variant}>
+      {viewId}
+      {(menuItems ?? [])
+        .filter((i) => i.id)
+        .map((i) =>
+          i.href ? (
+            <a key={i.id} href={i.href} data-testid={i.testId}>
+              {i.label}
+            </a>
+          ) : (
+            <button key={i.id} data-testid={i.testId} onClick={i.onSelect}>
+              {i.label}
+            </button>
+          ),
+        )}
+    </div>
+  ),
 }));
 
 interface StoredView {
@@ -392,11 +410,11 @@ describe('ViewBlockContent', () => {
     ...over,
   });
 
-  it('shows the view with its name, a link to the full page, and the view itself', async () => {
+  it('shows the view with its name, an embedded shell, and the link to the full page', async () => {
     addView({ id: 'v1', name: 'Sprint board' });
     render(<ViewBlockContent {...baseProps()} />);
-    expect((await screen.findByTestId('shell-stub')).textContent).toBe('v1');
-    expect((screen.getByTestId('viewblock-name') as HTMLInputElement).value).toBe('Sprint board');
+    const shell = await screen.findByTestId('shell-stub');
+    expect(shell.getAttribute('data-variant')).toBe('embedded'); // the name and the controls are the shell's
     expect(screen.getByTestId('viewblock-open').getAttribute('href')).toBe('/p/p1/view/v1');
   });
 
