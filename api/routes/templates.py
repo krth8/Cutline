@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from api import builtin_templates
 from api.auth import can_edit_custom_schema, require_auth
-from api.pageclone import build_bundle, delete_template_files, freeze_bundle, instantiate, table_bundle
+from api.pageclone import build_bundle, delete_template_files, freeze_bundle, instantiate, relation_target_for_copy, table_bundle
 from api.routes.pages import MAX_TITLE, _body, _clean_parent, _clean_title, _load, _notify, _space
 from api.state import projects
 from database import db_check_project_access
@@ -255,8 +255,10 @@ async def copy_project_setup(project_id: str, data: dict, user: dict = Depends(r
     # custom task columns: definitions with their keys, so copied views keep working
     columns = db_list_table_columns(f"tasks:{source_id}")
     for column in columns:
-        db_create_table_column(f"tasks:{project_id}", column["key"], column["name"], column["type"],
-                               column["config"], user["id"])
+        if column["type"] != "relation":  # relation columns follow once the copied tables exist
+            db_create_table_column(f"tasks:{project_id}", column["key"], column["name"], column["type"],
+                                   column["config"], user["id"])
+    table_map = {}
 
     listing = [p for p in db_list_pages("project", source_id) if p["kind"] == "page"]
     roots = [p["id"] for p in listing if p["parentId"] is None]
@@ -267,6 +269,7 @@ async def copy_project_setup(project_id: str, data: dict, user: dict = Depends(r
         bundle = await build_bundle(roots, True, extra_tables=tables)
         made = instantiate(bundle, user, "project", project_id, None,
                            system_pages={"tasks": tasks_page} if tasks_page else None)
+        table_map = made["tableMap"]
         copied = len([k for k in made["pageIds"] if k != tasks_page])
         first = db_get_page(made["rootIds"][0]) if made["rootIds"] else None
         if first:
@@ -274,6 +277,15 @@ async def copy_project_setup(project_id: str, data: dict, user: dict = Depends(r
     elif tables:  # no pages to carry them: copy the table schemas alone
         bundle = {"v": 1, "sourceSpace": f"p:{source_id}", "sourceProject": source_id, "pages": [], "views": [],
                   "tables": [b for b in (table_bundle(t) for t in tables) if b]}
-        instantiate(bundle, user, "project", project_id, None)
+        table_map = instantiate(bundle, user, "project", project_id, None)["tableMap"]
+    # relation columns of the tasks: valid only when their target exists in the new project, else dropped
+    mapping = {**table_map, f"tasks:{source_id}": f"tasks:{project_id}"}
+    for column in columns:
+        if column["type"] != "relation":
+            continue
+        target = relation_target_for_copy(column["config"].get("target"), "project", project_id, user, mapping)
+        if target:
+            db_create_table_column(f"tasks:{project_id}", column["key"], column["name"], column["type"],
+                                   {**column["config"], "target": target}, user["id"])
     return {"success": True, "pages": copied, "columns": len(columns), "tables": len(tables)}
 

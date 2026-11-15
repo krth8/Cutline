@@ -616,10 +616,21 @@ async function joinActiveSession() {
 // Project creation modal
 let createProjectModal = null;
 
+// "Start from" choice of the create-project modal: an empty project, or the pages and task setup of another one
+function projectStartFromHtml() {
+    const options = (AppState.projects || []).map(p =>
+        `<option value="${p.id}">Copy pages and task setup from ${escapeHtml(p.name)}</option>`).join('');
+    if (!options) return '';
+    return `<label class="project-start-from" style="display:block;margin-top:12px">
+        <span style="display:block;margin-bottom:4px;font-size:12px;opacity:.8">Start from</span>
+        <select id="projectStartFrom" class="input-large"><option value="">Empty</option>${options}</select>
+    </label>`;
+}
+
 function showCreateProject() {
     createProjectModal = new Modal({
         title: 'Create New Project',
-        content: '<input type="text" id="projectNameInput" placeholder="Project name" class="input-large">',
+        content: '<input type="text" id="projectNameInput" placeholder="Project name" class="input-large">' + projectStartFromHtml(),
         footer: `
             <button class="btn btn-ghost" onclick="hideCreateProject()">Cancel</button>
             <button class="btn btn-primary" onclick="createProject()">Create</button>
@@ -765,6 +776,23 @@ async function createProject() {
         }
 
         const data = await res.json();
+
+        // Optional: copy the pages and task setup of another project into the new one
+        const copyFrom = document.getElementById('projectStartFrom')?.value;
+        if (copyFrom) {
+            try {
+                const copy = await authFetch(`/api/projects/${data.project_id}/copy-setup`, {
+                    method: 'POST',
+                    body: JSON.stringify({ from: copyFrom })
+                });
+                if (!copy.ok) {
+                    const detail = (await copy.json().catch(() => ({}))).detail || `HTTP ${copy.status}`;
+                    alert(`The project was created, but its setup could not be copied: ${detail}`);
+                }
+            } catch (e) {
+                alert('The project was created, but its setup could not be copied.');
+            }
+        }
 
         // Just select the project, don't auto-create session
         AppState.projectId = data.project_id;

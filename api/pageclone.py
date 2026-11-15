@@ -20,6 +20,10 @@ Re-pointing rules (``instantiate``):
   same column keys, no rows) in the destination space and the copied views point at it. Tables that other
   pages use are not copied: the copied views keep pointing at them (and show the normal no-access state when
   the copy lives where its readers cannot read that table).
+- Relation columns of a copied table keep working when their target is valid in the destination (a table copied
+  along maps to its copy; a project table may only point at its own project's tasks and tables; a personal
+  table at the owner's tables and at tasks of projects the owner can use). Otherwise the column is dropped,
+  together with its references in the copied views.
 - Images and files are copied on disk and in ``page_files``; ``fileId`` and URLs of the form
   ``/api/pages/<page>/files/<file>`` in node attributes are rewritten to the copies.
 - Mentions, clip embeds and page lists are kept as they are.
@@ -38,6 +42,7 @@ from api.config import UPLOAD_DIR
 from api.mentions import extract_refs
 from api.pagehistory import replace_content
 from api.pagesync import extract_text, registry
+from database import db_check_project_access
 from database.custom_tables import db_create_custom_table, db_delete_custom_table, db_get_custom_table
 from database.mentions import db_replace_page_refs
 from database.page_files import db_add_page_file, db_list_page_files, new_file_id
@@ -298,6 +303,34 @@ def rewrite_document(state: bytes, view_map: Dict[str, str], file_ids: Dict[tupl
     return doc
 
 
+# ============ Relation columns ============
+
+def relation_target_for_copy(target, space_type: str, project_id: Optional[str], user: dict,
+                             table_map: Dict[str, str], source_project: Optional[str] = None) -> Optional[str]:
+    """The target a copied relation column gets in the destination space, or None when it is not valid there
+    (the column is then dropped). Tables copied in the same bundle map to their copies; a project table may
+    point at its own project's tasks and tables, a personal table at its owner's tables and at tasks of projects
+    the owner can use (api/tables/relations.py). ``source_project`` tasks map to the destination project when
+    the project copy asks for it."""
+    if not isinstance(target, str):
+        return None
+    if target in table_map:
+        return table_map[target]
+    if target.startswith("tasks:") and target != "tasks:*":
+        pid = target[6:]
+        if space_type == "project":
+            return target if pid == project_id else None
+        return target if db_check_project_access(user["id"], pid, require_tasks=True) else None
+    if target.startswith("tbl_"):
+        table = db_get_custom_table(target)
+        if not table:
+            return None
+        if space_type == "project":
+            return target if table["spaceType"] == "project" and table["projectId"] == project_id else None
+        return target if table["spaceType"] == "personal" and table["ownerId"] == user["id"] else None
+    return None
+
+
 # ============ Writing: pages from a bundle ============
 
 def _resolve(src: str) -> str:
@@ -328,9 +361,18 @@ def instantiate(bundle: dict, user: dict, space_type: str, project_id: Optional[
             new = db_create_custom_table(table["name"], space_type, project_id, owner_id, user["id"])
             created_tables.append(new["id"])
             table_map[table["ref"]] = new["id"]
+        dropped: Dict[str, set] = {}  # new table -> keys of relation columns that are not valid here
+        for table in bundle.get("tables", []):
+            new_ref = table_map[table["ref"]]
             for column in table["columns"]:
-                db_create_table_column(new["id"], column["key"], column["name"], column["type"],
-                                       column.get("config") or {}, user["id"])
+                config = column.get("config") or {}
+                if column["type"] == "relation":
+                    target = relation_target_for_copy(config.get("target"), space_type, project_id, user, table_map)
+                    if target is None:
+                        dropped.setdefault(new_ref, set()).add(column["key"])
+                        continue
+                    config = {**config, "target": target}
+                db_create_table_column(new_ref, column["key"], column["name"], column["type"], config, user["id"])
 
         # pages, parents first
         first_root = True
@@ -363,6 +405,9 @@ def instantiate(bundle: dict, user: dict, space_type: str, project_id: Optional[
         for view in bundle.get("views", []):
             ref, config = repoint_view(view["tableRef"], view["config"], bundle.get("sourceProject"), project_id,
                                        table_map)
+            if dropped.get(ref):
+                kept = {c["key"] for c in db_list_table_columns(ref)}
+                config = strip_custom_columns(config, kept)
             new_view = db_create_view(ref, view["name"], view["layout"], config, id_map[view["pageKey"]], user["id"])
             view_map[view["id"]] = new_view["id"]
 
@@ -407,7 +452,7 @@ def instantiate(bundle: dict, user: dict, space_type: str, project_id: Optional[
             shutil.rmtree(folder, ignore_errors=True)
         raise
     return {"pageIds": [id_map[p["key"]] for p in bundle["pages"] if p["key"] in id_map],
-            "rootIds": root_ids, "idMap": id_map}
+            "rootIds": root_ids, "idMap": id_map, "tableMap": table_map}
 
 
 # ============ Templates: storing a bundle ============
