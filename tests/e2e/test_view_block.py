@@ -151,10 +151,5 @@ def test_removing_the_block_deletes_the_view_the_page_owns_after_a_confirm(scene
     assert err.value.status == 404
 
 
-<<<<<<< Updated upstream
-=======
-@pytest.mark.xfail(reason="api/pagesync.py drops updates that only delete content (the state vector does not change): "
-                          "other editors never see a removed block", strict=False)
->>>>>>> Stashed changes
 def test_the_other_person_sees_the_block_go(scene):
     scene["bob"].wait_for_selector(f'{BLOCK}[data-view-id="{scene["state"]["view"]}"]', state="detached", timeout=5000)

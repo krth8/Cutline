@@ -744,10 +744,10 @@ Risks:
 | T6 | done | main | Merged. Parity checklist in PR #21. Open: row to another parent (API), `loadChildren` is not live, header '+' to add a column, sort by header click. |
 | T7 | done | main | Merged. `config.board.collapsed` is not in the View type. |
 | T8 | done | main | Merged. `config.calendar.mode` is not in the View type. Draws the whole result; no range query. |
-| T9 | in progress | wp/T9-gantt-layout | Migration 007. |
+| T9 | done | main | Merged. Migration 007 (`tasks.start_date`, column `startDate`). The server does not force start before due. Dependencies not built. |
 | T10 | done | main | Merged. Status options have no done flag: the list matches names like Done or Completed. |
 | T11 | not started | | |
-| T12 | in progress | wp/T12-view-block | |
+| T12 | done | main | Merged. Node `viewBlock`; its React content stays in the main bundle and is reached through `window.__clShared['view-block-host']`. `GET /api/views` lists views. "Open full page" goes to `/dev/view/<id>` until a real view route exists. |
 | T13 | not started | | |
 | S2 | done | main | Merged. `live.watch(slot, { allTasks: true })` works end to end. No visible UI yet: project picker on create is left to the layouts (`projectsForCreate()`). |
 | S1 | done | main | Merged. `POST /api/pages/{id}/move`, `GET /api/pages/{id}/move-preview`; `page_changed` carries `pageIds` on a move. No parent picker in the dialog. |
