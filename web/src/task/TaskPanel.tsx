@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ApiError } from '../api/http';
 import * as tablesApi from '../api/tables';
+import { HistoryDialog } from '../pages/history';
 import { CollabEditor } from '../pages/sync';
 import { getPlatform } from '../platform';
 import { closeTask, openTask, useTaskId } from '../router';
@@ -44,6 +45,7 @@ function useLocate(taskId: string): { located: Located; retry: () => void } {
 /** The task page (created on first use) in the collaborative editor; the old description is imported by the editor. */
 function Body({ taskId, canEdit }: { taskId: string; canEdit: boolean }) {
   const [page, setPage] = useState<{ id: string; for: string } | 'failed' | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   useEffect(() => {
     let cancelled = false;
     setPage(null);
@@ -60,7 +62,13 @@ function Body({ taskId, canEdit }: { taskId: string; canEdit: boolean }) {
       {page === 'failed' ? (
         <p className="cl-task__empty">The description could not be loaded.</p>
       ) : page && page.for === taskId ? (
-        <CollabEditor key={page.id} pageId={page.id} readOnly={!canEdit} placeholder="Add a description, or type / for blocks" />
+        <>
+          <CollabEditor key={page.id} pageId={page.id} readOnly={!canEdit} placeholder="Add a description, or type / for blocks" />
+          <button type="button" className="cl-task__history" onClick={() => setHistoryOpen(true)}>
+            History
+          </button>
+          {historyOpen ? <HistoryDialog open pageId={page.id} canEdit={canEdit} onClose={() => setHistoryOpen(false)} /> : null}
+        </>
       ) : (
         <p className="cl-task__empty">Loading...</p>
       )}

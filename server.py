@@ -20,6 +20,7 @@ import shutil
 import asyncio
 from api.pagesync import start_snapshot_job, stop_snapshot_job
 from api.routes.pagesync import router as pagesync_router
+from api.routes.page_history import router as page_history_router
 import secrets
 import json
 from datetime import datetime, timedelta
@@ -159,6 +160,7 @@ db_init_admin_user()
 
 # Must come before the catch-all "/ws/{session_id}/{user_id}" below, which would swallow /ws/pages/{id}
 app.include_router(pagesync_router)
+app.include_router(page_history_router)
 
 @app.on_event("startup")
 async def startup_event():
