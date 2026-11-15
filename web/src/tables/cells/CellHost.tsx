@@ -20,7 +20,7 @@ export interface CellHostProps {
 const sameValue = (a: unknown, b: unknown) => a === b || JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
 /** Type-to-edit applies to these; pickers also accept it (the character becomes filter text). */
-const TYPEABLE = new Set(['text', 'longtext', 'number', 'url', 'clip', 'date', 'select', 'status', 'priority', 'multiselect', 'person', 'people']);
+const TYPEABLE = new Set(['text', 'longtext', 'number', 'url', 'clip', 'date', 'select', 'status', 'priority', 'multiselect', 'person', 'people', 'relation']);
 
 /**
  * One cell that switches between its display and its editor. Click, Enter or F2 starts editing,

@@ -1,6 +1,7 @@
 import type { Column } from '../types';
 import type { ParseResult } from './types';
 import { asClip, type ClipValue } from './displays';
+import { linksToText } from './relation';
 import { asArray, formatNumber, isISODate, matchOption, optionLabel, parseDateText, parseNumber } from './util';
 
 /** Sort helper: empties last, then `cmp`. */
@@ -93,7 +94,7 @@ export function parseClipValue(text: string): ParseResult {
 
 // ---- relation / formula ----
 
-export const relationToText = (v: unknown) => asArray(v).join(', ');
+export const relationToText = (v: unknown) => linksToText(v);
 export function formulaToText(v: unknown, column: Column): string {
   if (typeof v === 'number') return formatNumber(v, column);
   if (typeof v === 'boolean') return v ? 'true' : 'false';

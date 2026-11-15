@@ -45,6 +45,7 @@ from database.table_columns import db_create_table_column, db_delete_table_colum
 from database.views import db_list_views
 
 from . import columns as custom
+from . import relations
 from .query import run_query
 from .source import UNSET, TableSource, custom_columns_for
 
@@ -148,6 +149,10 @@ class CustomColumnHost(custom.ColumnHost):
     def user_ok(self, user_id: str) -> bool:
         return _user_check(self._table)(user_id)
 
+    def relation_space(self):
+        table = self._table
+        return ("personal", table["ownerId"]) if table["spaceType"] == "personal" else ("project", table["projectId"])
+
     def stored_values(self) -> Dict[str, dict]:
         return db_custom_row_values(self.table_id)
 
@@ -184,19 +189,20 @@ class CustomTableSource(TableSource):
 
     # ------------------------------------------------------------ schema
 
-    def _columns(self, table: dict, rows: List[dict]) -> List[dict]:
+    def _columns(self, table: dict, rows: List[dict], principal: dict) -> List[dict]:
         people = _people_options(table, rows)
         extra = custom_columns_for(self.ref)
         for column in extra:
             if column["type"] in ("person", "people"):
                 column["options"] = people
-        return [
+        columns = [
             {"key": NAME_KEY, "name": "Name", "type": "text", "builtin": True},
             *extra,
             {"key": "createdAt", "name": "Created", "type": "date", "builtin": True, "readonly": True},
             {"key": "createdBy", "name": "Created by", "type": "person", "builtin": True, "readonly": True,
              "options": people},
         ]
+        return relations.finish_columns(principal, self.ref, columns)
 
     def schema(self, principal: dict) -> dict:
         table = self._load(principal)
@@ -206,7 +212,7 @@ class CustomTableSource(TableSource):
         return {
             "ref": self.ref,
             "name": table["name"],
-            "columns": self._columns(table, db_list_custom_rows(self.table_id)),
+            "columns": self._columns(table, db_list_custom_rows(self.table_id), principal),
             "titleColumn": NAME_KEY,
             "capabilities": {"create": can_edit, "delete": can_edit, "hierarchy": False,
                              "editSchema": can_edit_custom_schema(principal, table)},
@@ -223,12 +229,16 @@ class CustomTableSource(TableSource):
         return {"id": stored["id"], "tableRef": self.ref, "parentId": None, "childCount": 0,
                 "values": values, "canEdit": can_edit}
 
+    def _rows(self, principal: dict, stored: List[dict], can_edit: bool, cols: List[dict]) -> List[dict]:
+        """Rows with relation values resolved for this reader and mirror columns filled."""
+        rows = [self._row(r, can_edit, cols) for r in stored]
+        return relations.fill_rows(principal, rows, {self.ref: cols})
+
     def query(self, principal: dict, query: Optional[dict], today: Optional[date] = None) -> dict:
         table = self._load(principal)
         stored = db_list_custom_rows(self.table_id)
-        cols = self._columns(table, stored)
-        can_edit = can_edit_custom_rows(principal, table)
-        rows = [self._row(r, can_edit, cols) for r in stored]
+        cols = self._columns(table, stored, principal)
+        rows = self._rows(principal, stored, can_edit_custom_rows(principal, table), cols)
         return run_query(rows, cols, query, me=principal["id"], today=today, title_column=NAME_KEY)
 
     def get_row(self, principal: dict, row_id: str) -> dict:
@@ -236,12 +246,12 @@ class CustomTableSource(TableSource):
         stored = db_get_custom_row(self.table_id, row_id)
         if not stored:
             raise HTTPException(status_code=404, detail="Row not found")
-        return self._row(stored, can_edit_custom_rows(principal, table),
-                         self._columns(table, [stored]))
+        return self._rows(principal, [stored], can_edit_custom_rows(principal, table),
+                          self._columns(table, [stored], principal))[0]
 
     # ------------------------------------------------------------ writes
 
-    def _checked(self, table: dict, values: Any, base: Optional[dict]) -> dict:
+    def _checked(self, principal: dict, table: dict, values: Any, base: Optional[dict]) -> dict:
         """Row values by column key -> the complete values object to store, validated."""
         if not isinstance(values, dict):
             raise _bad("values must be an object of column key -> value")
@@ -264,7 +274,7 @@ class CustomTableSource(TableSource):
                 raise _bad(f"Unknown column '{key}'")
         if custom_values:
             cols = {c["key"]: c for c in custom_columns_for(self.ref)}
-            result = custom.checked_values(cols, custom_values, result, _user_check(table))
+            result = custom.checked_values(cols, custom_values, result, _user_check(table), principal)
         return result
 
     async def create_row(self, principal: dict, values: dict, parent_id: Optional[str] = None,
@@ -272,9 +282,9 @@ class CustomTableSource(TableSource):
         table = self._load_for_edit(principal)
         if parent_id:
             raise _bad("This table has no hierarchy: parentId is not supported")
-        stored = db_create_custom_row(self.table_id, self._checked(table, values, None), principal["id"])
+        stored = db_create_custom_row(self.table_id, self._checked(principal, table, values, None), principal["id"])
         await _rows_changed(table, [stored["id"]], "created")
-        return self._row(stored, True, self._columns(table, [stored]))
+        return self._rows(principal, [stored], True, self._columns(table, [stored], principal))[0]
 
     async def update_row(self, principal: dict, row_id: str, values: dict, parent_id: Any = UNSET) -> dict:
         table = self._load_for_edit(principal)
@@ -283,10 +293,10 @@ class CustomTableSource(TableSource):
             raise HTTPException(status_code=404, detail="Row not found")
         if parent_id is not UNSET and parent_id is not None:
             raise _bad("This table has no hierarchy: parentId is not supported")
-        merged = self._checked(table, values, stored["values"])
+        merged = self._checked(principal, table, values, stored["values"])
         stored = db_update_custom_row(self.table_id, row_id, merged)
         await _rows_changed(table, [row_id], "updated")
-        return self._row(stored, True, self._columns(table, [stored]))
+        return self._rows(principal, [stored], True, self._columns(table, [stored], principal))[0]
 
     async def delete_row(self, principal: dict, row_id: str) -> None:
         table = self._load_for_edit(principal)
@@ -372,6 +382,8 @@ def _starter_columns(raw: Any) -> List[dict]:
         if not isinstance(item, dict):
             raise _bad("Each column must be an object like {name, type}")
         col_type = custom.check_type(item.get("type"))
+        if col_type == "relation":
+            raise _bad("Add relation columns after the table exists: they need a target table")
         name = custom.clean_name(item.get("name"), checked, reserved=RESERVED_NAMES)
         config: dict = {}
         if col_type in custom.SELECT_TYPES:
@@ -421,8 +433,10 @@ async def delete_table(principal: dict, table_id: str) -> dict:
     if not can_edit_custom_schema(principal, table):
         raise HTTPException(status_code=403, detail="Only the project owner or an admin can delete this table")
     view_ids = [v["id"] for v in db_list_views(table_ref=table_id)]
+    pointing = [ref for ref in relations.refs_pointing_at(table_id) if ref != table_id]
     db_delete_custom_table(table_id)
     await _schema_changed(table)
+    await relations.announce_schema_changed(pointing)
     for view_id in view_ids:
         await publish(table, {"type": "view_changed", "viewId": view_id})
     return {"success": True, "deletedViews": len(view_ids)}
