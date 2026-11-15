@@ -128,7 +128,9 @@ def test_clicking_a_chip_opens_the_task_panel(scene):
 def test_the_table_is_filtered_by_contains_task(scene):
     admin = scene["admin"]
     key = scene["state"]["key"]
-    admin.click("[data-testid=toolbar-filter]")
+    # In a page the unset Filter lives in the "..." menu of the view
+    admin.click("[data-testid=toolbar-more]")
+    admin.click("[data-testid=menu-filter]")
     admin.click("text=+ Add filter")
     admin.select_option("[data-testid=panel-filter] [aria-label=Column]", key)
     admin.click("[data-testid=panel-filter] [data-testid=filter-value] .cl-cellhost")

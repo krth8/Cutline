@@ -10,7 +10,15 @@
 .cl-table__body { position: relative; }
 .cl-table__window { position: absolute; top: 0; left: 0; right: 0; width: var(--cl-table-width); min-width: 100%; will-change: transform; }
 
-.cl-table__lead { display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2) 0 var(--space-1); min-width: 0; }
+.cl-table__row { align-items: center; }
+/* One gutter holds the drag handle and the row checkbox; both show on row hover, focus or selection */
+.cl-table__lead { display: flex; align-items: center; gap: 2px; padding: 0 var(--space-1) 0 var(--space-1-5); min-width: 0; }
+.cl-table__row .cl-table__check, .cl-table__header .cl-table__check { opacity: 0; transition: opacity var(--transition-fast); }
+.cl-table__row:hover .cl-table__check, .cl-table__row:focus-within .cl-table__check, .cl-table__row.is-selected .cl-table__check,
+.cl-table.has-selection .cl-table__check, .cl-table__scroll:hover .cl-table__header .cl-table__check, .cl-table__header:focus-within .cl-table__check,
+.cl-table__header .cl-table__check:checked, .cl-table__header .cl-table__check:indeterminate { opacity: 1; }
+@media (hover: none) { .cl-table__check, .cl-table__grip { opacity: 1 !important; } }
+.cl-table__sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .cl-table__check { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .cl-table__grip { width: 14px; font-size: var(--font-size-xs); line-height: var(--line-height-none); letter-spacing: -2px; text-align: center; color: var(--text-muted); cursor: grab; opacity: 0; user-select: none; }
 .cl-table__grip--off { cursor: default; }
