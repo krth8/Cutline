@@ -36,13 +36,13 @@ window.dispatchEvent(new CustomEvent('cutline:pages-ready'));
 function mountDevUiWhenReady(): void {
   const path = window.location.pathname;
   const devFull = path.startsWith('/dev/view/') || path.startsWith('/dev/page/');
-  if (path !== '/dev/ui' && !devFull) return;
+  if (path !== '/dev/ui' && path !== '/dev/theme' && !devFull) return;
   const started = Date.now();
   const timer = setInterval(() => {
     const user = getPlatform().user();
     if (user) {
       clearInterval(timer);
-      if (!devFull && user.role !== 'admin') return; // /dev/ui is for admins; /dev/view and /dev/page for any user
+      if (!devFull && user.role !== 'admin') return; // /dev/ui and /dev/theme are for admins; /dev/view and /dev/page for any user
       const host = document.createElement('div');
       host.className = 'cl-fullscreen';
       host.id = 'cl-dev-ui';

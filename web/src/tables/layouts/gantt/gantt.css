@@ -1,17 +1,17 @@
-.cl-gantt { display: flex; flex-direction: column; gap: 8px; height: 100%; min-height: 320px; color: var(--text); font-size: 13px; }
-.cl-gantt__empty { margin: 0; padding: 16px 8px; color: var(--text-muted); }
+.cl-gantt { display: flex; flex-direction: column; gap: var(--space-2); height: 100%; min-height: 320px; color: var(--text); font-size: var(--font-size-md); }
+.cl-gantt__empty { margin: 0; padding: var(--space-4) var(--space-2); color: var(--text-muted); }
 
-.cl-gantt__toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.cl-gantt__toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 .cl-gantt__scales { display: inline-flex; border: 1px solid var(--border-medium); border-radius: var(--radius-sm); overflow: hidden; }
-.cl-gantt__scale, .cl-gantt__today-btn { height: 26px; padding: 0 10px; font: inherit; color: var(--text-secondary); background: var(--bg-solid); border: none; cursor: pointer; }
+.cl-gantt__scale, .cl-gantt__today-btn { height: 26px; padding: 0 var(--space-2-5); font: inherit; color: var(--text-secondary); background: var(--bg-solid); border: none; cursor: pointer; }
 .cl-gantt__today-btn { border: 1px solid var(--border-medium); border-radius: var(--radius-sm); }
 .cl-gantt__scale + .cl-gantt__scale { border-left: 1px solid var(--border-medium); }
 .cl-gantt__scale:hover, .cl-gantt__today-btn:hover { background: var(--bg-hover); color: var(--text); }
-.cl-gantt__scale.is-active { color: var(--text); background: var(--accent-bg-strong); font-weight: 600; }
-.cl-gantt__select { display: inline-flex; align-items: center; gap: 4px; color: var(--text-secondary); }
+.cl-gantt__scale.is-active { color: var(--text); background: var(--accent-bg-strong); font-weight: var(--font-weight-semibold); }
+.cl-gantt__select { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--text-secondary); }
 .cl-gantt__select select, .cl-gantt__add select { height: 26px; font: inherit; color: var(--text); background: var(--bg-solid); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); }
-.cl-gantt__add { display: inline-flex; gap: 4px; margin-left: auto; }
-.cl-gantt__add-input { width: 180px; height: 26px; box-sizing: border-box; padding: 0 8px; font: inherit; color: var(--text); background: var(--bg-solid); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); }
+.cl-gantt__add { display: inline-flex; gap: var(--space-1); margin-left: auto; }
+.cl-gantt__add-input { width: 180px; height: 26px; box-sizing: border-box; padding: 0 var(--space-2); font: inherit; color: var(--text); background: var(--bg-solid); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); }
 .cl-gantt__add-input:focus-visible, .cl-gantt__scale:focus-visible, .cl-gantt__today-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* One scroll area for both panes: the title list sticks to the left, the axis to the top */
@@ -19,24 +19,24 @@
 .cl-gantt__canvas { position: relative; }
 
 .cl-gantt__head { position: sticky; top: 0; z-index: 4; display: flex; background: var(--bg-solid); border-bottom: 1px solid var(--border-medium); }
-.cl-gantt__corner { position: sticky; left: 0; z-index: 5; flex: none; box-sizing: border-box; display: flex; align-items: flex-end; padding: 0 8px 6px; font-weight: 600; color: var(--text-secondary); background: var(--bg-solid); border-right: 1px solid var(--border-medium); }
+.cl-gantt__corner { position: sticky; left: 0; z-index: var(--z-sticky-corner); flex: none; box-sizing: border-box; display: flex; align-items: flex-end; padding: 0 var(--space-2) var(--space-1-5); font-weight: var(--font-weight-semibold); color: var(--text-secondary); background: var(--bg-solid); border-right: 1px solid var(--border-medium); }
 .cl-gantt__axis { position: relative; flex: none; }
-.cl-gantt__tick { position: absolute; box-sizing: border-box; overflow: hidden; border-left: 1px solid var(--border-light); font-size: 11px; color: var(--text-secondary); }
-.cl-gantt__tick span { display: block; padding: 0 4px; line-height: 24px; white-space: nowrap; }
-.cl-gantt__tick.is-top { top: 0; font-weight: 600; border-bottom: 1px solid var(--border-light); }
+.cl-gantt__tick { position: absolute; box-sizing: border-box; overflow: hidden; border-left: 1px solid var(--border-light); font-size: var(--font-size-xs); color: var(--text-secondary); }
+.cl-gantt__tick span { display: block; padding: 0 var(--space-1); line-height: 24px; white-space: nowrap; }
+.cl-gantt__tick.is-top { top: 0; font-weight: var(--font-weight-semibold); border-bottom: 1px solid var(--border-light); }
 .cl-gantt__tick.is-bottom.is-weekend { background: var(--bg-hover); }
 .cl-gantt__today-flag { position: absolute; bottom: 0; width: 8px; height: 8px; margin-left: -4px; background: var(--accent); border-radius: 50%; }
 
 .cl-gantt__body { position: relative; display: flex; }
-.cl-gantt__list { position: sticky; left: 0; z-index: 3; flex: none; box-sizing: border-box; background: var(--bg-solid); border-right: 1px solid var(--border-medium); }
+.cl-gantt__list { position: sticky; left: 0; z-index: var(--z-sticky); flex: none; box-sizing: border-box; background: var(--bg-solid); border-right: 1px solid var(--border-medium); }
 .cl-gantt__timeline { position: relative; flex: none; overflow: hidden; }
 .cl-gantt__line { position: absolute; left: 0; right: 0; box-sizing: border-box; border-bottom: 1px solid var(--border-light); }
 .cl-gantt__timeline .cl-gantt__line.is-section { background: var(--bg-hover); }
 
-.cl-gantt__cell { display: flex; align-items: center; gap: 4px; height: 100%; padding-right: 8px; overflow: hidden; }
-.cl-gantt__cell.is-group { padding-left: 8px; font-weight: 600; background: var(--bg-hover); }
+.cl-gantt__cell { display: flex; align-items: center; gap: var(--space-1); height: 100%; padding-right: var(--space-2); overflow: hidden; }
+.cl-gantt__cell.is-group { padding-left: var(--space-2); font-weight: var(--font-weight-semibold); background: var(--bg-hover); }
 .cl-gantt__group-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cl-gantt__count { padding: 0 6px; font-size: 11px; line-height: 16px; color: var(--text-secondary); background: var(--border-light); border-radius: var(--radius-full); }
+.cl-gantt__count { padding: 0 var(--space-1-5); font-size: var(--font-size-xs); line-height: 16px; color: var(--text-secondary); background: var(--border-light); border-radius: var(--radius-full); }
 .cl-gantt__expander { flex: none; width: 18px; height: 18px; padding: 0; color: var(--text-secondary); background: none; border: none; border-radius: var(--radius-sm); cursor: pointer; }
 .cl-gantt__expander:hover { background: var(--bg-hover); }
 .cl-gantt__expander-gap { flex: none; width: 18px; }
@@ -45,18 +45,18 @@
 .cl-gantt__cell.is-done .cl-gantt__title { color: var(--text-muted); text-decoration: line-through; }
 
 .cl-gantt__weekend { position: absolute; top: 0; bottom: 0; background: var(--bg-hover); opacity: 0.7; pointer-events: none; }
-.cl-gantt__today-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); opacity: 0.8; pointer-events: none; z-index: 1; }
+.cl-gantt__today-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); opacity: 0.8; pointer-events: none; z-index: var(--z-raised); }
 
 .cl-gantt__lane { position: absolute; inset: 0; }
 .cl-gantt__lane.is-schedulable { cursor: crosshair; touch-action: pan-y; }
-.cl-gantt__bar { position: absolute; top: 5px; height: 22px; box-sizing: border-box; display: flex; align-items: center; min-width: 4px; background: var(--accent); border-radius: var(--radius-sm); color: #fff; font-size: 12px; cursor: pointer; z-index: 2; overflow: hidden; }
+.cl-gantt__bar { position: absolute; top: 5px; height: 22px; box-sizing: border-box; display: flex; align-items: center; min-width: 4px; background: var(--accent); border-radius: var(--radius-sm); color: var(--text-on-accent); font-size: var(--font-size-sm); cursor: pointer; z-index: 2; overflow: hidden; }
 .cl-gantt__bar.is-editable { cursor: grab; touch-action: none; }
 .cl-gantt__bar.is-dragging { opacity: 0.75; cursor: grabbing; outline: 2px solid var(--accent); outline-offset: 1px; }
-.cl-gantt__bar.is-marker { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55); }
+.cl-gantt__bar.is-marker { box-shadow: inset 0 0 0 2px var(--on-fill-ring); }
 .cl-gantt__bar.is-done { opacity: 0.45; }
-.cl-gantt__bar-label { flex: 1; min-width: 0; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; text-shadow: 0 0 2px rgba(0, 0, 0, 0.45); }
-.cl-gantt__handle { position: absolute; top: 0; bottom: 0; cursor: ew-resize; background: rgba(0, 0, 0, 0.14); }
-.cl-gantt__handle:hover { background: rgba(0, 0, 0, 0.3); }
+.cl-gantt__bar-label { flex: 1; min-width: 0; padding: 0 var(--space-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; text-shadow: 0 0 2px var(--on-fill-text-shadow); }
+.cl-gantt__handle { position: absolute; top: 0; bottom: 0; cursor: ew-resize; background: var(--bar-handle); }
+.cl-gantt__handle:hover { background: var(--bar-handle-hover); }
 .cl-gantt__handle.is-start { left: 0; }
 .cl-gantt__handle.is-end { right: 0; }
 .cl-gantt__scroll:has(.is-dragging) { user-select: none; }

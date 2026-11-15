@@ -4,6 +4,7 @@ import { createRow } from '../api/tables';
 import { setHomePage } from '../pages/home/homeStore';
 import { getPlatform } from '../platform';
 import { buildRoute, navigate } from '../router';
+import { cycleTheme, THEME_LABELS } from '../theme';
 import { registerCommand, registerCommandProvider, type Command } from './commands';
 import { openTaskById } from './navigate';
 
@@ -113,6 +114,16 @@ export function registerBuiltinCommands(): void {
     title: 'Toggle old/new task list',
     keywords: ['legacy', 'tasks', 'switch'],
     run: (ctx) => toggleOldTaskList(ctx.projectId),
+  });
+
+  registerCommand({
+    id: 'switch-theme',
+    title: 'Switch theme',
+    keywords: ['dark', 'light', 'appearance', 'system', 'colors'],
+    run() {
+      const next = cycleTheme();
+      getPlatform().toast('success', `Theme: ${THEME_LABELS[next]}`);
+    },
   });
 
   registerCommand({

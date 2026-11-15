@@ -1,8 +1,8 @@
 .cl-input {
-  height: 32px;
-  padding: 0 10px;
+  height: var(--control-height-md);
+  padding: 0 var(--space-2-5);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--font-size-md);
   color: var(--text);
   background: var(--bg-solid);
   border: 1px solid var(--border-medium);

@@ -5,8 +5,8 @@
 
 .cl-summary--block {
   box-sizing: border-box;
-  margin: 8px 0;
-  padding: 10px 14px;
+  margin: var(--space-2) 0;
+  padding: var(--space-2-5) 14px;
   min-width: 0;
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-sm);
@@ -17,28 +17,28 @@
 .cl-summary__slot { display: contents; }
 
 .cl-summary__label {
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 /* The row keeps one line height whether it shows the number or the skeleton, so nothing jumps when data arrives */
-.cl-summary__row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 32px; min-width: 0; }
+.cl-summary__row { display: flex; align-items: center; gap: var(--space-2-5); flex-wrap: wrap; min-height: 32px; min-width: 0; }
 .cl-summary__row--progress { flex-wrap: nowrap; }
-.cl-summary__value { font-size: 24px; font-weight: 600; line-height: 32px; overflow-wrap: anywhere; }
-.cl-summary__row--progress .cl-summary__value { order: 2; font-size: 16px; flex: none; }
-.cl-summary__value--quiet { color: var(--text-muted); font-weight: 400; }
-.cl-summary__value--action { font-size: 14px; text-decoration: underline; }
+.cl-summary__value { font-size: 24px; font-weight: var(--font-weight-semibold); line-height: 32px; overflow-wrap: anywhere; }
+.cl-summary__row--progress .cl-summary__value { order: 2; font-size: var(--font-size-xl); flex: none; }
+.cl-summary__value--quiet { color: var(--text-muted); font-weight: var(--font-weight-regular); }
+.cl-summary__value--action { font-size: var(--font-size-lg); text-decoration: underline; }
 
-.cl-summary__bar { order: 1; flex: 1 1 60px; min-width: 40px; height: 8px; border-radius: 4px; background: var(--bg-hover); overflow: hidden; }
-.cl-summary__fill { display: block; height: 100%; border-radius: 4px; background: var(--accent); transition: width 0.2s; }
+.cl-summary__bar { order: 1; flex: 1 1 60px; min-width: 40px; height: 8px; border-radius: var(--radius-xs); background: var(--bg-hover); overflow: hidden; }
+.cl-summary__fill { display: block; height: 100%; border-radius: var(--radius-xs); background: var(--accent); transition: width 0.2s; }
 
 .cl-summary__skeleton {
   display: inline-block;
   width: 64px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--bg-hover);
   animation: cl-summary-pulse 1.2s ease-in-out infinite;
 }
@@ -46,21 +46,21 @@
 @media (prefers-reduced-motion: reduce) { .cl-summary__skeleton { animation: none; } .cl-summary__fill { transition: none; } }
 
 /* Inline: just the number, in the flow of the sentence */
-.cl-summary--inline { display: inline; font-weight: 600; padding: 0 2px; border-radius: 3px; }
+.cl-summary--inline { display: inline; font-weight: var(--font-weight-semibold); padding: 0 var(--space-0-5); border-radius: 3px; }
 .cl-summary--inline.cl-summary--editable:hover { background: var(--bg-hover); }
 .cl-summary--inline .cl-summary__value { font-size: inherit; line-height: inherit; font-weight: inherit; }
 .cl-summary--inline .cl-summary__skeleton { width: 2.5em; height: 0.9em; vertical-align: -0.1em; }
 .ProseMirror-selectednode .cl-summary--inline { background: var(--bg-hover); outline: 1px solid var(--accent); }
 
 /* The settings popover */
-.cl-summary-setup { width: min(300px, 94vw); padding: 12px; }
-.cl-summary-setup__body { display: flex; flex-direction: column; gap: 10px; }
+.cl-summary-setup { width: min(300px, 94vw); padding: var(--space-3); }
+.cl-summary-setup__body { display: flex; flex-direction: column; gap: var(--space-2-5); }
 .cl-summary-setup__field { display: flex; flex-direction: column; gap: 3px; margin: 0; }
-.cl-summary-setup__name { font-size: 12px; color: var(--text-muted); }
+.cl-summary-setup__name { font-size: var(--font-size-sm); color: var(--text-muted); }
 .cl-summary-setup__control {
   box-sizing: border-box;
   width: 100%;
-  padding: 5px 8px;
+  padding: 5px var(--space-2);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-sm);
   background: transparent;
