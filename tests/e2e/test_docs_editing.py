@@ -168,6 +168,9 @@ def test_offline_edits_merge_on_reconnect(scene, server):
 def test_reload_shows_the_merged_document(scene):
     a, b = scene["a"], scene["b"]
     before = paragraphs(b)
+    # The Docs tab is hidden since migration 006, and a saved Docs tab now opens Pages after a reload.
+    # This test is about the old editor, which open_doc still reaches, so do not restore any tab.
+    a.evaluate("localStorage.setItem('activeTab', 'projects')")
     a.reload()
     wait_js(a, "typeof DocsModule !== 'undefined'", 10000)
     open_doc(a, scene["project"], scene["doc"])

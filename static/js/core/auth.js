@@ -138,6 +138,7 @@ const Auth = (function () {
             const data = await res.json();
             setIdleConfig(data);
             AppState.permissions = data.permissions || [];
+            if (typeof Routes !== 'undefined') Routes.setDocsMoved(!!data.docsMoved);
             if (data.user && AppState.adminUser) {
                 AppState.adminUser.profileImage = data.user.profileImage;
             }
