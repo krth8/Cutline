@@ -33,17 +33,29 @@ def open_view(page, server, scene, username, password=None):
         login(page, server.base_url, username, ADMIN["password"], goto=f"/dev/view/{scene['view']}")
     else:
         login(page, server.base_url, username, goto=f"/dev/view/{scene['view']}")
-    page.wait_for_selector("[data-testid=view-shell] [data-testid=fallback-layout]", timeout=15000)
+    page.wait_for_selector("[data-testid=view-shell] [data-testid=table-layout]", timeout=15000)
     wait_js(page, "window.Live && Live.isConnected()", 10000)
 
 
 def row_names(page):
-    return page.evaluate("""() => [...document.querySelectorAll('[data-testid=fallback-layout] tbody tr[data-row-id]')]
-        .map(tr => tr.querySelector('td').innerText.trim())""")
+    return page.evaluate("""() => [...document.querySelectorAll('[data-testid=table-row]')]
+        .map(r => r.querySelector('[data-col=name] .cl-table__title').innerText.trim())""")
+
+
+def grouped_rows(page):
+    """Row names per group, in display order."""
+    return page.evaluate("""() => {
+        const out = [];
+        for (const el of document.querySelectorAll('[data-testid=table-group], [data-testid=table-row]')) {
+            if (el.dataset.testid === 'table-group') out.push([]);
+            else out[out.length - 1].push(el.querySelector('[data-col=name] .cl-table__title').innerText.trim());
+        }
+        return out;
+    }""")
 
 
 def group_count(page):
-    return page.locator("[data-testid=fallback-group]").count()
+    return page.locator("[data-testid=table-group]").count()
 
 
 def stored_query(server, scene):
@@ -94,9 +106,7 @@ def test_building_filter_sort_group_is_saved_and_seen_by_a_second_user(scene, se
     open_view(b, server, scene, "editor")
     wait_for(lambda: group_count(b) == 2)
     assert "Cherry" not in row_names(b)
-    group_rows = b.evaluate("""() => [...document.querySelectorAll('[data-testid=fallback-layout] tbody')]
-        .map(t => [...t.querySelectorAll('tr[data-row-id] td:first-child')].map(td => td.innerText.trim()))""")
-    assert sorted(group_rows, key=len) == [["Date"], ["Banana", "Apple pie"]]
+    assert grouped_rows(b) == [["Date"], ["Banana", "Apple pie"]] or grouped_rows(b) == [["Banana", "Apple pie"], ["Date"]]
     b.click("[data-testid=toolbar-filter]")
     assert b.locator("[data-testid=panel-filter] [aria-label=Value]").input_value() == "a"
     b.keyboard.press("Escape")
@@ -104,9 +114,7 @@ def test_building_filter_sort_group_is_saved_and_seen_by_a_second_user(scene, se
     # Live: a change by the first user reaches the second without a reload
     a.click("[data-testid=toolbar-sort]")
     a.select_option("[aria-label='Sort direction']", "asc")
-    wait_for(lambda: b.evaluate("""() => [...document.querySelectorAll('[data-testid=fallback-layout] tbody')]
-        .map(t => [...t.querySelectorAll('tr[data-row-id] td:first-child')].map(td => td.innerText.trim()))
-        .some(g => g.join() === 'Apple pie,Banana')"""))
+    wait_for(lambda: ["Apple pie", "Banana"] in grouped_rows(b))
 
     # ... and so does a rename
     a.fill("[data-testid=view-name]", "Tasks with an a")
