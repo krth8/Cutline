@@ -154,6 +154,7 @@ function useViewData(descriptor: ViewDescriptor | null, updateConfig: (patch: Pa
       openRow,
       updateConfig: (patch) => latest.current.updateConfig(patch),
       loadChildren: (parentId) => loadChildren(latest.current.ref!, latest.current.query, parentId),
+      moveRow: (id, parentId) => mutations.moveRow(latest.current.ref!, id, parentId),
     }),
     [],
   );

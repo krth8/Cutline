@@ -102,6 +102,8 @@ function renderClipTaskItem(task) {
  * Open task detail from clip tasks panel
  */
 function openTaskFromClip(taskId) {
+    // The new task panel over the project's Tasks view (does nothing when the old task list is switched on)
+    if (typeof Routes !== 'undefined' && AppState.projectId && Routes.openTasks(AppState.projectId, taskId)) return;
     // Switch to Projects tab and open task detail
     if (typeof switchToProjectsTab === 'function') {
         switchToProjectsTab(() => {

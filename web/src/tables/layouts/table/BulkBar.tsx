@@ -12,6 +12,8 @@ export interface BulkBarProps {
   onDelete(): void;
   onApply(column: Column, value: unknown): void;
   canDelete: boolean;
+  /** Set when exactly one row is selected and the table can move rows under another parent. */
+  onMove?: () => void;
 }
 
 /** What an unset cell holds for a column type (the starting value of the bulk editor). */
@@ -21,7 +23,7 @@ function emptyValue(column: Column): unknown {
 }
 
 /** Shown while rows are selected: count, select all / clear, set one column for all of them, delete. */
-export function BulkBar({ count, columns, onAll, onClear, onDelete, onApply, canDelete }: BulkBarProps) {
+export function BulkBar({ count, columns, onAll, onClear, onDelete, onApply, canDelete, onMove }: BulkBarProps) {
   const [key, setKey] = useState('');
   const column = columns.find((c) => c.key === key);
   return (
@@ -67,6 +69,11 @@ export function BulkBar({ count, columns, onAll, onClear, onDelete, onApply, can
         </span>
       )}
       <span className="cl-table__spacer" />
+      {onMove && (
+        <Button size="sm" variant="ghost" data-testid="table-bulk-move" onClick={onMove}>
+          Move under...
+        </Button>
+      )}
       {canDelete && (
         <Button size="sm" variant="danger" data-testid="table-bulk-delete" onClick={onDelete}>
           Delete

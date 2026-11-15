@@ -349,15 +349,18 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
   const items: MenuItem[] = [];
   if (editable) {
     items.push({ id: 'add', label: 'Add subpage', onSelect: () => void createAndOpen(space, pageId) });
-    items.push({ id: 'move', label: 'Move to...', onSelect: () => setMoveOpen(true) });
-    items.push({
-      id: 'archive',
-      label: 'Archive',
-      danger: true,
-      onSelect: () => {
-        void store.archive(pageId).then(() => load());
-      },
-    });
+    // The Tasks page of a project cannot be moved or archived
+    if (!page.system) {
+      items.push({ id: 'move', label: 'Move to...', onSelect: () => setMoveOpen(true) });
+      items.push({
+        id: 'archive',
+        label: 'Archive',
+        danger: true,
+        onSelect: () => {
+          void store.archive(pageId).then(() => load());
+        },
+      });
+    }
     items.push({ type: 'separator' });
   }
   items.push({

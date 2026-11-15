@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { updateView } from '../../../../api/views';
 import { getPlatform } from '../../../../platform';
+import { buildRoute, viewRoute } from '../../../../router';
 import { ViewShell } from '../../../../tables/ViewShell';
 import { Button, Input } from '../../../../ui';
 import { clampHeight, MAX_HEIGHT, MIN_HEIGHT, type PageContext } from './model';
@@ -103,7 +104,7 @@ export function ViewBlockContent(props: ViewBlockContentProps) {
           />
           <a
             className="cl-viewblock__open"
-            href={`/dev/view/${encodeURIComponent(viewId)}`}
+            href={buildRoute(viewRoute(view.tableRef, viewId))}
             target="_blank"
             rel="noopener"
             data-testid="viewblock-open"

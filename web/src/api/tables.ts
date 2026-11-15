@@ -24,6 +24,10 @@ export const createRow = (ref: string, body: CreateRowBody) => requestJson<Row>(
 export const updateRow = (ref: string, id: string, values: Record<string, unknown>) =>
   requestJson<Row>('PATCH', `${base(ref)}/rows/${enc(id)}`, { values });
 
+/** Move a row under another parent (a row id) or to the top level (null). The server refuses cycles and other projects. */
+export const moveRow = (ref: string, id: string, parentId: string | null) =>
+  requestJson<Row>('PATCH', `${base(ref)}/rows/${enc(id)}`, { parentId });
+
 export const deleteRow = (ref: string, id: string) =>
   requestJson<{ success: boolean }>('DELETE', `${base(ref)}/rows/${enc(id)}`);
 

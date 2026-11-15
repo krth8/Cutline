@@ -16,6 +16,8 @@ export interface PageNode {
   icon: string | null;
   sortOrder: number;
   kind: string;
+  /** 'tasks' for the Tasks page of a project (pinned first, cannot be deleted or moved), else null. */
+  system?: string | null;
 }
 
 /** `GET /api/pages/{id}` (and the body of create / update). */
@@ -24,6 +26,7 @@ export interface PageInfo {
   title: string;
   icon: string | null;
   kind: string;
+  system?: string | null;
   space: string;
   parentId: string | null;
   sortOrder: number;

@@ -3,6 +3,7 @@ import { getPlatform } from './platform';
 import './pages/tree/register'; // sidebar tree and page views for the shell
 import './pages/pageBody'; // the editor inside a page view
 import { installViewSource } from './tables';
+import './tables/routeViews'; // full-page routes of views and the Tasks tab
 
 export const version = '0.1.0';
 

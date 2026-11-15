@@ -45,3 +45,6 @@
 .cl-viewshell__state--error { color: var(--danger); }
 
 .cl-devview { padding: 16px 24px; }
+.cl-viewpage { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.cl-viewpage > .cl-viewshell { flex: 1; }
+.cl-viewpage__links { display: flex; justify-content: flex-end; font-size: 12px; margin-bottom: 4px; }

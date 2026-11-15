@@ -99,5 +99,7 @@ export interface LayoutProps {
     openRow(id: string): void; // task panel
     updateConfig(patch: Partial<View['config']>): void; // debounced save
     loadChildren(parentId: string): Promise<Row[]>;
+    /** Move a row under another parent, or to the top level (null). Only offered by tables with hierarchy. */
+    moveRow?(id: string, parentId: string | null): Promise<void>;
   };
 }

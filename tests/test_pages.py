@@ -29,7 +29,8 @@ def create(client, token, space, title=None, parent=None, client_id=None, **extr
 def tree(client, token, space, archived=False):
     res = client.get(f"/api/spaces/{space}/pages" + ("?archived=1" if archived else ""), headers=auth(token))
     assert res.status_code == 200, res.text
-    return res.json()
+    # The Tasks page every project starts with (T13) is not what these tests are about
+    return [r for r in res.json() if not r.get("system")]
 
 
 def titles(client, token, space, parent=None, archived=False):
@@ -106,7 +107,7 @@ def test_tree_lists_pages_in_order_without_payloads(client, team):
     child = create(client, team["member"], team["space"], "A1", parent=a["id"])
     rows = tree(client, team["member"], team["space"])
     assert [r["title"] for r in rows] == ["A", "B", "A1"] or {r["title"] for r in rows} == {"A", "B", "A1"}
-    assert set(rows[0]) == {"id", "parentId", "title", "icon", "sortOrder", "kind"}
+    assert set(rows[0]) == {"id", "parentId", "title", "icon", "sortOrder", "kind", "system"}
     assert titles(client, team["member"], team["space"]) == ["A", "B"]
     assert titles(client, team["member"], team["space"], parent=a["id"]) == ["A1"]
     assert child["parentId"] == a["id"] and b["sortOrder"] > a["sortOrder"]

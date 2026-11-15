@@ -149,3 +149,14 @@ export async function reorder(ref: string, ids: string[], before?: string): Prom
   }
   invalidate([ref]);
 }
+
+/** Move a row under another parent (or to the top level). Not optimistic: queries are refetched when it is done. */
+export async function moveRow(ref: string, id: string, parentId: string | null): Promise<void> {
+  try {
+    const row = await api.moveRow(ref, id, parentId);
+    invalidate([ref, row.tableRef]);
+  } catch (e) {
+    invalidate([ref]);
+    throw fail(e);
+  }
+}

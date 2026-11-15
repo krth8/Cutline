@@ -314,7 +314,7 @@ describe('ViewBlockContent', () => {
     render(<ViewBlockContent {...baseProps()} />);
     expect((await screen.findByTestId('shell-stub')).textContent).toBe('v1');
     expect((screen.getByTestId('viewblock-name') as HTMLInputElement).value).toBe('Sprint board');
-    expect(screen.getByTestId('viewblock-open').getAttribute('href')).toBe('/dev/view/v1');
+    expect(screen.getByTestId('viewblock-open').getAttribute('href')).toBe('/p/p1/view/v1');
   });
 
   it('a reader without access to the view or its table gets a quiet empty state, no error and no toast', async () => {

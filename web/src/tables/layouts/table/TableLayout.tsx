@@ -11,15 +11,18 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { getPlatform } from '../../../platform';
+import * as tablesApi from '../../../api/tables';
 import { cx } from '../../../ui';
 import { getCell, isColumnEditable } from '../../cells';
-import { projectsForCreate } from '../../store';
+import { projectsForCreate, refreshTable } from '../../store';
 import type { Column, LayoutProps, Row } from '../../types';
 import { orderedColumns } from '../../viewColumns';
 import { AddRow } from './AddRow';
 import { BulkBar } from './BulkBar';
 import { parseTsv, planPaste, toTsv } from './clipboard';
+import { ColumnForm, type ColumnFormMode, type ColumnFormValue } from './ColumnForm';
 import { DataRow } from './DataRow';
+import { MoveUnder } from './MoveUnder';
 import {
   EMPTY_SELECTION,
   NAV_KEYS,
@@ -90,6 +93,8 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
   const [drop, setDrop] = useState<{ id: string; side: 'before' | 'after' } | null>(null);
   const [addFocus, setAddFocus] = useState<string | null>(null);
   const [project, setProject] = useState('');
+  const [colForm, setColForm] = useState<{ mode: ColumnFormMode; column?: Column } | null>(null);
+  const [moving, setMoving] = useState<Row | null>(null);
   const dragIds = useRef<string[] | null>(null);
   const pendingFocus = useRef<{ rowId: string; key: string } | null>(null);
 
@@ -403,6 +408,75 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
     a.updateConfig({ columns: reorderedColumnConfig(orderedColumns(s, v.config), key, target, side) });
   }, []);
 
+  // ---- header: sort, hide, custom columns ----
+  const onSortDir = useCallback((key: string, dir: 'asc' | 'desc') => {
+    const q = L.current.view.config.query;
+    L.current.actions.updateConfig({ query: { ...q, sort: [{ column: key, dir }] } });
+  }, []);
+
+  /** Click on a header: ascending, then descending, then no sort. */
+  const onSort = useCallback((key: string) => {
+    const q = L.current.view.config.query;
+    const current = q.sort?.length === 1 && q.sort[0]!.column === key ? q.sort[0]!.dir : null;
+    const { sort: _old, ...rest } = q;
+    const next =
+      current === null
+        ? { ...rest, sort: [{ column: key, dir: 'asc' as const }] }
+        : current === 'asc'
+          ? { ...rest, sort: [{ column: key, dir: 'desc' as const }] }
+          : rest;
+    L.current.actions.updateConfig({ query: next });
+  }, []);
+
+  const onHide = useCallback((key: string) => {
+    const { schema: s, view: v, actions: a } = L.current;
+    const entries = orderedColumns(s, v.config).map((c) => ({
+      key: c.column.key,
+      ...(c.width !== undefined ? { width: c.width } : {}),
+      ...(c.hidden || c.column.key === key ? { hidden: true } : {}),
+    }));
+    a.updateConfig({ columns: entries });
+  }, []);
+
+  /** Run a column API call, tell the user when the server says no, and reload the schema (our own change sends no event back). */
+  async function columnCall(call: () => Promise<unknown>): Promise<void> {
+    try {
+      await call();
+    } catch (e) {
+      getPlatform().toast('error', e instanceof Error ? e.message : 'Could not change the column');
+      throw e;
+    }
+    refreshTable(L.current.schema.ref);
+  }
+
+  async function submitColumn(form: { mode: ColumnFormMode; column?: Column }, v: ColumnFormValue): Promise<void> {
+    const ref = schema.ref;
+    const selectLike = v.type === 'select' || v.type === 'multiselect';
+    if (form.mode === 'add') {
+      const body = { name: v.name, type: v.type, ...(selectLike ? { options: v.options.map((label) => ({ label })) } : {}) };
+      await columnCall(() => tablesApi.createColumn(ref, body as never));
+    } else if (form.mode === 'rename' && form.column) {
+      await columnCall(() => tablesApi.updateColumn(ref, form.column!.key, { name: v.name }));
+    } else if (form.column) {
+      // Options keep their value id when the label is unchanged
+      const old = form.column.options ?? [];
+      const options = v.options.map((label) => {
+        const same = old.find((o) => o.label === label);
+        return same ? { label, value: same.value } : { label };
+      });
+      const body = { type: v.type, ...(selectLike ? { options } : {}) };
+      await columnCall(() => tablesApi.updateColumn(ref, form.column!.key, body as never));
+    }
+  }
+
+  async function deleteColumn(column: Column) {
+    const ok = await getPlatform().confirm(`Delete the column "${column.name}"? Its values are removed from every task.`, {
+      danger: true,
+      confirmLabel: 'Delete',
+    });
+    if (ok) await columnCall(() => tablesApi.deleteColumn(schema.ref, column.key)).catch(() => {});
+  }
+
   // ---- drag to reorder rows ----
   const reorderable = !sorted && canCreate && rowsInOrder.length > 1;
 
@@ -468,6 +542,11 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
   // ---- render ----
   const style = { '--cl-table-cols': gridTemplate(cols), '--cl-table-width': `${gridWidth(cols)}px`, '--cl-table-row-h': `${ROW_HEIGHT}px` } as CSSProperties;
   const allIds = order;
+  const filtered = !!query.filter || !!query.search;
+  const clearFilters = () => {
+    const { filter: _f, search: _s, ...rest } = query;
+    actions.updateConfig({ query: rest });
+  };
   const allSelected = allIds.length > 0 && allIds.every((id) => sel.ids.has(id));
   const summaries = query.summaries ?? {};
 
@@ -567,6 +646,7 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
           count={sel.ids.size}
           columns={bulkColumns}
           canDelete={canDeleteRows}
+          {...(sel.ids.size === 1 && nested && actions.moveRow ? { onMove: () => setMoving(selectedRows()[0] ?? null) } : {})}
           onAll={() => setSel(selectAll(order))}
           onClear={() => setSel(EMPTY_SELECTION)}
           onDelete={() => void deleteSelected()}
@@ -592,12 +672,28 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
           onSelectAll={(checked) => setSel(checked ? selectAll(order) : EMPTY_SELECTION)}
           onResize={onResize}
           onMoveColumn={onMoveColumn}
+          onSort={onSort}
+          onSortDir={onSortDir}
+          onHide={onHide}
+          canEditSchema={schema.capabilities.editSchema}
+          onAddColumn={() => setColForm({ mode: 'add' })}
+          onRenameColumn={(column) => setColForm({ mode: 'rename', column })}
+          onChangeColumnType={(column) => setColForm({ mode: 'type', column })}
+          onDeleteColumn={(column) => void deleteColumn(column)}
         />
         <div className="cl-table__body" style={{ height: win.total }} onDragOver={onBodyDragOver} onDrop={onBodyDrop}>
           <div className="cl-table__window" style={{ transform: `translateY(${win.offset}px)` }}>
             {items.slice(win.start, win.end).map((item, i) => renderItem(item, win.start + i))}
           </div>
         </div>
+        {!loading && result.rows.length === 0 && filtered && (
+          <div className="cl-table__empty" data-testid="table-empty-filtered">
+            <span>{view.tableRef.startsWith('tasks:') ? 'No tasks match the filters' : 'No rows match the filters'}</span>
+            <button type="button" className="cl-btn cl-btn--secondary cl-btn--sm" data-testid="table-clear-filters" onClick={clearFilters}>
+              Clear filters
+            </button>
+          </div>
+        )}
         <div className="cl-table__footer" role="row" data-testid="table-footer">
           <div className="cl-table__lead" />
           {cols.map((c) => (
@@ -607,12 +703,34 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
           ))}
         </div>
       </div>
+      {colForm && (
+        <ColumnForm
+          mode={colForm.mode}
+          {...(colForm.column ? { column: colForm.column } : {})}
+          onSubmit={(v) => submitColumn(colForm, v)}
+          onClose={() => setColForm(null)}
+        />
+      )}
+      {moving && actions.moveRow && (
+        <MoveUnder
+          row={moving}
+          candidates={[...rowsInOrder, ...[...children.values()].flat()]}
+          titleKey={schema.titleColumn}
+          onMove={async (parentId) => {
+            await actions.moveRow!(moving.id, parentId);
+            setSel(EMPTY_SELECTION);
+            const touched = [...(moving.parentId ? [moving.parentId] : []), ...(parentId ? [parentId] : [])];
+            refreshChildren(touched.filter((p) => L.current.expanded.has(p)));
+          }}
+          onClose={() => setMoving(null)}
+        />
+      )}
       <div className="cl-table__status">
         <span data-testid="table-count">
           {result.total} {result.total === 1 ? 'row' : 'rows'}
         </span>
         {loading && <span>Loading...</span>}
-        {!loading && result.rows.length === 0 && <span data-testid="table-empty">No rows.</span>}
+        {!loading && result.rows.length === 0 && !filtered && <span data-testid="table-empty">No rows.</span>}
         <span className="cl-table__spacer" />
         {schema.capabilities.hierarchy && (
           <label className="cl-table__nest">

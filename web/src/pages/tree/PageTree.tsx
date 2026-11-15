@@ -38,6 +38,16 @@ export function DocIcon() {
   );
 }
 
+/** The icon of a project's Tasks page: a checked box. */
+export function TasksIcon() {
+  return (
+    <svg className="cl-tree__doc cl-tree__tasks" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false" data-testid="tasks-icon">
+      <rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M5 8.2l2.1 2.1L11 6" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /** Where in a row the pointer is: top quarter = before, bottom quarter = after, else inside. */
 export function dropPositionAt(clientY: number, rect: { top: number; height: number }): DropPosition {
   const ratio = rect.height > 0 ? (clientY - rect.top) / rect.height : 0.5;
@@ -194,6 +204,8 @@ export function PageTree({ space, route }: SidebarSectionProps) {
       { id: 'rename', label: 'Rename', onSelect: () => setTimeout(() => setRenamingId(id), 0) },
       { id: 'add', label: 'Add subpage', onSelect: () => void addSubpage(id) },
     ];
+    // The Tasks page stays where it is: no move, no archive
+    if (node.page.system) return items;
     if (node.page.parentId && model.byId.has(node.page.parentId)) {
       items.push({
         id: 'top',
@@ -283,7 +295,7 @@ export function PageTree({ space, route }: SidebarSectionProps) {
         aria-selected={id === activeId}
         data-page-id={id}
         tabIndex={id === tabbableId ? 0 : -1}
-        draggable={canEdit && !renaming}
+        draggable={canEdit && !renaming && !page.system}
         className={cx(
           'cl-tree__row',
           id === activeId && 'is-active',
@@ -325,7 +337,7 @@ export function PageTree({ space, route }: SidebarSectionProps) {
           <span className="cl-tree__chevron-spacer" aria-hidden="true" />
         )}
         <span className="cl-tree__icon" aria-hidden="true">
-          {page.icon ?? <DocIcon />}
+          {page.icon ?? (page.system ? <TasksIcon /> : <DocIcon />)}
         </span>
         {renaming ? (
           <RenameInput

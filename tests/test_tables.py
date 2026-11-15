@@ -668,3 +668,97 @@ def test_delete_and_reorder_match_the_old_api(table, api, admin, project):
     api("DELETE", f"/api/tasks/{old['id']}", admin)
     assert database.db_get_task(parent_row["id"]) is None and database.db_get_task(old["id"]) is None
     assert not [x for x in task_cache.values() if x["name"] in ("Gone child", "kid")]
+
+
+# ---------------------------------------------------------------- moving a row under another parent (PATCH parentId)
+
+def move(api, user, ref, row_id, parent_id, values=None):
+    body = {"parentId": parent_id, **({"values": values} if values else {})}
+    return api("PATCH", f"/api/tables/{ref}/rows/{row_id}", user, body)
+
+
+def test_patch_parent_id_moves_a_row_under_another_and_back_to_the_top(table, admin, project, api):
+    ref = f"tasks:{project}"
+    t = table(admin, ref)
+    a, b = t.add("A"), t.add("B")
+    kid = t.add("Kid", parentId=a["id"])
+
+    res = move(api, admin, ref, kid["id"], b["id"])
+    assert res.status_code == 200, res.text
+    assert res.json()["parentId"] == b["id"]
+    assert stored(kid["id"])["parentId"] == b["id"] and task_cache[kid["id"]]["parentId"] == b["id"]
+    assert t.names({"parentId": a["id"]}) == [] and t.names({"parentId": b["id"]}) == ["Kid"]
+    assert {r["id"]: r["childCount"] for r in t.rows({"parentId": None})} == {a["id"]: 0, b["id"]: 1}
+
+    res = move(api, admin, ref, kid["id"], None)
+    assert res.status_code == 200 and res.json()["parentId"] is None
+    assert stored(kid["id"])["parentId"] is None
+    assert set(t.names({"parentId": None})) == {"A", "B", "Kid"}
+
+
+def test_patch_parent_id_goes_to_the_end_of_the_new_siblings_and_can_carry_values(table, admin, project, api):
+    ref = f"tasks:{project}"
+    t = table(admin, ref)
+    a = t.add("A")
+    first, second = t.add("First", parentId=a["id"]), t.add("Second", parentId=a["id"])
+    loose = t.add("Loose")
+    res = move(api, admin, ref, loose["id"], a["id"], values={"name": "Loose moved"})
+    assert res.status_code == 200 and res.json()["values"]["name"] == "Loose moved"
+    assert t.names({"parentId": a["id"]}) == ["First", "Second", "Loose moved"]
+    assert first and second
+
+
+def test_patch_parent_id_refuses_cycles_self_and_other_projects(table, admin, project, make_project, api):
+    ref = f"tasks:{project}"
+    t = table(admin, ref)
+    a = t.add("A")
+    b = t.add("B", parentId=a["id"])
+    c = t.add("C", parentId=b["id"])
+    assert move(api, admin, ref, a["id"], c["id"]).status_code == 400   # under its own grandchild
+    assert move(api, admin, ref, a["id"], a["id"]).status_code == 400   # under itself
+    assert move(api, admin, ref, b["id"], "no-such-row").status_code == 400
+    assert move(api, admin, ref, b["id"], 5).status_code == 400
+    other = make_project("Elsewhere")
+    foreign = table(admin, f"tasks:{other}").add("Foreign")
+    assert move(api, admin, ref, b["id"], foreign["id"]).status_code == 400  # a parent of another project
+    assert stored(a["id"])["parentId"] is None and stored(b["id"])["parentId"] == a["id"]
+
+
+def test_patch_parent_id_needs_edit_rights(table, admin, editor, make_user, grant, project, api):
+    ref = f"tasks:{project}"
+    t = table(admin, ref)
+    a, b = t.add("A"), t.add("B")
+    reader = make_user()
+    grant(project, reader["user"]["id"], can_tasks=False)
+    assert move(api, reader, ref, b["id"], a["id"]).status_code == 403
+    viewer = make_user("viewer")
+    grant(project, viewer["user"]["id"], can_tasks=True)
+    assert move(api, viewer, ref, b["id"], a["id"]).status_code == 403
+    assert move(api, None, ref, b["id"], a["id"]).status_code in (401, 403)
+    assert stored(b["id"])["parentId"] is None
+    assert move(api, editor, ref, b["id"], a["id"]).status_code == 200
+
+
+def test_patch_parent_id_through_all_tasks_stays_inside_the_project(table, admin, project, make_project, api):
+    t = table(admin, f"tasks:{project}")
+    a, b = t.add("A"), t.add("B")
+    res = move(api, admin, "tasks:*", b["id"], a["id"])
+    assert res.status_code == 200 and res.json()["parentId"] == a["id"]
+    foreign = table(admin, f"tasks:{make_project('Other')}").add("F")
+    assert move(api, admin, "tasks:*", b["id"], foreign["id"]).status_code == 400
+
+
+def test_patch_parent_id_sends_the_live_events(client, admin, project, connect, table):
+    ref = f"tasks:{project}"
+    t = table(admin, ref)
+    a, b = t.add("A"), t.add("B")
+    with connect(admin["token"], "writer") as writer, connect(admin["token"], "watcher") as watcher:
+        watch(writer, project)
+        watch(watcher, project)
+        res = client.patch(f"/api/tables/{ref}/rows/{b['id']}", json={"parentId": a["id"]},
+                           headers={**auth(admin["token"]), "X-Client-Id": "writer"})
+        assert res.status_code == 200, res.text
+        assert next_event(watcher, "task_updated")["task"]["parentId"] == a["id"]
+        event = next_event(watcher, "rows_changed")
+        assert event["change"] == "updated" and event["ids"] == [b["id"]] and event["tableRef"] == ref
+        assert nothing_pending(writer)

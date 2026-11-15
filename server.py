@@ -1450,6 +1450,9 @@ async def dev_view_page(view_id: str):
 @app.get("/p/{project_id}/pages")
 @app.get("/p/{project_id}/page/{page_id}")
 @app.get("/p/{project_id}/review")
+@app.get("/p/{project_id}/tasks")
+@app.get("/p/{project_id}/view/{view_id}")
+@app.get("/me/view/{view_id}")
 async def app_route_page():
     """Serve the main page for the in-app routes."""
     return index_response()
