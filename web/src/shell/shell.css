@@ -93,3 +93,4 @@
 .app[data-view="pages"] .context-toolbar {
   display: none;
 }
+.cl-sidebar__switch { margin-left: auto; font-size: 11px; color: var(--text-muted); text-decoration: underline; }

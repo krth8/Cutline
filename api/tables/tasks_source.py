@@ -33,7 +33,7 @@ from database import (
 
 from . import columns as custom
 from .query import run_query
-from .source import TableSource, custom_columns_for
+from .source import UNSET, TableSource, custom_columns_for
 
 DEFAULT_PRIORITIES = [
     {"value": "low", "label": "Low", "color": "#6b7280"},
@@ -326,11 +326,23 @@ class TasksSource(TableSource):
         task = await task_api.create_task_record(principal, project_id, fields)
         return self._one_row(principal, task["id"])
 
-    async def update_row(self, principal: dict, row_id: str, values: dict) -> dict:
+    async def update_row(self, principal: dict, row_id: str, values: dict, parent_id: Any = UNSET) -> dict:
         task = self._task_in_scope(principal, row_id)
         self._need_edit(principal, task["projectId"])
         fields = self._to_task_fields(values, task["projectId"], for_create=False,
                                       base=task.get("customFields"))
+        if parent_id is not UNSET:
+            parent_id = parent_id or None
+            if parent_id is not None and not isinstance(parent_id, str):
+                raise _bad("parentId must be a row id or null")
+            if parent_id != task.get("parentId"):
+                # The task API refuses another project, the task itself and its own descendants
+                task_api.check_parent(task["projectId"], parent_id, row_id)
+                fields["parentId"] = parent_id
+                # The moved task goes to the end of its new siblings
+                siblings = [t.get("sortOrder") or 0 for t in tasks.values()
+                            if t["projectId"] == task["projectId"] and t.get("parentId") == parent_id]
+                fields["sortOrder"] = (max(siblings) + 1) if siblings else 0
         await task_api.update_task_record(task, fields)
         return self._one_row(principal, row_id)
 

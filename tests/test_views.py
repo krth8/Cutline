@@ -197,7 +197,8 @@ def test_list_views_filters_and_permissions(api, admin, project, editor, make_us
 
     res = api("GET", "/api/views", editor)
     assert res.status_code == 200
-    rows = {v["id"]: v for v in res.json()["views"]}
+    # (the project's own Tasks view, made with the project, is not one of the views of this test)
+    rows = {v["id"]: v for v in res.json()["views"] if v["name"] != "Tasks"}
     assert set(rows) == {owned["id"], free["id"]}  # another user's tasks:* view is not listed
     assert rows[owned["id"]] == {"id": owned["id"], "tableRef": ref, "name": "On the page", "layout": "table",
                                  "ownerPageId": page["id"], "canEdit": True}

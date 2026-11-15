@@ -23,7 +23,7 @@ _SUBTREE = """WITH RECURSIVE sub(id) AS (
 )"""
 
 _META_COLUMNS = ("id, kind, space_type, project_id, owner_id, parent_id, task_id, title, icon, "
-                 "sort_order, legacy_html, import_claimed_by, created_by, created_at, updated_at, archived_at, "
+                 "sort_order, legacy_html, import_claimed_by, system_key, created_by, created_at, updated_at, archived_at, "
                  "LENGTH(ydoc) AS ydoc_length")
 
 
@@ -66,6 +66,7 @@ def _page(row: dict) -> dict:
         "sortOrder": row["sort_order"],
         "legacyHtml": row["legacy_html"],
         "importClaimedBy": row["import_claimed_by"],
+        "system": row["system_key"],
         "hasContent": bool(length and length > EMPTY_YDOC_BYTES),
         "createdBy": row["created_by"],
         "createdAt": row["created_at"],
@@ -96,11 +97,11 @@ def db_list_pages(space_type: str, project_id: Optional[str] = None, owner_id: O
     with get_db() as conn:
         rows = fetchall(execute(
             conn,
-            f"SELECT id, kind, parent_id, task_id, title, icon, sort_order, archived_at FROM pages "
+            f"SELECT id, kind, parent_id, task_id, title, icon, sort_order, archived_at, system_key FROM pages "
             f"WHERE {where} ORDER BY sort_order, created_at, id", tuple(params)))
     return [{"id": r["id"], "kind": r["kind"], "parentId": r["parent_id"], "taskId": r["task_id"],
              "title": r["title"], "icon": r["icon"], "sortOrder": r["sort_order"],
-             "archivedAt": r["archived_at"]} for r in rows]
+             "archivedAt": r["archived_at"], "system": r["system_key"]} for r in rows]
 
 
 def _next_sort_order(conn, space_type: str, project_id, owner_id, parent_id) -> float:
@@ -176,6 +177,8 @@ def db_update_page(page_id: str, title=_UNSET, icon=_UNSET, parent_id=_UNSET, so
         if parent_id is not _UNSET and parent_id != row["parent_id"]:
             if row["kind"] == "task":
                 raise ValueError("A task page cannot be moved")
+            if row["system_key"]:
+                raise ValueError("The Tasks page cannot be moved")
             if parent_id:
                 _check_parent(conn, page_id, parent_id, row["space_type"], row["project_id"], row["owner_id"])
             sets.append("parent_id = ?")
@@ -222,6 +225,8 @@ def db_move_page(page_id: str, space_type: str, project_id: Optional[str], owner
             return None
         if row["kind"] == "task":
             raise ValueError("A task page cannot be moved")
+        if row["system_key"]:
+            raise ValueError("The Tasks page cannot be moved to another space")
         if row["archived_at"]:
             raise ValueError("Restore the page before moving it")
         if (row["space_type"], row["project_id"], row["owner_id"]) == (space_type, project_id, owner_id):
@@ -241,11 +246,13 @@ def db_set_archived(page_id: str, archived: bool) -> Optional[dict]:
     A restored page whose parent is still archived moves to the top level."""
     now = datetime.now().isoformat()
     with get_db() as conn:
-        row = fetchone(execute(conn, "SELECT id, kind, parent_id FROM pages WHERE id = ?", (page_id,)))
+        row = fetchone(execute(conn, "SELECT id, kind, parent_id, system_key FROM pages WHERE id = ?", (page_id,)))
         if not row:
             return None
         if archived and row["kind"] == "task":
             raise ValueError("A task page cannot be archived")
+        if archived and row["system_key"]:
+            raise ValueError("The Tasks page cannot be archived or deleted")
         execute(conn, _SUBTREE + " UPDATE pages SET archived_at = ?, updated_at = ? WHERE id IN (SELECT id FROM sub)",
                 (page_id, now if archived else None, now))
         if not archived and row["parent_id"]:
@@ -256,8 +263,12 @@ def db_set_archived(page_id: str, archived: bool) -> Optional[dict]:
 
 
 def db_delete_page(page_id: str) -> bool:
-    """Delete a page and its sub-pages for good (callers only allow this for archived pages)."""
+    """Delete a page and its sub-pages for good (callers only allow this for archived pages).
+    Raises ValueError when the subtree holds a project's Tasks page."""
     with get_db() as conn:
+        if fetchone(execute(conn, _SUBTREE + " SELECT 1 AS x FROM pages WHERE id IN (SELECT id FROM sub) "
+                            "AND system_key IS NOT NULL", (page_id,))):
+            raise ValueError("The Tasks page cannot be deleted")
         # Views made for these pages go with them
         execute(conn, _SUBTREE + " DELETE FROM views WHERE owner_page_id IN (SELECT id FROM sub)", (page_id,))
         cursor = execute(conn, _SUBTREE + " DELETE FROM pages WHERE id IN (SELECT id FROM sub)", (page_id,))

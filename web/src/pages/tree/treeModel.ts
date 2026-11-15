@@ -27,7 +27,9 @@ export function buildTree(pages: PageNode[]): PageTreeModel {
     const parent = page.parentId && page.parentId !== page.id ? byId.get(page.parentId) : undefined;
     (parent ? parent.children : roots).push(node);
   }
-  const byOrder = (a: TreeNode, b: TreeNode) => a.page.sortOrder - b.page.sortOrder;
+  // The Tasks page of a project is pinned first, whatever its sortOrder
+  const pinned = (n: TreeNode) => (n.page.system ? 0 : 1);
+  const byOrder = (a: TreeNode, b: TreeNode) => pinned(a) - pinned(b) || a.page.sortOrder - b.page.sortOrder;
   roots.sort(byOrder); // Array.prototype.sort is stable
   for (const node of byId.values()) node.children.sort(byOrder);
   return { roots, byId };

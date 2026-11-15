@@ -260,5 +260,5 @@ def test_migrated_pages_are_readable_by_exactly_those_who_could_read_the_documen
     assert client.get(f"/api/pages/{doc}", headers=auth(tasker["token"])).json()["canEdit"] is True
     assert client.get(f"/api/pages/{doc}", headers=auth(viewer["token"])).json()["canEdit"] is False
     listing = client.get(f"/api/spaces/p:{project}/pages", headers=auth(reader["token"])).json()
-    assert {p["id"]: p["parentId"] for p in listing} == {folder: None, doc: folder}
+    assert {p["id"]: p["parentId"] for p in listing if not p.get("system")} == {folder: None, doc: folder}
     assert client.get(f"/api/spaces/p:{project}/pages", headers=auth(outsider["token"])).status_code == 403

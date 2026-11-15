@@ -68,7 +68,7 @@ function SectionSlots({ space, route }: { space: Space; route: Route }) {
   );
 }
 
-function ProjectItem({ project, route }: { project: { id: string; name: string }; route: Route }) {
+function ProjectItem({ project, route }: { project: { id: string; name: string; canTasks?: boolean }; route: Route }) {
   const current = routeProjectId(route) === project.id;
   const [open, setOpen] = useState(current);
   // Following the route into a project (a link, back/forward) opens it
@@ -98,6 +98,11 @@ function ProjectItem({ project, route }: { project: { id: string; name: string }
           <NavLink to={{ kind: 'review', projectId: project.id }} active={onReview} indent>
             Review
           </NavLink>
+          {project.canTasks ? (
+            <NavLink to={{ kind: 'projectTasks', projectId: project.id }} active={route.kind === 'projectTasks' && route.projectId === project.id} indent>
+            Tasks
+            </NavLink>
+          ) : null}
           <NavLink to={{ kind: 'projectPages', projectId: project.id }} active={onPages && route.kind === 'projectPages'} indent>
             Pages
           </NavLink>
@@ -150,10 +155,32 @@ export function Sidebar({ route, collapsed, onToggle }: { route: Route; collapse
         <div className="cl-sidebar__user">
           <Avatar name={user.username} src={user.profileImage} size={24} />
           <span className="cl-nav__label">{user.username}</span>
+          <a
+            href="#"
+            className="cl-sidebar__switch"
+            data-testid="use-old-tasks"
+            onClick={(e) => {
+              e.preventDefault();
+              useOldTaskList(route);
+            }}
+          >
+            Use the old task list
+          </a>
         </div>
       ) : null}
     </aside>
   );
+}
+
+/** Switch this browser back to the old Tasks tab (localStorage.legacyTasks) and reload at the same project. */
+function useOldTaskList(route: Route): void {
+  try {
+    localStorage.setItem('legacyTasks', '1');
+  } catch {
+    /* storage unavailable: the switch cannot be remembered */
+  }
+  const projectId = routeProjectId(route);
+  window.location.href = projectId ? buildRoute({ kind: 'projectTasks', projectId }) : '/';
 }
 
 function projectName(projectId: string): string {
@@ -181,6 +208,11 @@ function placeholderFor(route: Route): { title: string; detail?: string } {
       return { title: `${projectName(route.projectId)}: Pages`, detail: 'The page tree of this project will show here.' };
     case 'projectPage':
       return { title: `${projectName(route.projectId)}: Page`, detail: route.pageId };
+    case 'projectTasks':
+      return { title: `${projectName(route.projectId)}: Tasks`, detail: 'Loading the tasks...' };
+    case 'projectView':
+    case 'meView':
+      return { title: 'View', detail: route.viewId };
     case 'review':
       return { title: `${projectName(route.projectId)}: Review`, detail: 'Opening the review...' };
     case 'notFound':

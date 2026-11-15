@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent } from 'react';
-import { cx } from '../../../ui';
-import type { Query } from '../../types';
+import { cx, Menu, type MenuItem } from '../../../ui';
+import type { Column, Query } from '../../types';
 import type { GridColumn } from './grid';
 
 export interface HeaderProps {
@@ -13,12 +13,60 @@ export interface HeaderProps {
   onResize(key: string, width: number | null, commit: boolean): void;
   /** A column was dropped before/after another one. */
   onMoveColumn(key: string, target: string, side: 'before' | 'after'): void;
+  /** A header was clicked: the caller cycles ascending, descending, none. */
+  onSort(key: string): void;
+  /** Sort by one column in a given direction (header menu). */
+  onSortDir(key: string, dir: 'asc' | 'desc'): void;
+  onHide(key: string): void;
+  /** The schema can be edited (project owner or admin): custom columns get Rename, Change type and Delete, and "+" shows. */
+  canEditSchema: boolean;
+  onAddColumn(): void;
+  onRenameColumn(column: Column): void;
+  onChangeColumnType(column: Column): void;
+  onDeleteColumn(column: Column): void;
 }
 
 const COLUMN_MIME = 'application/x-cutline-column';
 
 /** The sticky header row: select-all box, column titles (drag to reorder) and resize handles. */
-export function Header({ cols, sort, allSelected, someSelected, onSelectAll, onResize, onMoveColumn }: HeaderProps) {
+export function Header({
+  cols,
+  sort,
+  allSelected,
+  someSelected,
+  onSelectAll,
+  onResize,
+  onMoveColumn,
+  onSort,
+  onSortDir,
+  onHide,
+  canEditSchema,
+  onAddColumn,
+  onRenameColumn,
+  onChangeColumnType,
+  onDeleteColumn,
+}: HeaderProps) {
+  const [menu, setMenu] = useState<string | null>(null);
+  const menuAnchor = useRef<HTMLElement | null>(null);
+
+  function menuItems(column: Column): MenuItem[] {
+    const items: MenuItem[] = [
+      { id: 'asc', label: 'Sort ascending', onSelect: () => onSortDir(column.key, 'asc') },
+      { id: 'desc', label: 'Sort descending', onSelect: () => onSortDir(column.key, 'desc') },
+    ];
+    if (column.key !== 'name') items.push({ id: 'hide', label: 'Hide', onSelect: () => onHide(column.key) });
+    // Builtin columns only sort and hide; custom ones can be changed by people who may edit the schema
+    if (!column.builtin && canEditSchema) {
+      items.push(
+        { type: 'separator' },
+        { id: 'rename', label: 'Rename', onSelect: () => onRenameColumn(column) },
+        { id: 'type', label: 'Change type', onSelect: () => onChangeColumnType(column) },
+        { id: 'delete', label: 'Delete', danger: true, onSelect: () => onDeleteColumn(column) },
+      );
+    }
+    return items;
+  }
+
   const [drop, setDrop] = useState<{ key: string; side: 'before' | 'after' } | null>(null);
   const dragKey = useRef<string | null>(null);
   const check = useRef<HTMLInputElement>(null);
@@ -64,7 +112,7 @@ export function Header({ cols, sort, allSelected, someSelected, onSelectAll, onR
   }
 
   return (
-    <div role="row" className="cl-table__header" data-testid="table-header">
+    <div role="row" className={cx('cl-table__header', canEditSchema && 'has-add')} data-testid="table-header">
       <div role="columnheader" className="cl-table__lead">
         <input
           ref={check}
@@ -100,9 +148,11 @@ export function Header({ cols, sort, allSelected, someSelected, onSelectAll, onR
             }}
           >
             <span
-              className="cl-table__hlabel"
+              className="cl-table__hlabel cl-table__hsort"
               draggable
-              title={c.column.name}
+              title={`Sort by ${c.column.name}`}
+              data-testid="table-hlabel"
+              onClick={() => onSort(c.column.key)}
               onDragStart={(e) => {
                 dragKey.current = c.column.key;
                 e.dataTransfer.setData(COLUMN_MIME, c.column.key);
@@ -121,6 +171,20 @@ export function Header({ cols, sort, allSelected, someSelected, onSelectAll, onR
                 {sorted.dir === 'asc' ? '↑' : '↓'}
               </span>
             )}
+            <button
+              type="button"
+              className="cl-table__hmenu"
+              aria-label={`Column menu for ${c.column.name}`}
+              aria-haspopup="menu"
+              aria-expanded={menu === c.column.key}
+              data-testid="table-hmenu"
+              onClick={(e) => {
+                menuAnchor.current = e.currentTarget;
+                setMenu(c.column.key);
+              }}
+            >
+              &#9662;
+            </button>
             <span
               className="cl-table__resize"
               role="separator"
@@ -135,6 +199,19 @@ export function Header({ cols, sort, allSelected, someSelected, onSelectAll, onR
           </div>
         );
       })}
+      {canEditSchema && (
+        <button type="button" className="cl-table__hadd" aria-label="Add column" title="Add column" data-testid="table-add-column" onClick={onAddColumn}>
+          +
+        </button>
+      )}
+      <Menu
+        open={menu !== null}
+        onOpenChange={(open) => !open && setMenu(null)}
+        anchorRef={menuAnchor}
+        items={menu ? menuItems(cols.find((c) => c.column.key === menu)?.column ?? cols[0]!.column) : []}
+        placement="bottom-start"
+        aria-label="Column actions"
+      />
     </div>
   );
 }

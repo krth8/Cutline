@@ -19,6 +19,11 @@ export type Route =
   | ({ kind: 'mePage'; pageId: string } & WithTask)
   | ({ kind: 'projectPages'; projectId: string } & WithTask)
   | ({ kind: 'projectPage'; projectId: string; pageId: string } & WithTask)
+  /** The Tasks view of a project, full page (the Tasks tab). */
+  | ({ kind: 'projectTasks'; projectId: string } & WithTask)
+  /** One view full page, in a project's or the personal space. */
+  | ({ kind: 'projectView'; projectId: string; viewId: string } & WithTask)
+  | ({ kind: 'meView'; viewId: string } & WithTask)
   | ({ kind: 'review'; projectId: string; clip?: string; v?: string; session?: string } & WithTask)
   /** A path that is none of the above (e.g. /dev/ui). Carries the original path + query. */
   | { kind: 'notFound'; path: string };
@@ -58,6 +63,7 @@ export function parseRoute(url: string): Route {
   if (seg[0] === 'me') {
     if (seg.length === 1) return withTask({ kind: 'me' as const });
     if (seg.length === 3 && seg[1] === 'page') return withTask({ kind: 'mePage' as const, pageId: seg[2]! });
+    if (seg.length === 3 && seg[1] === 'view') return withTask({ kind: 'meView' as const, viewId: seg[2]! });
     return notFound;
   }
   if (seg[0] === 'p' && seg.length >= 3) {
@@ -65,6 +71,10 @@ export function parseRoute(url: string): Route {
     if (seg.length === 3 && seg[2] === 'pages') return withTask({ kind: 'projectPages' as const, projectId });
     if (seg.length === 4 && seg[2] === 'page') {
       return withTask({ kind: 'projectPage' as const, projectId, pageId: seg[3]! });
+    }
+    if (seg.length === 3 && seg[2] === 'tasks') return withTask({ kind: 'projectTasks' as const, projectId });
+    if (seg.length === 4 && seg[2] === 'view') {
+      return withTask({ kind: 'projectView' as const, projectId, viewId: seg[3]! });
     }
     if (seg.length === 3 && seg[2] === 'review') {
       const route: Route = { kind: 'review', projectId };
@@ -101,6 +111,15 @@ export function buildRoute(route: Route): string {
     case 'projectPage':
       path = `/p/${enc(route.projectId)}/page/${enc(route.pageId)}`;
       break;
+    case 'projectTasks':
+      path = `/p/${enc(route.projectId)}/tasks`;
+      break;
+    case 'projectView':
+      path = `/p/${enc(route.projectId)}/view/${enc(route.viewId)}`;
+      break;
+    case 'meView':
+      path = `/me/view/${enc(route.viewId)}`;
+      break;
     case 'review':
       path = `/p/${enc(route.projectId)}/review`;
       if (route.clip) query.set('clip', route.clip);
@@ -113,11 +132,19 @@ export function buildRoute(route: Route): string {
   return qs ? `${path}?${qs}` : path;
 }
 
+/** The full-page route of a view: a project's tasks view lives in the project, any other view under /me. */
+export function viewRoute(tableRef: string, viewId: string): Route {
+  const match = /^tasks:([^*:]+)$/.exec(tableRef);
+  return match ? { kind: 'projectView', projectId: match[1]!, viewId } : { kind: 'meView', viewId };
+}
+
 /** The project a route belongs to, or null for home / personal space. */
 export function routeProjectId(route: Route): string | null {
   switch (route.kind) {
     case 'projectPages':
     case 'projectPage':
+    case 'projectTasks':
+    case 'projectView':
     case 'review':
       return route.projectId;
     default:

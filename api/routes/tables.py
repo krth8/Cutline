@@ -49,7 +49,8 @@ async def reorder_rows(ref: str, data: dict = Body(...), user: dict = Depends(re
 
 @router.patch("/api/tables/{ref}/rows/{row_id}")
 async def update_row(ref: str, row_id: str, data: dict = Body(...), user: dict = Depends(require_auth)):
-    return await resolve_source(ref).update_row(user, row_id, data.get("values") or {})
+    extra = {"parent_id": data["parentId"]} if "parentId" in data else {}
+    return await resolve_source(ref).update_row(user, row_id, data.get("values") or {}, **extra)
 
 
 @router.delete("/api/tables/{ref}/rows/{row_id}")

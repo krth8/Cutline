@@ -77,6 +77,10 @@ def scene(server, new_page):
     project = server.create_project("Spot")
     for uid in users.values():
         server.grant_access(project, uid)
+    # These tests are about ordinary pages and start from an empty tree: take the Tasks page every project
+    # gets (T13) out of the database. Its own behaviour is tested in test_tasks_tab.py and tests/test_tasks_page.py.
+    server.sql("DELETE FROM views WHERE owner_page_id IN (SELECT id FROM pages WHERE project_id = ? AND system_key = 'tasks')", (project,))
+    server.sql("DELETE FROM pages WHERE project_id = ? AND system_key = 'tasks'", (project,))
     ana = new_page(name="ana")
     ben = new_page(name="ben")
     login(ana, server.base_url, "ana", goto=f"/p/{project}/pages")

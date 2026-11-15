@@ -173,6 +173,14 @@ export function getTable(ref: string): TableEntry {
   return t;
 }
 
+/** Refetch the schema and every active query of a table now (after this tab changed its columns; the server does not echo events to the sender). */
+export function refreshTable(ref: string): void {
+  const t = tables.get(ref);
+  if (!t) return;
+  t.fetchSchema();
+  t.scheduleQueries();
+}
+
 export function peekTable(ref: string): TableEntry | undefined {
   return tables.get(ref);
 }

@@ -70,6 +70,7 @@ def _body(page: dict, user: dict) -> dict:
         "title": page["title"],
         "icon": page["icon"],
         "kind": page["kind"],
+        "system": page["system"],
         "space": space_of(page),
         "parentId": page["parentId"],
         "sortOrder": page["sortOrder"],
@@ -129,7 +130,7 @@ async def list_pages(space: str, archived: int = 0, user: dict = Depends(require
                          archived=bool(archived))
     rows = [r for r in rows if r["kind"] != "task"]  # task pages are reached through their task only
     return [{"id": r["id"], "parentId": r["parentId"], "title": r["title"], "icon": r["icon"],
-             "sortOrder": r["sortOrder"], "kind": r["kind"]} for r in rows]
+             "sortOrder": r["sortOrder"], "kind": r["kind"], "system": r["system"]} for r in rows]
 
 
 @router.post("/api/spaces/{space}/pages")
@@ -229,6 +230,8 @@ async def move_preview(page_id: str, space: str, user: dict = Depends(require_au
     page = _load(page_id, user, write=True)
     if page["kind"] == "task":
         raise HTTPException(status_code=400, detail="A task page cannot be moved")
+    if page["system"]:
+        raise HTTPException(status_code=400, detail="The Tasks page cannot be moved to another space")
     space_type, project_id, _parent = _destination({"space": space}, user)
     before = _readers(page["spaceType"], page["projectId"], page["ownerId"])
     after = _readers(space_type, project_id, user["id"])
@@ -287,6 +290,8 @@ async def delete_page(page_id: str, user: dict = Depends(require_auth)):
     page = _load(page_id, user, write=True)
     if page["archivedAt"] is None:
         raise HTTPException(status_code=409, detail="Archive the page before deleting it")
+    if page["system"]:
+        raise HTTPException(status_code=400, detail="The Tasks page cannot be deleted")
     delete_files_of_page_tree(page_id)
     db_delete_page(page_id)
     await close_unavailable_rooms()

@@ -92,6 +92,8 @@ def test_asking_again_does_not_make_a_second_task(scene, server):
 
 def test_the_chip_opens_the_task_and_its_clip_link_opens_the_review(scene):
     alice = scene["alice"]
+    # This test is about the old task detail, which only exists behind the "old task list" switch (T13)
+    alice.evaluate("localStorage.setItem('legacyTasks', '1')")
     alice.click(f"{COMMENT} .comment-task-chip")
     alice.wait_for_selector("#taskDetailPanel:not(.hidden)", timeout=10000)
     wait_js(alice, "document.getElementById('taskDetailName').value === 'Make the logo bigger'")
@@ -101,6 +103,14 @@ def test_the_chip_opens_the_task_and_its_clip_link_opens_the_review(scene):
                    " && document.getElementById('taskDetailPanel').classList.contains('hidden')", 10000)
 
 
+def test_with_the_new_task_list_the_chip_opens_the_task_panel(scene):
+    bob = scene["bob"]
+    bob.evaluate("localStorage.removeItem('legacyTasks')")
+    bob.click(f"{COMMENT} .comment-task-chip")
+    bob.wait_for_selector("[data-testid=task-panel]", timeout=15000)
+    wait_js(bob, "location.pathname.endsWith('/tasks') && location.search.includes('task=')", 10000)
+
+
 def test_deleting_the_task_takes_the_chip_away_for_everyone(scene, server):
     tasks = server.api(f"/api/projects/{scene['project']}/tasks")["tasks"]
     task = [t for t in tasks if t.get("commentId") == scene["comment"]][0]
@@ -108,3 +118,4 @@ def test_deleting_the_task_takes_the_chip_away_for_everyone(scene, server):
     for who in ("alice", "bob"):
         scene[who].wait_for_selector(f"{COMMENT} .comment-task-chip", state="detached", timeout=10000)
         assert scene[who].locator(f"{COMMENT} .comment-task-btn").count() == 1
+

@@ -184,8 +184,9 @@ function getInitials(name) {
 window.currentTasksProjectId = null;
 
 async function loadProjectsView() {
-    // If a project is selected, show tasks view, otherwise show projects list
-    if (currentTasksProjectId) {
+    // If a project is selected, show tasks view, otherwise show projects list. With the new task
+    // list (the default) a project opens in the bundle (openProjectTasks), so this tab shows the grid.
+    if (currentTasksProjectId && Routes.legacyTasks()) {
         await loadProjectsTasks();
     } else {
         await loadProjectsGrid();
@@ -285,6 +286,9 @@ function renderProjectsSidebarList(projects) {
 
 async function openProjectTasks(projectId) {
     window.currentTasksProjectId = projectId;
+
+    // The project's Tasks view in the bundle (unless this browser uses the old list)
+    if (Routes.openTasks(projectId)) return;
 
     // Update sidebar active state
     document.querySelectorAll('.projects-sidebar-item').forEach(item => {

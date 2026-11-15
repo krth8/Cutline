@@ -11,11 +11,15 @@ values (400); an invalid query raises ``QueryError`` (the route turns it into a 
 from __future__ import annotations
 
 import re
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from fastapi import HTTPException
 
 from .query import QueryError  # noqa: F401  (re-exported for the routes)
+
+
+# "parent_id was not given" for update_row (None means: move to the top level)
+UNSET: Any = object()
 
 
 class TableSource:
@@ -39,7 +43,8 @@ class TableSource:
                          project_id: Optional[str] = None) -> dict:
         raise NotImplementedError
 
-    async def update_row(self, principal: dict, row_id: str, values: dict) -> dict:
+    async def update_row(self, principal: dict, row_id: str, values: dict, parent_id: Any = UNSET) -> dict:
+        """Change values; `parent_id` (a row id or None for top level) moves the row when given."""
         raise NotImplementedError
 
     async def delete_row(self, principal: dict, row_id: str) -> None:
