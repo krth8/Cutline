@@ -4,6 +4,7 @@
  */
 import { registerLayout } from './registry';
 import { FallbackLayout } from './fallback/FallbackLayout';
+import './list';
 
 // Placeholder for the real table layout (T6 registers 'table' again and removes this line)
 registerLayout('table', FallbackLayout);
