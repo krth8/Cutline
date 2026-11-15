@@ -40,16 +40,15 @@ def test_the_documents_are_pages_with_the_same_hierarchy(scene, server):
     assert server.api(f"/api/pages/{scene['doc']}")["needsImport"] is True
 
 
-def test_the_docs_tab_is_hidden_and_a_saved_docs_tab_opens_pages(scene, server):
+def test_there_is_no_docs_tab_and_a_stale_saved_docs_tab_opens_home(scene, server):
     page = scene["new_page"](name="tabs")
     login(page, server.base_url, "alice")
-    page.wait_for_selector('.main-tab[data-tab="pages"]:not(.hidden)')
-    assert page.locator('.main-tab[data-tab="docs"]').is_hidden()
-    assert page.locator('.main-tab[data-tab="projects"]').is_visible()
+    page.wait_for_selector("[data-testid=cl-sidebar]")
+    assert page.locator(".main-tab").count() == 0  # the sidebar is the only navigation
     page.evaluate("localStorage.setItem('activeTab', 'docs')")
     page.reload()
     page.wait_for_function("document.querySelector('.app').dataset.view === 'pages'", timeout=15000)
-    assert page.locator('.main-tab[data-tab="docs"]').is_hidden()
+    assert page.locator(".main-tab").count() == 0
 
 
 def test_opened_by_two_people_at_once_the_content_is_imported_exactly_once(scene, server):

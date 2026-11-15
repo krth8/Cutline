@@ -1456,6 +1456,7 @@ async def dev_view_page(view_id: str):
 
 # Routes of the Pages app (PLAN.md 5.3). The page itself decides what to show from the URL.
 @app.get("/home")
+@app.get("/lounge")
 @app.get("/me")
 @app.get("/me/page/{page_id}")
 @app.get("/p/{project_id}/pages")
