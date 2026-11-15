@@ -4,7 +4,8 @@ import * as D from './displays';
 import * as E from './editors';
 import * as P from './pickers';
 import * as C from './convert';
-import { asArray, optionLabel } from './util';
+import { RelationEditor } from './RelationEditor';
+import { optionLabel } from './util';
 
 const text = (a: unknown) => (typeof a === 'string' ? a : '');
 
@@ -100,10 +101,11 @@ const cells: Record<ColumnType, CellDef> = {
   },
   relation: {
     Display: D.RelationDisplay,
-    Editor: E.ReadonlyEditor,
+    Editor: RelationEditor,
     isEmpty: C.listIsEmpty,
     toText: C.relationToText,
-    compare: (a, b) => asArray(a).length - asArray(b).length,
+    // By the first linked title, like the server sorts
+    compare: (a, b) => C.compareWith(a as unknown[] | null, b as unknown[] | null, C.listIsEmpty, (x, y) => C.compareText(C.relationToText([x[0]]), C.relationToText([y[0]]))),
   },
   formula: {
     Display: D.FormulaDisplay,
@@ -122,8 +124,10 @@ export function getCell(type: ColumnType): CellDef {
 }
 
 /** Types that can never be edited by a user, whatever the column says. */
-export const READONLY_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>(['formula', 'relation']);
+export const READONLY_TYPES: ReadonlySet<ColumnType> = new Set<ColumnType>(['formula']);
 
+/** A relation column is read-only when it mirrors another table's column or its target table is gone. */
 export function isColumnEditable(column: Column): boolean {
-  return !column.readonly && !READONLY_TYPES.has(column.type);
+  if (column.readonly || READONLY_TYPES.has(column.type)) return false;
+  return !(column.type === 'relation' && column.config?.targetDeleted === true);
 }

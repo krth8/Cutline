@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Input } from '../../ui';
+import { getRow } from '../../api/tables';
 import { CellHost } from '../cells';
+import { asLinks, relationConfig } from '../cells/relation';
 import type { Column, Filter, FilterOp, TableSchema } from '../types';
 import {
   MAX_FILTER_DEPTH,
@@ -36,6 +38,15 @@ function valueColumn(column: Column, op: FilterOp): Column {
 function ValueEditor({ column, leaf, onChange }: { column: Column; leaf: Leaf; onChange: (value: unknown) => void }) {
   if (!hasValue(leaf.op)) return null;
   const vc = valueColumn(column, leaf.op);
+
+  // "contains": pick one row of the target table (the value is its id)
+  if (column.type === 'relation' && leaf.op === 'contains') {
+    return (
+      <span className="cl-filter__value cl-filter__cell" data-testid="filter-value">
+        <RelationFilterValue column={column} value={leaf.value} onChange={onChange} />
+      </span>
+    );
+  }
 
   if (leaf.op === 'relative') {
     const spec = (leaf.value ?? { unit: 'day', from: -7, to: 0 }) as { unit: string; from: number; to: number };
@@ -94,6 +105,36 @@ function ValueEditor({ column, leaf, onChange }: { column: Column; leaf: Leaf; o
         <CellHost column={vc} value={leaf.value ?? empty} onChange={onChange} />
       )}
     </span>
+  );
+}
+
+/** A relation filter value: the id of one linked row, picked with the relation cell's editor. */
+function RelationFilterValue({ column, value, onChange }: { column: Column; value: unknown; onChange: (v: unknown) => void }) {
+  const id = typeof value === 'string' && value ? value : null;
+  const target = relationConfig(column).target;
+  const [labels, setLabels] = useState<Record<string, string>>({});
+  // A filter loaded from the server only knows the id: fetch the row's title
+  useEffect(() => {
+    if (!id || !target || labels[id] !== undefined) return;
+    let current = true;
+    getRow(target, id)
+      .then((row) => current && setLabels((l) => ({ ...l, [id]: typeof row.values.name === 'string' && row.values.name ? row.values.name : 'Untitled' })))
+      .catch(() => current && setLabels((l) => ({ ...l, [id]: 'Unavailable row' })));
+    return () => {
+      current = false;
+    };
+  }, [id, target, labels]);
+  const single: Column = { ...column, readonly: false, builtin: false, config: { ...column.config, multiple: false, targetDeleted: false } };
+  return (
+    <CellHost
+      column={single}
+      value={id ? [{ id, label: labels[id] ?? '...' }] : []}
+      onChange={(v) => {
+        const next = asLinks(v)[0];
+        if (next) setLabels((l) => ({ ...l, [next.id]: next.label }));
+        onChange(next ? next.id : null);
+      }}
+    />
   );
 }
 
