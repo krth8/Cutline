@@ -21,6 +21,8 @@ export interface Platform {
   live: {
     on(type: string, handler: (msg: any) => void): () => void; // returns unsubscribe
     watch(slot: string, target: { projects?: string[]; allTasks?: boolean } | null): void;
+    /** Tell the server where this tab is (the people panel of Lounge). Optional so test fakes need not have it. */
+    setPlace?(place: { projectId: string; label: string | null } | null): void;
   };
   toast(kind: 'info' | 'success' | 'error', message: string, opts?: ToastOptions): void;
   confirm(message: string, opts?: { danger?: boolean; confirmLabel?: string }): Promise<boolean>;
@@ -78,6 +80,7 @@ interface LegacyGlobals {
     on(type: string, fn: (msg: any) => void): void;
     watch(slot: string, projectId: string | null): void;
     watchAllTasks?(slot: string, on: boolean): void;
+    setPlace?(place: { projectId: string; label: string | null } | null): void;
   };
   Toast?: Record<
     'info' | 'success' | 'error',
@@ -182,6 +185,9 @@ export function createLegacyPlatform(): Platform {
         for (const [legacySlot, id] of wanted) live.watch(legacySlot, id);
         if (wanted.size) heldSlots.set(slot, new Set(wanted.keys()));
         else heldSlots.delete(slot);
+      },
+      setPlace(place) {
+        legacy().Live?.setPlace?.(place);
       },
     },
 

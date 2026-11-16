@@ -21,8 +21,9 @@ async def live_socket(
 
     The tab sends {"type": "watch", "projects": [ids], "allTasks": bool} to choose
     the projects it gets updates for (allTasks: task events of every project the
-    user has task access to; guests never get it), and {"type": "ping"} to check
-    the line.
+    user has task access to; guests never get it), {"type": "place", "place":
+    {"projectId", "label"} | null} to say where it is (the people panel of Lounge), and
+    {"type": "ping"} to check the line.
     """
     principal = principal_from_ticket(ticket)
     await websocket.accept()
@@ -39,6 +40,10 @@ async def live_socket(
             kind = message.get("type") if isinstance(message, dict) else None
             if kind == "ping":
                 await websocket.send_json({"type": "pong"})
+            elif kind == "place":
+                # Where the tab is now: the people panel of Lounge shows it
+                if live.set_place(conn, message.get("place")) and not principal.get("is_guest"):
+                    await live.to_all_users({"type": "presence", "userId": principal["id"]})
             elif kind == "watch":
                 wanted = message.get("projects")
                 denied = live.watch(conn, wanted if isinstance(wanted, list) else [],
@@ -50,5 +55,11 @@ async def live_socket(
     except (WebSocketDisconnect, ValueError, RuntimeError):
         pass
     finally:
+        had_place = conn.place is not None
         live.remove(conn)
         untrack_socket(principal, entry)
+        if had_place and not principal.get("is_guest"):  # only tabs that said where they were
+            try:
+                await live.to_all_users({"type": "presence", "userId": principal["id"]})
+            except Exception:
+                pass

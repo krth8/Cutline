@@ -10,6 +10,8 @@ same id on the socket, so a change is not echoed back to the tab that made it.
 """
 
 import contextvars
+import time
+from datetime import datetime
 from typing import Dict, Optional
 
 from fastapi import WebSocket
@@ -55,11 +57,15 @@ class LiveConnection:
         # "All tasks" watch: task events of every project the user has task access to.
         # Access is checked when an event is sent, so it follows grants and revocations.
         self.all_tasks = False
+        # Where this tab is: {"projectId": ..., "label": "Review: shot_010"} (the people panel of Lounge)
+        self.place: Optional[dict] = None
+        self.place_at = 0.0
 
 
 class LiveHub:
     def __init__(self):
         self.connections: Dict[int, LiveConnection] = {}
+        self.last_seen: Dict[str, str] = {}  # user id -> when their last tab closed (ISO time)
 
     def add(self, websocket: WebSocket, client_id: str, principal: dict) -> LiveConnection:
         conn = LiveConnection(websocket, client_id, principal)
@@ -68,6 +74,32 @@ class LiveHub:
 
     def remove(self, conn: LiveConnection) -> None:
         self.connections.pop(id(conn.websocket), None)
+        user_id = conn.principal.get("id")
+        if user_id and not conn.principal.get("is_guest") and not any(
+                c.principal.get("id") == user_id for c in self.connections.values()):
+            self.last_seen[user_id] = datetime.now().isoformat()
+
+    def set_place(self, conn: LiveConnection, place: object) -> bool:
+        """Remember where a tab is. True when it changed."""
+        clean = None
+        if isinstance(place, dict) and isinstance(place.get("projectId"), str) and place["projectId"]:
+            label = place.get("label")
+            clean = {"projectId": place["projectId"][:64],
+                     "label": label.strip()[:120] if isinstance(label, str) and label.strip() else None}
+        if clean == conn.place:
+            return False
+        conn.place, conn.place_at = clean, time.monotonic()
+        return True
+
+    def presence(self, user_id: str, project_id: str) -> tuple:
+        """(online, place): whether the user has a tab open, and what the most recently moved tab that is in
+        this project shows (None when no tab of theirs is in it)."""
+        mine = [c for c in self.connections.values() if c.principal.get("id") == user_id and not c.principal.get("is_guest")]
+        here = [c for c in mine if c.place and c.place["projectId"] == project_id]
+        if not here:
+            return bool(mine), None
+        latest = max(here, key=lambda c: c.place_at)
+        return True, latest.place["label"] or "Here"
 
     def _access(self, principal: dict, project_id: str) -> Optional[bool]:
         """None if the principal may not see the project, else whether it may see its tasks."""

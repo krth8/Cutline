@@ -11,6 +11,7 @@ import { buildRoute, useRoute } from '../router';
 import { readCollapsed, writeCollapsed } from './navState';
 import { ProjectTabs, redirectFor } from './ProjectTabs';
 import { Sidebar } from './Sidebar';
+import { usePlace } from './usePlace';
 
 const NARROW_QUERY = '(max-width: 800px)';
 
@@ -34,6 +35,7 @@ function layout(): HTMLElement | null {
 export function NavApp() {
   const route = useRoute();
   const narrow = useNarrow();
+  usePlace(route);
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const user = getPlatform().user();
   const [, setProjectsVersion] = useState(0);

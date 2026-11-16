@@ -63,6 +63,16 @@
     .lounge-sidebar-right { display: none; }
 }
 
+/* Lounge people: who is in the project and what they are doing */
+.lounge-people-head { margin: 14px 0 6px; font-size: 10.5px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); }
+.lounge-people-head:first-child { margin-top: 0; }
+.lounge-person { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.lounge-person.is-away { opacity: .55; }
+.lounge-person-text { display: flex; flex-direction: column; min-width: 0; }
+.lounge-person-text .lounge-user-name { font-weight: 560; }
+.lounge-person-place { color: var(--text-muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lounge-status-dot.offline { background: var(--text-muted); }
+
 /* Old task list (localStorage.legacyTasks): the sidebar picks the project, so its own list and grid go */
 .cl-layout.has-nav .projects-sidebar,
 .cl-layout.has-nav #projectsBackBtn { display: none; }

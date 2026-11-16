@@ -115,6 +115,7 @@ const LoungeModule = {
      * Select a custom channel
      */
     async selectCustomChannel(channelId) {
+        this.people = null;
         this.activeChannelId = channelId;
         this.activeChannelType = 'custom';
         this.projectId = null;
@@ -159,6 +160,7 @@ const LoungeModule = {
 
             // Connect WebSocket
             this.connectWebSocket();
+            this.loadPeople();
 
             this.render();
             this.scrollToBottom();
@@ -322,6 +324,7 @@ const LoungeModule = {
                 break;
 
             case 'user_joined':
+                if (this.people) this.loadPeople();
                 if (!this.onlineUsers.find(u => u.id === data.user.id)) {
                     this.onlineUsers.push(data.user);
                     this.updateOnlineUsers();
@@ -538,7 +541,67 @@ const LoungeModule = {
         `;
     },
 
+    /**
+     * The people of the open project room and what they are doing (GET /api/projects/<id>/people). Fetched again
+     * when someone's place changes (the live "presence" event); a custom channel keeps the online list.
+     */
+    async loadPeople() {
+        const projectId = this.activeChannelType === 'project' ? this.projectId : null;
+        if (!projectId) { this.people = null; return; }
+        if (!this.presenceHooked && typeof Live !== 'undefined') {
+            this.presenceHooked = true;
+            let timer = null;
+            Live.on('presence', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => this.loadPeople(), 300);
+            });
+        }
+        try {
+            const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/people`);
+            if (!res.ok) return;
+            const body = await res.json();
+            if (this.projectId !== projectId) return; // another room was opened meanwhile
+            this.people = body.people || [];
+            this.updateOnlineUsers();
+        } catch (e) { /* offline: keep the list we have */ }
+    },
+
+    renderPeople() {
+        const online = this.people.filter(p => p.online);
+        const away = this.people.filter(p => !p.online);
+        const ago = (iso) => {
+            if (!iso) return '';
+            const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+            if (!(minutes >= 0)) return '';
+            if (minutes < 1) return 'seen just now';
+            if (minutes < 60) return `seen ${minutes} min ago`;
+            if (minutes < 60 * 24) return `seen ${Math.round(minutes / 60)} h ago`;
+            return `seen ${new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' })}`;
+        };
+        const row = (p) => {
+            const doing = p.online ? (p.place || 'Elsewhere in Cutline') : ago(p.lastSeen);
+            const role = p.role && p.role !== 'editor' ? p.role.charAt(0).toUpperCase() + p.role.slice(1) : '';
+            const meta = [role, doing].filter(Boolean).join(' \u00b7 ');
+            return `
+            <div class="lounge-person ${p.online ? 'is-online' : 'is-away'}" data-person-id="${this.escapeHtml(p.id)}">
+                <div class="lounge-user-avatar ${p.id === this.userId ? 'is-me' : ''}">
+                    ${p.profileImage ? `<img src="${this.escapeHtml(p.profileImage)}" alt="">` : `<span>${this.escapeHtml((p.username || 'U')[0].toUpperCase())}</span>`}
+                    <span class="lounge-status-dot ${p.online ? 'online' : 'offline'}"></span>
+                </div>
+                <div class="lounge-person-text">
+                    <span class="lounge-user-name">${this.escapeHtml(p.username)}${p.id === this.userId ? ' (you)' : ''}</span>
+                    ${meta ? `<span class="lounge-person-place">${this.escapeHtml(meta)}</span>` : ''}
+                </div>
+            </div>`;
+        };
+        return `
+            ${online.length ? `<div class="lounge-people-head">Online</div>${online.map(row).join('')}` : ''}
+            ${away.length ? `<div class="lounge-people-head">Away</div>${away.map(row).join('')}` : ''}
+        `;
+    },
+
     renderOnlineUsers() {
+        if (this.people) return this.renderPeople();
         return this.onlineUsers.map(u => `
             <div class="lounge-online-user">
                 <div class="lounge-user-avatar ${u.id === this.userId ? 'is-me' : ''}">
@@ -1267,7 +1330,7 @@ const LoungeModule = {
         }
         const count = document.querySelector('.lounge-online-count');
         if (count) {
-            count.textContent = this.onlineUsers.length;
+            count.textContent = this.people ? this.people.filter(p => p.online).length : this.onlineUsers.length;
         }
         const memberCount = document.querySelector('.lounge-member-count');
         if (memberCount) {

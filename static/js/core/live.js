@@ -57,6 +57,20 @@ const Live = (function () {
         ws.send(JSON.stringify({ type: 'watch', projects: list, allTasks }));
     }
 
+    // Where this tab is (the people panel of Lounge): {projectId, label} or null
+    let place = null, sentPlace;
+    function sendPlace(force) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        const key = JSON.stringify(place);
+        if (!force && key === sentPlace) return;
+        sentPlace = key;
+        ws.send(JSON.stringify({ type: 'place', place }));
+    }
+    function setPlace(next) {
+        place = next && next.projectId ? { projectId: String(next.projectId), label: next.label ? String(next.label) : null } : null;
+        sendPlace();
+    }
+
     function watchAllTasks(slot, on) {
         if (on) wantedAll.add(slot);
         else wantedAll.delete(slot);
@@ -106,6 +120,7 @@ const Live = (function () {
             retries = 0;
             lastHeard = Date.now();
             sendWatch(true);
+            sendPlace(true);
             // Anything that happened while the line was down (or before it came up) was missed
             emit(wasConnected ? 'resync' : 'connected', {});
             wasConnected = true;
@@ -159,7 +174,7 @@ const Live = (function () {
         if (!document.hidden && !ws && !connecting && !stopped) { retries = 0; connect(); }
     });
 
-    return { connect, stop, watch, watchAllTasks, on, isConnected: () => !!ws && ws.readyState === WebSocket.OPEN };
+    return { connect, stop, watch, watchAllTasks, setPlace, on, isConnected: () => !!ws && ws.readyState === WebSocket.OPEN };
 })();
 
 window.Live = Live;
