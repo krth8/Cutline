@@ -1,5 +1,6 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { registerBuiltinCommands } from './builtins';
+import { registerTemplateCommands, TemplatesHost } from '../pages/templates';
 import { PaletteHost } from './PaletteHost';
 
 let root: Root | null = null;
@@ -11,9 +12,15 @@ let root: Root | null = null;
 export function mountSearch(): void {
   if (root) return;
   registerBuiltinCommands();
+  registerTemplateCommands();
   const host = document.createElement('div');
   host.id = 'cl-search-root';
   document.body.appendChild(host);
   root = createRoot(host);
-  root.render(<PaletteHost />);
+  root.render(
+    <>
+      <PaletteHost />
+      <TemplatesHost />
+    </>,
+  );
 }

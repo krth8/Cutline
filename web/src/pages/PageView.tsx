@@ -32,6 +32,7 @@ import {
 import { ancestorsOf } from './tree/treeModel';
 import { MoveDialog } from './tree/MoveDialog';
 import { HistoryDialog } from './history';
+import { duplicateAndOpen, SaveTemplateDialog } from './templates';
 import { SyncStatus, type SyncInfo } from './sync/CollabEditor';
 import './PageView.css';
 
@@ -265,6 +266,7 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [sync, setSync] = useState<SyncInfo | null>(null);
   const menuAnchor = useRef<HTMLButtonElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -376,6 +378,10 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
     items.push({ id: 'set-home', label: 'Set as home', onSelect: () => void setHomePage(pageId) });
   }
   items.push({ id: 'history', label: 'History', onSelect: () => setHistoryOpen(true) });
+  if (editable && page.kind === 'page') {
+    items.push({ id: 'duplicate', label: 'Duplicate', onSelect: () => void duplicateAndOpen(space, pageId) });
+    items.push({ id: 'save-template', label: 'Save as template...', onSelect: () => setTemplateOpen(true) });
+  }
   items.push({
     id: 'copy',
     label: 'Copy link',
@@ -444,6 +450,7 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
           &hellip;
         </Button>
         <Menu open={menuOpen} onOpenChange={setMenuOpen} anchorRef={menuAnchor} items={items} placement="bottom-end" aria-label="Page menu" />
+        {templateOpen ? <SaveTemplateDialog open pageId={pageId} title={title} onClose={() => setTemplateOpen(false)} /> : null}
         {historyOpen ? <HistoryDialog open pageId={pageId} canEdit={editable} onClose={() => setHistoryOpen(false)} /> : null}
         {moveOpen ? (
           <MoveDialog

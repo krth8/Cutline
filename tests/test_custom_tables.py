@@ -153,7 +153,8 @@ def test_list_tables_of_a_space(api, make_table, admin, member, viewer, reviewer
     mine = make_table(member, "me", "Mine")
     res = api("GET", f"/api/tables?space=p:{project}", member)
     assert res.status_code == 200
-    assert [t["name"] for t in res.json()["tables"]] == ["A", "B"]
+    # Two tables made in the same clock tick have no defined order between them
+    assert sorted(t["name"] for t in res.json()["tables"]) == ["A", "B"]
     assert {t["ref"] for t in res.json()["tables"]} == {a["ref"], b["ref"]}
     assert api("GET", f"/api/tables?space=p:{project}", viewer).status_code == 200
     assert api("GET", f"/api/tables?space=p:{project}", reviewer).status_code == 403
