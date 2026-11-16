@@ -76,7 +76,7 @@ def test_a_new_user_lands_on_the_dashboard_with_their_tasks_and_numbers(scene, s
     ana = new_page(name="ana")
     login(ana, server.base_url, "ana")  # the bare "/" with nothing saved: the Projects grid
     ana.wait_for_url("**/projects", timeout=15000)
-    ana.click("[data-testid=nav-home]")
+    ana.click("[data-testid=tab-main]")
     ana.wait_for_url("**/home", timeout=15000)
     expect(ana.locator("[data-testid=page-view]")).to_be_visible(timeout=15000)
     expect(ana.locator(".cl-page__title")).to_have_value("My dashboard")
@@ -129,7 +129,7 @@ def test_set_as_home_on_another_personal_page_changes_what_home_shows(scene, ser
     expect(tree.get_by_role("treeitem", name="Scratch pad").get_by_role("img", name="Home page")).to_be_visible()
     assert tree.get_by_role("treeitem", name="My dashboard").get_by_role("img", name="Home page").count() == 0
 
-    tree.get_by_role("link", name="Home", exact=True).click()
+    ana.click("[data-testid=tab-main]")  # no project is open: the Home tab is the Home page
     ana.wait_for_url("**/home")
     expect(ana.locator(".cl-page__title")).to_have_value("Scratch pad")
 
@@ -173,8 +173,8 @@ def test_deep_links_and_project_links_still_open_what_they_opened(scene, server,
     ben.goto(server.base_url + "/")
     ben.wait_for_url("**/projects", timeout=15000)
 
-    # Home in the sidebar opens the dashboard
+    # the Home tab with no project open is the dashboard
     ben.goto(f"{server.base_url}/me")
-    ben.click("[data-testid=nav-home]")
+    ben.click("[data-testid=tab-main]")
     ben.wait_for_url("**/home", timeout=15000)
     expect(ben.locator(".cl-page__title")).to_have_value("My dashboard", timeout=15000)

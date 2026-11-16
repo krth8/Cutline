@@ -71,7 +71,7 @@ def test_login_lands_on_the_projects_grid_with_the_three_tabs(scene, server):
     page.wait_for_url("**/projects")
     expect(page.locator(SIDEBAR)).to_be_visible()
     expect(page.locator("[data-testid=project-card]")).to_have_count(2)
-    assert page.locator(f"{TABS} .cl-ptabs__tab").all_inner_texts() == ["Main", "Review", "Lounge"]
+    assert page.locator(f"{TABS} .cl-ptabs__tab").all_inner_texts() == ["Home", "Review", "Lounge"]
     assert current_tab(page) == "Review"
     assert page.locator(".main-tab").count() == 0
     # every project of the user is in the sidebar
@@ -97,17 +97,17 @@ def test_the_tabs_show_the_open_project(scene, server):
     page, spot = scene["page"], scene["spot"]
     tab(page, "main")
     page.wait_for_url(f"**/p/{spot}/pages")
-    assert current_tab(page) == "Main"
+    assert current_tab(page) == "Home"
 
     project(page, spot).locator("[data-testid=nav-tasks]").click()
     page.wait_for_url(f"**/p/{spot}/tasks")
     page.wait_for_selector("[data-testid=table-layout]", timeout=20000)
-    assert current_tab(page) == "Main" and current(page) == ["Tasks"]
+    assert current_tab(page) == "Home" and current(page) == ["Tasks"]
 
     project(page, spot).get_by_role("treeitem", name="Brief").click()
     page.wait_for_url(f"**/p/{spot}/page/{scene['brief']}")
     assert page.locator(f"{SIDEBAR} [role=treeitem][aria-selected=true]").get_attribute("aria-label") == "Brief"
-    assert current_tab(page) == "Main"
+    assert current_tab(page) == "Home"
 
     tab(page, "lounge")
     page.wait_for_url(f"**/p/{spot}/lounge")
@@ -123,6 +123,7 @@ def test_the_tabs_show_the_open_project(scene, server):
 
 def test_tasks_is_listed_once_per_project_and_not_among_the_pages(scene, server):
     page = scene["page"]
+    tab(page, "main")  # the page trees are part of the Home tab
     for project_id in (scene["spot"], scene["other"]):
         row = project(page, project_id)
         if row.locator(".cl-nav__chevron").get_attribute("aria-expanded") != "true":
@@ -133,9 +134,11 @@ def test_tasks_is_listed_once_per_project_and_not_among_the_pages(scene, server)
 
 def test_with_no_project_open_the_tabs_are_the_general_screens(scene, server):
     page = scene["page"]
-    page.click("[data-testid=nav-home]")
+    page.click("[data-testid=nav-projects]")  # leaves the open project
+    page.wait_for_url("**/projects")
+    tab(page, "main")
     page.wait_for_url("**/home")
-    assert current(page) == ["Home"] and current_tab(page) == "Main"
+    assert current_tab(page) == "Home"
     tab(page, "review")
     page.wait_for_url("**/projects")
     assert current_tab(page) == "Review"
@@ -150,13 +153,15 @@ def test_with_no_project_open_the_tabs_are_the_general_screens(scene, server):
 
 def test_review_shows_only_that_projects_clips_and_still_works(scene, server):
     page, spot, other = scene["page"], scene["spot"], scene["other"]
-    tab(page, "review")
+    page.click("[data-testid=nav-projects]")
     page.click(f"[data-testid=project-card][data-project-id='{spot}']")
     wait_js(page, f"AppState.projectId === '{spot}' && Object.keys(AppState.clips).length === 2", 15000)
     # the review's own panel lists the open project only: no other projects, no "New project" tile
-    assert page.locator(".sidebar-left .project-item").count() == 1
-    assert page.locator(".sidebar-left .project-add").count() == 0
-    assert page.locator(".sidebar-left .project-name").inner_text() == "Spot"
+    # the old left panel of clips is gone: the strip at the bottom chooses the clip
+    expect(page.locator(".sidebar-left")).to_be_hidden()
+    expect(page.locator(".clip-bin")).to_be_visible()
+    # in Review the sidebar only chooses the project: no page trees
+    assert page.locator(f"{SIDEBAR} .cl-nav__children").count() == 0
     # comments still work
     page.fill("#commentInput", "From the new navigation")
     page.click("#submitCommentBtn")
@@ -177,15 +182,14 @@ def test_back_and_forward_work_across_legacy_and_bundle_screens(scene, server):
     page.click(f"[data-testid=project-card][data-project-id='{spot}']")
     page.wait_for_url(f"**/p/{spot}/review")
     wait_js(page, "AppState.activeTab === 'review'")
-    project(page, spot).locator("[data-testid=nav-tasks]").click()
-    page.wait_for_url(f"**/p/{spot}/tasks")
+    tab(page, "main")
+    page.wait_for_url(f"**/p/{spot}/pages")
     tab(page, "lounge")
     page.wait_for_url(f"**/p/{spot}/lounge")
 
     page.go_back()
-    page.wait_for_url(f"**/p/{spot}/tasks")
-    page.wait_for_selector("[data-testid=table-layout]", timeout=20000)
-    assert current_tab(page) == "Main"
+    page.wait_for_url(f"**/p/{spot}/pages")
+    assert current_tab(page) == "Home"
     page.go_back()
     page.wait_for_url(f"**/p/{spot}/review")
     wait_js(page, "AppState.activeTab === 'review'")
@@ -194,7 +198,7 @@ def test_back_and_forward_work_across_legacy_and_bundle_screens(scene, server):
     page.wait_for_url("**/projects")
     page.go_back()
     page.wait_for_url("**/home")
-    assert current(page) == ["Home"] and current_tab(page) == "Main"
+    assert current_tab(page) == "Home"
     page.go_forward()
     page.go_forward()
     page.wait_for_url(f"**/p/{spot}/review")

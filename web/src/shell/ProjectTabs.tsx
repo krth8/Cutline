@@ -1,5 +1,5 @@
 /**
- * The tabs of the header: Main (pages and tasks), Review and Lounge.
+ * The tabs of the header: Home (pages and tasks; `main` in the code), Review and Lounge.
  *
  * A person's access to a project is one switch per tab. With a project open the tabs are the ones they have
  * in that project; with none open, the ones they have in any project. Someone with a single tab sees no tab
@@ -14,7 +14,7 @@ import './projectTabs.css';
 
 export type TabId = 'main' | 'review' | 'lounge';
 export const TAB_ORDER: TabId[] = ['main', 'review', 'lounge'];
-const LABELS: Record<TabId, string> = { main: 'Main', review: 'Review', lounge: 'Lounge' };
+const LABELS: Record<TabId, string> = { main: 'Home', review: 'Review', lounge: 'Lounge' };
 
 type AccessProject = { id: string; canTasks: boolean; canReview?: boolean; canLounge?: boolean };
 

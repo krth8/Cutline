@@ -1,7 +1,7 @@
 /**
  * The sidebar. It stays on screen for every route, including the legacy Review and Lounge views, and
- * always lists Home, the personal pages and every project the user has access to, each with Tasks and its
- * pages. Choosing a project here decides what the tabs of the header (Main, Review, Lounge) show.
+ * always lists every project the user has access to. In the Home tab it also has the personal pages and,
+ * under each project, its pages. Choosing a project here decides what the tabs of the header (Main, Review, Lounge) show.
  */
 import { useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { getPlatform } from '../platform';
@@ -15,7 +15,7 @@ import { allowedTabs, projectTabs, tabOf, tabRoute } from './ProjectTabs';
 import { useSidebarSections, type Space } from './registry';
 import './sidebar.css';
 
-type IconName = 'search' | 'home' | 'projects' | 'tasks' | 'plus';
+type IconName = 'search' | 'projects' | 'tasks' | 'plus';
 
 /** Small line icons, drawn in the text colour. */
 function Icon({ name }: { name: IconName }) {
@@ -26,12 +26,6 @@ function Icon({ name }: { name: IconName }) {
         <svg {...common}>
           <circle cx="7" cy="7" r="4.5" />
           <path d="M10.5 10.5 14 14" />
-        </svg>
-      );
-    case 'home':
-      return (
-        <svg {...common}>
-          <path d="M2 7.5 8 2.5l6 5M3.5 6.5V13.5h9V6.5" />
         </svg>
       );
     case 'projects':
@@ -127,7 +121,7 @@ type SidebarProject = ReturnType<ReturnType<typeof getPlatform>['projects']>[num
  * One project: its name opens it in the tab that is showing (Main, Review or Lounge); under it are Tasks
  * and its pages.
  */
-function ProjectItem({ project, route, open, onOpenChange }: { project: SidebarProject; route: Route; open: boolean; onOpenChange: (open: boolean) => void }) {
+function ProjectItem({ project, route, tree, open, onOpenChange }: { project: SidebarProject; route: Route; tree: boolean; open: boolean; onOpenChange: (open: boolean) => void }) {
   const current = routeProjectId(route) === project.id;
   const onOverview = route.kind === 'projectPages' && current;
   const panelId = `cl-project-${project.id}`;
@@ -139,7 +133,7 @@ function ProjectItem({ project, route, open, onOpenChange }: { project: SidebarP
   const showing = tabOf(route);
   const target = tabRoute(showing && tabs.includes(showing) ? showing : (tabs[0] ?? 'main'), project.id);
   // Tasks and the pages are the Main tab: without it there is nothing to unfold
-  const hasMain = tabs.includes('main');
+  const hasMain = tree && tabs.includes('main');
 
   return (
     <li className="cl-nav__project" data-project-id={project.id}>
@@ -218,7 +212,7 @@ function RailLink({ to, active, label, icon }: { to: Route; active: boolean; lab
 }
 
 /** What the sidebar offers when it is folded to a narrow strip: the entries that need no list. */
-function Rail({ route, onToggle, hasMain }: { route: Route; onToggle: () => void; hasMain: boolean }) {
+function Rail({ route, onToggle }: { route: Route; onToggle: () => void }) {
   return (
     <>
       <div className="cl-sidebar__bar">
@@ -230,7 +224,6 @@ function Rail({ route, onToggle, hasMain }: { route: Route; onToggle: () => void
         <button type="button" className="cl-nav__railbtn" aria-label="Search" title="Search and commands" onClick={openSearch}>
           <Icon name="search" />
         </button>
-        {hasMain ? <RailLink to={{ kind: 'home' }} active={route.kind === 'home'} label="Home" icon="home" /> : null}
         <RailLink to={{ kind: 'projects' }} active={route.kind === 'projects'} label="Projects" icon="projects" />
       </div>
     </>
@@ -256,11 +249,13 @@ export function Sidebar({
   const open = useOpenProjects(user?.id ?? 'anonymous', routeProjectId(route));
   // Home and the personal pages belong to the Main tab: someone with only Review or Lounge does not have them
   const hasMain = allowedTabs(projects, null).includes('main');
+  // In Review and Lounge the sidebar only chooses the project: the personal pages and the page trees belong to Home
+  const inHome = tabOf(route) !== 'review' && tabOf(route) !== 'lounge';
 
   return (
     <aside className={cx('cl-sidebar', collapsed && 'is-collapsed', drawer && 'is-drawer')} data-testid="cl-sidebar">
       {collapsed ? (
-        <Rail route={route} onToggle={onToggle} hasMain={hasMain} />
+        <Rail route={route} onToggle={onToggle} />
       ) : (
         <>
           <div className="cl-sidebar__bar">
@@ -296,13 +291,8 @@ export function Sidebar({
               <span className="cl-nav__label">Search</span>
               <kbd>{shortcutLabel()}</kbd>
             </button>
-            {hasMain ? (
+            {hasMain && inHome ? (
               <>
-                <NavLink to={{ kind: 'home' }} active={route.kind === 'home'} testId="nav-home">
-                  <Icon name="home" />
-                  <span className="cl-nav__label">Home</span>
-                </NavLink>
-
                 <NavLink to={{ kind: 'me' }} active={route.kind === 'me' || route.kind === 'mePage'} className="cl-nav__heading" testId="nav-personal">
                   Personal
                 </NavLink>
@@ -318,7 +308,7 @@ export function Sidebar({
             ) : (
               <ul className="cl-nav__projects">
                 {projects.map((p) => (
-                  <ProjectItem key={p.id} project={p} route={route} open={open.isOpen(p.id)} onOpenChange={(o) => open.set(p.id, o)} />
+                  <ProjectItem key={p.id} project={p} route={route} tree={inHome} open={open.isOpen(p.id)} onOpenChange={(o) => open.set(p.id, o)} />
                 ))}
               </ul>
             )}

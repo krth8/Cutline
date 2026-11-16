@@ -62,32 +62,32 @@ const nav = () => screen.getByRole('navigation', { name: 'Main' });
 const tabs = () => screen.getByRole('navigation', { name: 'Sections' });
 
 describe('Sidebar', () => {
-  it('lists Search, Home, Personal, every project and New project, on every screen', () => {
+  it('lists Search, every project and New project on every screen, and Personal in the Home tab only', () => {
     render(<NavApp />);
-    for (const url of ['/home', '/p/p1/review', '/p/p2/pages', '/lounge']) {
+    for (const url of ['/home', '/p/p1/review', '/p/p1/pages', '/lounge']) {
       go(url);
       expect(within(nav()).getByRole('button', { name: /Search/ })).toBeTruthy();
-      expect(within(nav()).getByRole('link', { name: 'Home' })).toBeTruthy();
-      expect(within(nav()).getByRole('link', { name: 'Personal' })).toBeTruthy();
+      expect(within(nav()).queryByRole('link', { name: 'Home' })).toBeNull(); // Home is a tab, not a sidebar entry
+      expect(within(nav()).queryAllByRole('link', { name: 'Personal' })).toHaveLength(url === '/home' || url === '/p/p1/pages' ? 1 : 0);
       expect(within(nav()).getByRole('link', { name: 'Project One' })).toBeTruthy();
       expect(within(nav()).getByRole('link', { name: 'Project Two' })).toBeTruthy();
       expect(within(nav()).getByRole('button', { name: /New project/ })).toBeTruthy();
     }
   });
 
-  it('always shows the tabs Main, Review and Lounge, and highlights the one of the route', () => {
+  it('always shows the tabs Home, Review and Lounge, and highlights the one of the route', () => {
     render(<NavApp />);
     const currentTab = () => within(tabs()).getAllByRole('link').find((a) => a.getAttribute('aria-current') === 'page')?.textContent;
-    expect(within(tabs()).getAllByRole('link').map((a) => a.textContent)).toEqual(['Main', 'Review', 'Lounge']);
-    expect(currentTab()).toBe('Main'); // Home
+    expect(within(tabs()).getAllByRole('link').map((a) => a.textContent)).toEqual(['Home', 'Review', 'Lounge']);
+    expect(currentTab()).toBe('Home'); // Home
     for (const [url, tab] of [
-      ['/me', 'Main'],
+      ['/me', 'Home'],
       ['/projects', 'Review'],
       ['/lounge', 'Lounge'],
       ['/p/p1/review', 'Review'],
-      ['/p/p1/tasks', 'Main'],
-      ['/p/p1/pages', 'Main'],
-      ['/p/p1/page/abc', 'Main'],
+      ['/p/p1/tasks', 'Home'],
+      ['/p/p1/pages', 'Home'],
+      ['/p/p1/page/abc', 'Home'],
       ['/p/p1/lounge', 'Lounge'],
     ] as const) {
       go(url);
@@ -148,7 +148,7 @@ describe('Sidebar', () => {
     ];
     render(<NavApp />);
     const labels = () => within(tabs()).getAllByRole('link').map((a) => a.textContent);
-    expect(labels()).toEqual(['Main', 'Review', 'Lounge']); // no project open: what any project gives
+    expect(labels()).toEqual(['Home', 'Review', 'Lounge']); // no project open: what any project gives
     go('/p/p2/review');
     expect(labels()).toEqual(['Review', 'Lounge']);
     go('/p/p3/lounge');
@@ -174,10 +174,21 @@ describe('Sidebar', () => {
     expect(fake.navigations).toEqual(['/p/p2/review']);
   });
 
+  it('in Review and Lounge the projects have nothing to unfold', () => {
+    render(<NavApp />);
+    go('/p/p1/pages');
+    expect(screen.getByRole('button', { name: 'Collapse Project One' })).toBeTruthy();
+    for (const url of ['/p/p1/review', '/p/p1/lounge', '/projects']) {
+      go(url);
+      expect(screen.queryByRole('button', { name: /(Collapse|Expand) Project One/ })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Tasks' })).toBeNull();
+    }
+  });
+
   it('opens the project of the current route and remembers open projects per user', async () => {
     const user = userEvent.setup();
     fake.data.projects[1]!.canTasks = true;
-    window.history.replaceState({}, '', '/p/p1/review');
+    window.history.replaceState({}, '', '/p/p1/pages');
     const first = render(<NavApp />);
     expect(screen.getAllByRole('link', { name: 'Tasks' })).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: 'Expand Project Two' }));

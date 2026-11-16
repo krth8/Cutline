@@ -40,6 +40,12 @@
 /* The Lounge tab of a project: just that project's room */
 .cl-layout.lounge-in-project .lounge-sidebar { display: none; }
 
+/* Review: the sidebar chooses the project and the clip strip at the bottom chooses the clip, so the old
+   left panel of clips is gone */
+.app { --sidebar-left: 0px; }
+.app .sidebar-left,
+#toggleProjectsBtn { display: none !important; }
+
 /* Old task list (localStorage.legacyTasks): the sidebar picks the project, so its own list and grid go */
 .cl-layout.has-nav .projects-sidebar,
 .cl-layout.has-nav #projectsBackBtn { display: none; }
