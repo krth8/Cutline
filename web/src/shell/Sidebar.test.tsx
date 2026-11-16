@@ -233,6 +233,16 @@ describe('Sidebar', () => {
     expect(calls).toEqual(['share:p1', 'cover:p1', 'delete:p1:Project One', 'create']);
   });
 
+  it('opens all the tasks of a project from its menu, when the project has the Home tab', async () => {
+    const user = userEvent.setup();
+    render(<NavApp />);
+    await user.click(screen.getByRole('button', { name: 'Actions for Project One' }));
+    await user.click(screen.getByRole('menuitem', { name: 'All tasks' }));
+    expect(fake.navigations[fake.navigations.length - 1]).toBe('/p/p1/tasks');
+    await user.click(screen.getByRole('button', { name: 'Actions for Project Two' }));
+    expect(screen.queryByRole('menuitem', { name: 'All tasks' })).toBeNull(); // no Home tab there
+  });
+
   it('shows Access only to admins', async () => {
     const user = userEvent.setup();
     fake.data.user = { ...fake.data.user!, role: 'admin' };

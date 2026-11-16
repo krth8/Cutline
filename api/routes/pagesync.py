@@ -83,6 +83,7 @@ async def page_socket(websocket: WebSocket, page_id: str, ticket: Optional[str] 
                 if changed:
                     room.note_mentions(payload, principal["id"])
                     room.editors.add(principal["id"])
+                    room.recent_editors.add(principal["id"])
                     await room.relay(websocket, data)
                     await registry.store(room)
             elif kind == STATE_VECTOR:

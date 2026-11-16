@@ -4,7 +4,7 @@ GET /api/activity?scope=me|project&projectId=&limit=   -> {events: [...]}
   scope=me        what concerns the caller (assigned, answered, tagged) in every project they have, done by others
   scope=project   everything in one project
 
-Task and page events need the Home tab of the project (can_tasks), comment events the Review tab.
+Task and page events (created, edited) need the Home tab of the project (can_tasks), comment events the Review tab.
 """
 
 from fastapi import APIRouter, Depends, HTTPException

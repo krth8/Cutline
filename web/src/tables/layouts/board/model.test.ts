@@ -84,3 +84,17 @@ describe('board model', () => {
     expect(quickAddValues(status, 'name', 'X', null)).toEqual({ name: 'X' });
   });
 });
+
+describe('the cover of a card', () => {
+  it('is the thumbnail of the first clip column that has one', async () => {
+    const { coverOf } = await import('./BoardLayout');
+    const columns = [
+      { key: 'name', name: 'Name', type: 'text' },
+      { key: 'clip', name: 'Clip', type: 'clip' },
+    ] as never;
+    const row = (clip: unknown) => ({ id: 'r', values: { name: 'A', clip } }) as never;
+    expect(coverOf(row({ id: 1, name: 'shot_010', thumbnail: 'shot 010.jpg' }), columns)).toBe('/thumbnail/shot%20010.jpg');
+    expect(coverOf(row({ id: 1, name: 'shot_010' }), columns)).toBeNull();
+    expect(coverOf(row(null), columns)).toBeNull();
+  });
+});

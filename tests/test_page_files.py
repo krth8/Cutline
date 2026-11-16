@@ -254,9 +254,7 @@ def test_files_are_removed_with_the_page(client, team):
     b = upload(client, team["editor"], child["id"], b"data", name="d.txt", ctype="text/plain").json()
     folders = [os.path.join(page_files.PAGES_DIR, team["page"]), os.path.join(page_files.PAGES_DIR, child["id"])]
     assert all(os.path.isdir(f) for f in folders)
-    # Only archived pages can be deleted
-    assert client.delete(f"/api/pages/{team['page']}", headers=auth(team["editor"])).status_code == 409
-    assert client.patch(f"/api/pages/{team['page']}", json={"archived": True}, headers=auth(team["editor"])).status_code == 200
+    # A live page can be deleted straight away (the client asks first); its files and its sub-page's go with it
     assert client.delete(f"/api/pages/{team['page']}", headers=auth(team["editor"])).status_code == 200
     assert not any(os.path.exists(f) for f in folders)
     from database.engine import execute, fetchall

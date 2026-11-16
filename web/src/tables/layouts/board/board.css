@@ -43,3 +43,37 @@
 .cl-board__fields summary:hover { background: var(--bg-hover); color: var(--text); }
 .cl-board__fields-list { position: absolute; right: 0; z-index: var(--z-local-popup); display: flex; flex-direction: column; gap: var(--space-1); min-width: 160px; margin-top: var(--space-1); padding: var(--space-2); background: var(--modal-elevated); border: 1px solid var(--border-medium); border-radius: var(--radius-md); box-shadow: 0 8px 28px var(--shadow-medium); }
 .cl-board__fields-list label { display: flex; align-items: center; gap: var(--space-1-5); }
+
+/* ---- the look of the board (docs/mockups/project-home.html) ---- */
+.cl-board__lanes { gap: var(--space-3); }
+.cl-board__lane { flex-basis: 272px; gap: var(--space-2); padding: var(--space-2-5); background: var(--bg-hover); border: 1px solid transparent; border-radius: 12px; }
+.cl-board__lane.is-over { border-color: var(--accent); background: var(--accent-bg); }
+.cl-board__lane-head { padding: 0 var(--space-0-5) var(--space-0-5); }
+.cl-board__lane-head .cl-colordot { width: 8px; height: 8px; }
+.cl-board__lane-count { padding: 0; background: none; color: var(--text-muted); font-weight: var(--font-weight-medium); }
+.cl-board__cards { gap: var(--space-2); }
+.cl-board__card {
+  gap: var(--space-1-5);
+  padding: var(--space-2-5) var(--space-3);
+  background: var(--bg-solid);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px var(--shadow);
+  transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.cl-board__card:hover { border-color: var(--border-medium); transform: translateY(-1px); box-shadow: 0 4px 12px var(--shadow-medium); }
+.cl-board__card.is-dragged { opacity: 0.35; transform: none; }
+.cl-board__cover {
+  display: block;
+  width: calc(100% + 2 * var(--space-3) - 2 * var(--space-1));
+  margin: calc(-1 * var(--space-2-5) + var(--space-1)) calc(-1 * var(--space-3) + var(--space-1)) var(--space-0-5);
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 7px;
+  background: var(--bg-hover);
+  pointer-events: none;
+}
+.cl-board__card-title { line-height: 1.35; }
+.cl-board__card-fields { gap: var(--space-1) var(--space-1-5); }
+.cl-board__ghost { border-radius: 10px; transform: rotate(1.5deg); box-shadow: 0 12px 28px var(--shadow-medium); }
+.cl-board__add { padding: var(--space-1-5) var(--space-1); color: var(--text-muted); }

@@ -2,7 +2,7 @@
 
 import json
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Iterable, List, Optional
 
 from .engine import execute, fetchall
@@ -62,3 +62,12 @@ def db_list_activity(project_ids: List[str], involving: Optional[str] = None, ki
         if len(events) >= limit:
             break
     return events
+
+
+def db_recent_activity(project_id: str, actor_id: str, kind: str, link: str, minutes: int) -> bool:
+    """Whether this person already has such an event for this link in the last `minutes`."""
+    since = (datetime.now() - timedelta(minutes=minutes)).isoformat()
+    with get_db() as conn:
+        rows = fetchall(execute(conn, "SELECT 1 AS x FROM activity WHERE project_id = ? AND actor_id = ? AND kind = ? "
+                                      "AND link = ? AND created_at >= ? LIMIT 1", (project_id, actor_id, kind, link, since)))
+    return bool(rows)

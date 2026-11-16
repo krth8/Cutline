@@ -15,6 +15,7 @@ from pycrdt import Doc, XmlElement, XmlFragment, XmlText, merge_updates
 
 from api import pagehistory
 from api.auth import can_read_page
+from api import activity
 from api.mentions import record_page_refs
 from api.state import WS_ACCESS_REMOVED, live_sockets
 from database.pages import (
@@ -141,6 +142,7 @@ class PageRoom:
         self.mention_authors: set = set()  # users whose edits since the last snapshot added a mention
         self.has_new_mention = False
         self.editors: set = set()  # users who edited since the last version (page history)
+        self.recent_editors: set = set()  # users who edited since the last snapshot (activity log)
 
     def note_mentions(self, update: bytes, user_id: str) -> None:
         """Remember who sent an update that creates a mention node (its type name is in the encoded bytes)."""
@@ -282,6 +284,9 @@ class PageRegistry:
         if room is not None:
             room.mention_authors, room.has_new_mention = set(), False
         await record_page_refs(page_id, doc, authors)  # page_refs and mention notifications (api/mentions.py)
+        if room is not None and room.recent_editors:
+            edited, room.recent_editors = room.recent_editors, set()
+            await activity.page_edited(page_id, edited)  # "Mona edited Creative brief" (api/activity.py)
         if room is not None:
             room.pending_rows = max(0, room.pending_rows - len(rows))
         return len(rows)

@@ -446,3 +446,22 @@ def test_needs_import_turns_false_once_content_exists(client, connect_page, team
         assert client.get(f"/api/pages/{page}", headers=auth(team["member"])).json()["needsImport"] is False
         res = client.post(f"/api/pages/{page}/claim-import", headers=auth(team["member"]))
         assert res.json() == {"granted": False}
+
+
+def test_editing_a_page_is_one_activity_event_per_person_and_half_hour(client, connect_page, team, page):
+    def edits():
+        res = client.get("/api/activity", params={"scope": "project", "projectId": team["project"]},
+                         headers=auth(team["member"]))
+        return [e for e in res.json()["events"] if e["kind"] == "page.edited"]
+
+    with connect_page(team["member"], page) as wa:
+        a = Peer(wa)
+        a.edit(lambda: paragraph(a.frag, "First"))
+        a.sync()
+        snapshot(client, page)
+        a.edit(lambda: paragraph(a.frag, "Second"))
+        a.sync()
+        snapshot(client, page)
+    events = edits()
+    assert len(events) == 1
+    assert events[0]["title"] == "Doc" and events[0]["link"].endswith(f"/page/{page}")

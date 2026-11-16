@@ -78,6 +78,8 @@ function Sentence({ event, myName }: { event: ActivityEvent; myName: string | nu
       return <>{who} renamed {d.from ? <>{d.from} to </> : null}{what}</>;
     case 'page.created':
       return <>{who} created the page {what}</>;
+    case 'page.edited':
+      return <>{who} edited {what}</>;
     case 'comment.added':
       return <>{who} {d.reply ? 'replied on' : 'commented on'} {what}</>;
     default:

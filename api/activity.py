@@ -5,14 +5,18 @@ its own is sent: the panel fetches the list again when it hears the events that 
 task_updated, comment_added, page_changed), which go to the people who may see them.
 
 Kinds: ``task.created``, ``task.status``, ``task.assigned``, ``task.due``, ``task.renamed``, ``page.created``,
-``comment.added``. The prefix decides who may see it: task.* and page.* need the Home tab of the project,
+``page.edited``, ``comment.added``. The prefix decides who may see it: task.* and page.* need the Home tab of the project,
 comment.* the Review tab.
 """
 
 from typing import Iterable, List, Optional
 from urllib.parse import quote
 
-from database.activity import db_add_activity
+from database.activity import db_add_activity, db_recent_activity
+from database.pages import db_get_page
+from database.users import db_get_user_by_id
+
+EDIT_QUIET_MINUTES = 30  # edits of one page by one person within this time are one event
 from database.clips import db_list_statuses
 
 
@@ -73,6 +77,24 @@ async def page_created(actor: Optional[dict], page: dict) -> None:
         return
     await record(page["projectId"], actor, "page.created", page.get("title") or "Untitled",
                  link=f"/p/{page['projectId']}/page/{page['id']}")
+
+
+async def page_edited(page_id: str, user_ids) -> None:
+    """One event per person who edited a project page, at most one per person and page in EDIT_QUIET_MINUTES."""
+    try:
+        page = db_get_page(page_id)
+        if not page or page.get("spaceType") != "project" or not page.get("projectId") or page.get("archivedAt"):
+            return
+        for user_id in sorted(user_ids):
+            if db_recent_activity(page["projectId"], user_id, "page.edited", f"/p/{page['projectId']}/page/{page_id}",
+                                  EDIT_QUIET_MINUTES):
+                continue
+            user = db_get_user_by_id(user_id)
+            if user:
+                await record(page["projectId"], user, "page.edited", page.get("title") or "Untitled",
+                             link=f"/p/{page['projectId']}/page/{page_id}")
+    except Exception as exc:
+        print(f"Could not record the edit of page {page_id}: {exc}")
 
 
 async def comment_added(actor: Optional[dict], project_id: str, comment: dict, link: str, involves: Iterable[str]) -> None:

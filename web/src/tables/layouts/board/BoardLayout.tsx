@@ -201,6 +201,7 @@ function BoardLanes({ column, schema, view, result, loading, actions }: LayoutPr
                         lane={lane}
                         titleColumn={schema.titleColumn}
                         columns={cardColumns}
+                        cover={coverOf(row, schema.columns)}
                         isDragged={drag?.rowId === row.id}
                         showDropBefore={sameLane && drag?.beforeId === row.id}
                         onPointerDown={onCardPointerDown}
@@ -228,8 +229,22 @@ function BoardLanes({ column, schema, view, result, loading, actions }: LayoutPr
   );
 }
 
+/**
+ * The picture on top of a card: the thumbnail of the row's clip (a task linked to a clip shows its frame).
+ * Read from the first clip column whose value carries one, shown or not.
+ */
+export function coverOf(row: Row, columns: Column[]): string | null {
+  for (const c of columns) {
+    if (c.type !== 'clip') continue;
+    const value = row.values[c.key] as { thumbnail?: unknown } | null | undefined;
+    if (value && typeof value.thumbnail === 'string' && value.thumbnail) return `/thumbnail/${encodeURIComponent(value.thumbnail)}`;
+  }
+  return null;
+}
+
 interface CardProps {
   row: Row;
+  cover: string | null;
   lane: BoardLane;
   titleColumn: string;
   columns: Column[];
@@ -239,7 +254,8 @@ interface CardProps {
   onOpen: () => void;
 }
 
-function Card({ row, lane, titleColumn, columns, isDragged, showDropBefore, onPointerDown, onOpen }: CardProps) {
+function Card({ row, cover, lane, titleColumn, columns, isDragged, showDropBefore, onPointerDown, onOpen }: CardProps) {
+  const [coverFailed, setCoverFailed] = useState(false);
   const title = String(row.values[titleColumn] ?? '').trim();
   // The values sit on one line under the title (wrapping when they must); empty ones take no room
   const fields = columns.flatMap((c) => {
@@ -266,6 +282,9 @@ function Card({ row, lane, titleColumn, columns, isDragged, showDropBefore, onPo
           if (e.key === 'Enter' && e.target === e.currentTarget) onOpen();
         }}
       >
+        {cover && !coverFailed ? (
+          <img className="cl-board__cover" src={cover} alt="" loading="lazy" draggable={false} onError={() => setCoverFailed(true)} data-testid="board-cover" />
+        ) : null}
         <div className="cl-board__card-title">{title || 'Untitled'}</div>
         {fields.length ? <div className="cl-board__card-fields">{fields}</div> : null}
       </article>

@@ -71,6 +71,16 @@ def _may_read(principal: dict, project_id: str) -> bool:
     return db_check_project_access(principal["id"], project_id, require_tasks=True)
 
 
+
+def _clip_thumbnail(project_id: str, base_name: Optional[str]) -> Optional[str]:
+    """The thumbnail file of the active version of a clip, or None."""
+    clip = (projects.get(project_id) or {}).get("clips", {}).get(base_name or "")
+    if not clip:
+        return None
+    versions = clip.get("versions") or []
+    active = next((v for v in versions if v.get("version") == clip.get("activeVersion")), None) or (versions[-1] if versions else {})
+    return active.get("thumbnail") or None
+
 class TasksSource(TableSource):
     def __init__(self, scope: str):
         self.scope = scope  # a project id, or "*"
@@ -197,7 +207,12 @@ class TasksSource(TableSource):
     # ------------------------------------------------------------ rows
 
     def _row(self, task: dict, can_edit: bool, custom_cols: Optional[List[dict]] = None) -> dict:
-        clip = {"id": task["clipId"], "name": task.get("clipName")} if task.get("clipId") is not None else None
+        clip = None
+        if task.get("clipId") is not None:
+            clip = {"id": task["clipId"], "name": task.get("clipName")}
+            thumbnail = _clip_thumbnail(task["projectId"], task.get("clipName"))
+            if thumbnail:
+                clip["thumbnail"] = thumbnail  # the cover of the task's card on a board
         values = {
             "name": task.get("name"),
             "status": task.get("statusId"),
