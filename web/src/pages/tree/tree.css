@@ -1,6 +1,6 @@
 /* The page tree in the sidebar */
 .cl-tree { padding: 2px 0 6px; font-size: 13px; }
-.cl-tree__rows { max-height: 55vh; overflow-y: auto; overflow-x: hidden; }
+.cl-tree__rows { overflow-x: hidden; }
 
 .cl-tree__row {
   position: relative;

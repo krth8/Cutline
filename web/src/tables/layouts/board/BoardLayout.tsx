@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent
 import { getPlatform } from '../../../platform';
 import { ColorDot, cx } from '../../../ui';
 import { getCell } from '../../cells';
-import { projectsForCreate } from '../../store';
+import { ProjectSelect, useAddProject } from '../../addProject';
 import { SUMMARY_LABELS } from '../../toolbar/queryModel';
 import type { Column, LayoutProps, Query, Row, View } from '../../types';
 import {
@@ -283,8 +283,7 @@ interface QuickAddProps {
 function QuickAdd({ column, schema, view, lane, actions }: QuickAddProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
-  const [projectId, setProjectId] = useState('');
-  const projects = open && view.tableRef === 'tasks:*' ? projectsForCreate() : [];
+  const add = useAddProject(view.id, view.tableRef);
 
   function close() {
     setOpen(false);
@@ -297,7 +296,7 @@ function QuickAdd({ column, schema, view, lane, actions }: QuickAddProps) {
     if (!text) return close();
     let opts: { projectId: string } | undefined;
     if (view.tableRef === 'tasks:*') {
-      const chosen = projectId || projects[0]?.id;
+      const chosen = add.projectId;
       if (!chosen) {
         getPlatform().toast('error', 'You have no project to add a task to');
         return;
@@ -327,17 +326,9 @@ function QuickAdd({ column, schema, view, lane, actions }: QuickAddProps) {
         onKeyDown={(e) => {
           if (e.key === 'Escape') close();
         }}
-        onBlur={() => !title.trim() && close()}
+        onBlur={(e) => !title.trim() && !e.currentTarget.form?.contains(e.relatedTarget as Node | null) && close()}
       />
-      {projects.length > 1 && (
-        <select className="cl-board__add-project" aria-label="Project" value={projectId || projects[0]!.id} onChange={(e) => setProjectId(e.target.value)}>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      )}
+      <ProjectSelect add={add} className="cl-board__add-project" />
     </form>
   );
 }

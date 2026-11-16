@@ -54,7 +54,7 @@ export function FallbackLayout({ schema, view, result, loading }: LayoutProps) {
           </tbody>
         ))}
       </table>
-      {result.rows.length === 0 && !loading && <p className="cl-fallback__empty">No rows.</p>}
+      {result.rows.length === 0 && !loading && <p className="cl-fallback__empty">No rows yet</p>}
     </div>
   );
 }

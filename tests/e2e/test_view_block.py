@@ -115,8 +115,11 @@ def test_a_read_only_reader_sees_the_view_but_cannot_remove_or_resize_it(scene, 
     vera = new_page(name="vera")
     open_page(vera, server, scene["page"], "vera")
     vera.wait_for_selector(f"{BLOCK}[data-state=ready]", timeout=15000)
+    vera.click("[data-testid=view-block] [data-testid=toolbar-more]")
+    assert vera.locator("[data-testid=viewblock-open]").count() == 1  # the menu is there, with only the link
     assert vera.locator("[data-testid=viewblock-remove]").count() == 0
     assert vera.locator("[data-testid=viewblock-resize]").count() == 0
+    assert vera.locator("[data-testid=layout-switch]").count() == 0
     wait_for(lambda: len(row_names(vera)) == 3)
 
 
@@ -135,7 +138,8 @@ def test_picking_an_existing_view_and_removing_the_block_keeps_that_view(scene, 
     bob.wait_for_selector(f'{BLOCK}[data-view-id="{other["id"]}"]', timeout=10000)
 
     # Removing a block of a view the page does not own: no question, the view stays
-    alice.click(f'{BLOCK}[data-view-id="{other["id"]}"] [data-testid=viewblock-remove]')
+    alice.click(f'{BLOCK}[data-view-id="{other["id"]}"] [data-testid=toolbar-more]')
+    alice.click("[data-testid=viewblock-remove]")
     alice.wait_for_selector(f'{BLOCK}[data-view-id="{other["id"]}"]', state="detached", timeout=10000)
     assert server.api(f"/api/views/{other['id']}")["id"] == other["id"]
 
@@ -143,7 +147,8 @@ def test_picking_an_existing_view_and_removing_the_block_keeps_that_view(scene, 
 def test_removing_the_block_deletes_the_view_the_page_owns_after_a_confirm(scene, server):
     alice = scene["alice"]
     view_id = scene["state"]["view"]
-    alice.click(f'{BLOCK}[data-view-id="{view_id}"] [data-testid=viewblock-remove]')
+    alice.click(f'{BLOCK}[data-view-id="{view_id}"] [data-testid=toolbar-more]')
+    alice.click("[data-testid=viewblock-remove]")
     alice.click(".confirm-dialog .confirm-submit")
     alice.wait_for_selector(f'{BLOCK}[data-view-id="{view_id}"]', state="detached", timeout=10000)
     with pytest.raises(ApiError) as err:

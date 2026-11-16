@@ -21,7 +21,7 @@ const { Display, Editor, isEmpty, toText, parseText, compare } = getCell(column.
 | `person` | user id `string \| null` | `null` | options: `value` = user id, `label` = name; `config.avatars?: Record<userId, url>` |
 | `people` | `string[]` (user ids) | `[]` | same options as `person`; `config.maxAvatars?: number` (default 4, compact 3) |
 | `clip` | `{ baseName: string; version?: number } \| null` | `null` | text form is `"baseName v3"` |
-| `relation` | `string[]` (row ids) | `[]` | display only for now |
+| `relation` | `Array<{ id: string; label: string }>` (linked rows; write `ids` or the same objects) | `[]` | `config.target` (`tasks:<projectId>` or `tbl_<id>`), `multiple` (default true), `twoWay`; the server adds `targetName` and `targetDeleted`. Chips open the row (`?task=` or `?row=`); the editor searches the target table. Mirror columns (`config.mirrorOf`) are `readonly` |
 | `formula` | `string \| number \| boolean \| null` | `null`, `''` | read-only |
 
 Other column config read by cells: `config.overdue?: boolean` on `date` (overdue colouring is on
@@ -53,7 +53,7 @@ interface CellDef { Display; Editor; isEmpty(v); toText(v, column); parseText?(t
 `CellHost` (`{ column, value, row?, readOnly?, onChange?, compact?, onEditingChange? }`): click, Enter or F2
 start editing, typing a character starts editing with it (`initialKey`; filter text in pickers), Delete/Backspace
 clear, checkboxes toggle on click or Space. After the editor closes, focus returns to the cell unless the user
-moved on (Tab, click elsewhere). Rows with `canEdit: false`, `readonly` columns, `formula` and `relation` never edit.
+moved on (Tab, click elsewhere). Rows with `canEdit: false`, `readonly` columns, `formula` and relation columns whose target table was deleted never edit.
 
 ## Testing and checking
 

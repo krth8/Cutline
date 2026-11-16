@@ -192,9 +192,10 @@ describe('empty state', () => {
     expect(p.actions.updateConfig).toHaveBeenLastCalledWith({ query: { sort: [{ column: 'name', dir: 'asc' }] } });
   });
 
-  it('without a filter keeps the plain "No rows."', () => {
+  it('without a filter says there is nothing yet and offers a new row', () => {
     render(<TableLayout {...props({ rows: [] })} />);
-    expect(screen.getByTestId('table-empty').textContent).toBe('No rows.');
+    expect(screen.getByTestId('table-empty').textContent).toContain('No tasks yet');
+    expect(screen.getByTestId('table-empty-new').textContent).toBe('New task');
     expect(screen.queryByTestId('table-clear-filters')).toBeNull();
   });
 });

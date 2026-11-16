@@ -8,7 +8,7 @@ import { addDaysISO, asArray, avatarFor, isISODate, nextMondayISO, parseDateText
 import './cells.css';
 
 /** A ref whose target is the given anchor element, or the in-place element when none is given. */
-function useAnchorRef(anchor: HTMLElement | null | undefined) {
+export function useAnchorRef(anchor: HTMLElement | null | undefined) {
   const selfRef = useRef<HTMLSpanElement>(null);
   const anchorRef = useMemo<RefObject<HTMLElement | null>>(
     () => ({

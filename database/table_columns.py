@@ -100,3 +100,10 @@ def db_delete_table_column(table_ref: str, key: str, task_values: Dict[str, dict
     with get_db() as conn:
         execute(conn, "DELETE FROM table_columns WHERE table_ref = ? AND key = ?", (table_ref, key))
         write(conn, task_values)
+
+
+def db_list_relation_columns() -> List[dict]:
+    """Every relation column of every table (used to find mirrors and the tables that point at a table)."""
+    with get_db() as conn:
+        cursor = execute(conn, "SELECT * FROM table_columns WHERE type = 'relation' ORDER BY created_at, key")
+        return [_column(r) for r in fetchall(cursor)]

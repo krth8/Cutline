@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
 import { getPlatform } from '../platform';
-import { Input, cx } from '../ui';
+import { Input, cx, type MenuItem } from '../ui';
+import { useAddProject } from './addProject';
 import { getViewSource, toLayoutProps, useView } from './store';
 import { getLayout, layoutDefaults, useLayouts } from './layouts/registry';
-import { Toolbar } from './toolbar';
+import { Toolbar, type ToolbarVariant } from './toolbar';
 import { TrashDialog } from './trash';
 import type { Query, View } from './types';
 import './toolbar/toolbar.css';
@@ -13,11 +14,27 @@ import './toolbar/toolbar.css';
  * summaries, search, new row) and the layout component itself. Changes to the query and the columns go
  * through `actions.updateConfig` (debounced save); name and layout are saved straight away.
  */
-export function ViewShell({ viewId, className }: { viewId: string; className?: string }) {
+export function ViewShell({
+  viewId,
+  className,
+  variant = 'page',
+  editable = true,
+  menuItems,
+}: {
+  viewId: string;
+  className?: string;
+  /** `page`: the view on its own page (toolbar always shown). `embedded`: inside a page (controls on hover). */
+  variant?: ToolbarVariant;
+  /** Embedded in a page that cannot be edited: no controls except search and the host's menu items. */
+  editable?: boolean;
+  /** Items the host adds to the "..." menu (open as page, remove block). */
+  menuItems?: MenuItem[];
+}) {
   const data = useView(viewId);
   const layouts = useLayouts();
   const { schema, view, actions } = data;
   const [trashOpen, setTrashOpen] = useState(false);
+  const add = useAddProject(viewId, view?.tableRef ?? '');
 
   const onQuery = useCallback(
     (patch: { [K in keyof Query]?: Query[K] | undefined }) => {
@@ -66,40 +83,76 @@ export function ViewShell({ viewId, className }: { viewId: string; className?: s
     save({ layout: name as View['layout'], ...(Object.keys(missing).length ? { config: missing } : {}) });
   }
 
-  function newRow() {
+  /** `title`/`projectId` come from the "New" form of a tasks:* view; otherwise the row starts as "Untitled". */
+  function newRow(title?: string, projectId?: string) {
     if (!schema || !view) return;
-    const values = { [schema.titleColumn]: 'Untitled' };
-    const opts = view.tableRef === 'tasks:*' ? projectOpts() : undefined;
-    if (view.tableRef === 'tasks:*' && !opts) {
-      getPlatform().toast('error', 'You have no project to add a task to');
-      return;
+    const values = { [schema.titleColumn]: title || 'Untitled' };
+    let opts: { projectId: string } | undefined;
+    if (view.tableRef === 'tasks:*') {
+      const chosen = projectId || add.projectId;
+      if (!chosen) {
+        getPlatform().toast('error', 'You have no project to add a task to');
+        return;
+      }
+      opts = { projectId: chosen };
     }
     actions.createRow(values, opts).catch(() => {
       /* the store has already shown the error */
     });
   }
 
+  const readOnly = variant === 'embedded' && !editable;
+  const nestable = schema.capabilities.hierarchy && !readOnly;
+  const nested = view.config.query?.parentId === null;
+  const total = data.result?.total;
+
+  function toggleNest(on: boolean) {
+    onQuery({ parentId: on ? null : undefined });
+  }
+
+  const nameInput = (
+    <Input
+      key={view.name}
+      className="cl-viewhead__input"
+      style={{ width: `${Math.max(5, view.name.length) + 2}ch` }}
+      aria-label="View name"
+      data-testid={variant === 'embedded' ? 'viewblock-name' : 'view-name'}
+      defaultValue={view.name}
+      readOnly={readOnly}
+      onCommit={(name) => name.trim() && name.trim() !== view.name && save({ name: name.trim() })}
+    />
+  );
+
   return (
-    <div className={cx('cl-viewshell', className)} data-testid="view-shell" data-view-id={view.id}>
-      <div className="cl-viewshell__head">
-        <Input
-          key={view.name}
-          className="cl-viewshell__name"
-          aria-label="View name"
-          data-testid="view-name"
-          defaultValue={view.name}
-          onCommit={(name) => name.trim() && save({ name: name.trim() })}
-        />
-      </div>
+    <div className={cx('cl-viewshell', `cl-viewshell--${variant}`, className)} data-testid="view-shell" data-view-id={view.id}>
       <Toolbar
         schema={schema}
         view={view}
         layouts={layouts}
+        variant={variant}
+        readOnly={readOnly}
+        heading={
+          <>
+            {variant === 'page' ? (
+              <div className="cl-viewhead__name" role="heading" aria-level={1}>{nameInput}</div>
+            ) : (
+              <div className="cl-viewhead__name" role="heading" aria-level={2}>{nameInput}</div>
+            )}
+            {total !== undefined && (
+              <span className="cl-viewhead__count" data-testid="view-count">
+                {total}
+              </span>
+            )}
+          </>
+        }
         onQuery={onQuery}
         onColumns={onColumns}
         onLayout={switchLayout}
         onNewRow={schema.capabilities.create ? newRow : undefined}
+        add={view.tableRef === 'tasks:*' ? add : undefined}
         onTrash={canUseTrash(view.tableRef) ? () => setTrashOpen(true) : undefined}
+        nest={nestable ? { checked: nested, onChange: toggleNest } : undefined}
+        menuItems={menuItems}
       />
       {canUseTrash(view.tableRef) && (
         <TrashDialog tableRef={view.tableRef} open={trashOpen} onClose={() => setTrashOpen(false)} />
@@ -119,14 +172,6 @@ export function ViewShell({ viewId, className }: { viewId: string; className?: s
       </div>
     </div>
   );
-}
-
-/** For tasks:*, new rows need a project: the first one the user can add tasks to. */
-function projectOpts(): { projectId: string } | undefined {
-  const project = getPlatform()
-    .projects()
-    .find((p) => p.canTasks);
-  return project ? { projectId: project.id } : undefined;
 }
 
 /** The trash of a tasks table is for people who can edit tasks there. */

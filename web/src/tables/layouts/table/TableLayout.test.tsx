@@ -108,6 +108,8 @@ describe('editing and creating', () => {
     const props = makeProps([], { view: { ...base.view, tableRef: 'tasks:*' }, schema: schemaOf('tasks:*') });
     render(<TableLayout {...props} />);
     const user = userEvent.setup();
+    expect(screen.queryByTestId('table-add-project')).toBeNull(); // only once the user starts adding
+    await user.click(screen.getByTestId('table-quick-add'));
     const picker = screen.getByTestId('table-add-project') as HTMLSelectElement;
     expect([...picker.options].map((o) => o.text)).toEqual(['One', 'Two']);
     await user.selectOptions(picker, 'p2');
@@ -292,12 +294,11 @@ describe('subtasks', () => {
     expect(names()).toEqual(['Parent']);
   });
 
-  it('shows no carets when the view is flat, and the toggle nests it', async () => {
+  it('shows no carets when the view is flat (the nest switch lives in the view "..." menu, see toolbar.test)', () => {
     const props = makeProps([parent]);
     render(<TableLayout {...props} />);
     expect(screen.queryByTestId('table-expand')).toBeNull();
-    await userEvent.setup().click(screen.getByTestId('table-nest'));
-    expect(props.actions.updateConfig).toHaveBeenCalledWith({ query: { parentId: null } });
+    expect(screen.queryByTestId('table-nest')).toBeNull();
   });
 
   it('opens a row in the task panel', async () => {

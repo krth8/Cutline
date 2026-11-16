@@ -208,7 +208,9 @@ describe('list layout', () => {
       }),
     );
     const { actions } = setup([], { schema: schema('tasks:*') });
-    const select = screen.getByLabelText('Project') as HTMLSelectElement;
+    expect(screen.queryByLabelText('Project for the new row')).toBeNull(); // only once the user starts adding
+    await user.click(screen.getByTestId('list-new'));
+    const select = screen.getByLabelText('Project for the new row') as HTMLSelectElement;
     expect([...select.options].map((o) => o.text)).toEqual(['One', 'Two']);
     fireEvent.change(select, { target: { value: 'p2' } });
     await user.type(screen.getByTestId('list-new'), 'Cue{Enter}');

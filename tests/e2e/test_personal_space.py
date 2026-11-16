@@ -50,7 +50,7 @@ def page_space(server, page_id, token=None):
 
 def test_the_personal_section_is_ana_only(scene):
     ana, ben = scene["ana"], scene["ben"]
-    expect(ana.locator(".cl-sidebar").get_by_role("link", name="Personal space")).to_be_visible()
+    expect(ana.locator(".cl-sidebar").get_by_role("link", name="Personal", exact=True)).to_be_visible()
     expect(tree_row(ana, "Notes")).to_be_visible()
     assert ben.locator(".cl-sidebar").get_by_role("treeitem", name="Notes").count() == 0
 
@@ -74,7 +74,7 @@ def test_moving_a_personal_page_into_a_project_after_the_warning(scene, server):
 
     assert page_space(server, scene["notes"], scene["token"]) == f"p:{project}"
     assert tree_row(ana, "Notes").count() == 0  # gone from the personal tree
-    ana.locator(".cl-sidebar").get_by_role("button", name="Spot").click()  # open the project in the sidebar
+    ana.locator(".cl-sidebar").get_by_role("link", name="Spot", exact=True).click()  # open the project in the sidebar
     expect(tree_row(ana, "Notes")).to_have_count(1)
 
     # ben sees it appear without a reload, with its sub-page, and can open it

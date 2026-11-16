@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { ProjectSelect, useFocusWithin, type AddProject } from '../../addProject';
 
 export interface AddRowProps {
   placeholder: string;
@@ -7,18 +8,17 @@ export interface AddRowProps {
   autoFocus?: boolean;
   /** Called once the autofocus has been used up. */
   onFocused?: () => void;
-  /** Projects to choose from (tasks across projects: a new row needs one). */
-  projects?: Array<{ id: string; name: string }>;
-  project?: string;
-  onProject?: (id: string) => void;
+  /** Project choice (tasks across projects: a new row needs one); the picker shows once the row has focus. */
+  add?: AddProject;
   testId: string;
   onSubmit(name: string): void;
 }
 
 /** A line at the end of the rows with one text field: Enter adds a row with that title and keeps the field for the next one. */
-export function AddRow({ placeholder, indent = 0, autoFocus, onFocused, projects, project, onProject, testId, onSubmit }: AddRowProps) {
+export function AddRow({ placeholder, indent = 0, autoFocus, onFocused, add, testId, onSubmit }: AddRowProps) {
   const [text, setText] = useState('');
   const input = useRef<HTMLInputElement>(null);
+  const focus = useFocusWithin();
   useEffect(() => {
     if (autoFocus) {
       input.current?.focus();
@@ -42,7 +42,7 @@ export function AddRow({ placeholder, indent = 0, autoFocus, onFocused, projects
   }
 
   return (
-    <div className="cl-table__addrow" role="row" data-testid={`${testId}-row`}>
+    <div className="cl-table__addrow" role="row" data-testid={`${testId}-row`} {...focus.bind}>
       <div className="cl-table__lead cl-table__addicon" aria-hidden="true">
         +
       </div>
@@ -58,21 +58,7 @@ export function AddRow({ placeholder, indent = 0, autoFocus, onFocused, projects
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
         />
-        {projects && projects.length > 0 && (
-          <select
-            className="cl-table__select"
-            aria-label="Project for the new row"
-            data-testid="table-add-project"
-            value={project ?? ''}
-            onChange={(e) => onProject?.(e.target.value)}
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        )}
+        {add && focus.active && <ProjectSelect add={add} className="cl-table__select" testId="table-add-project" />}
       </div>
     </div>
   );

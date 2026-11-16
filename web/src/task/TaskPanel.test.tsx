@@ -10,9 +10,10 @@ import { TaskPanelHost } from './TaskPanel';
 
 // The editor chunk needs a socket; the panel only has to hand it the right page
 vi.mock('../pages/sync', () => ({
-  CollabEditor: ({ pageId, readOnly }: { pageId: string; readOnly?: boolean }) => (
-    <div data-testid="collab" data-page-id={pageId} data-readonly={String(!!readOnly)} />
+  CollabEditor: ({ pageId, readOnly, hideStatusBar }: { pageId: string; readOnly?: boolean; hideStatusBar?: boolean }) => (
+    <div data-testid="collab" data-page-id={pageId} data-readonly={String(!!readOnly)} data-hide-status={String(!!hideStatusBar)} />
   ),
+  SyncStatus: ({ status }: { status: string }) => <span className="cl-sync-status" data-status={status} />,
 }));
 
 const schema: TableSchema = {
@@ -34,6 +35,7 @@ const schema: TableSchema = {
     },
     { key: 'description', name: 'Description', type: 'longtext', builtin: true },
     { key: 'cf_note', name: 'Note', type: 'text', builtin: false },
+    { key: 'cf_link', name: 'Link', type: 'url', builtin: false },
     { key: 'createdAt', name: 'Created', type: 'date', builtin: true, readonly: true },
     { key: 'createdBy', name: 'Created by', type: 'person', builtin: true, readonly: true, options: [{ value: 'u1', label: 'Test User' }] },
   ],
@@ -109,7 +111,7 @@ afterEach(() => {
 });
 
 describe('task panel', () => {
-  it('opens from the route and shows title, properties, body, clips, subtasks, checklist, comments and activity', async () => {
+  it('opens from the route and shows title, properties, body, clips, subtasks, checklist and the activity stream', async () => {
     render(<TaskPanelHost />);
     const title = (await screen.findByLabelText('Task name')) as HTMLInputElement;
     expect(title.value).toBe('Parent task');
@@ -117,7 +119,9 @@ describe('task panel', () => {
     const props = await screen.findByTestId('task-properties');
     expect(within(props).getByText('Status')).toBeTruthy();
     expect(within(props).getByText('Note')).toBeTruthy();
-    expect(within(props).getByText('Created by')).toBeTruthy();
+    // Created and Created by are one muted line, not rows
+    expect(within(props).queryByText('Created by')).toBeNull();
+    expect(within(props).getByTestId('task-created').textContent).toBe('Created by Test User · Jan 2, 2030');
     // The name is the title and the description is the page body, so neither is a property
     expect(within(props).queryByText('Name')).toBeNull();
     expect(within(props).queryByText('Description')).toBeNull();
@@ -127,7 +131,6 @@ describe('task panel', () => {
     expect(await screen.findByText('Child task')).toBeTruthy();
     expect(await screen.findByText('Check me')).toBeTruthy();
     expect(await screen.findByText('First comment')).toBeTruthy();
-    expect(within(await screen.findByTestId('task-activity')).getByText(/Created by Test User/)).toBeTruthy();
   });
 
   it('renders nothing without ?task= and closes by removing the parameter on Escape and on the close button', async () => {
@@ -212,6 +215,7 @@ describe('task panel', () => {
     render(<TaskPanelHost />);
     await screen.findByText('Child task');
     const section = screen.getByTestId('task-subtasks');
+    await userEvent.click(within(section).getByLabelText('Add subtask'));
     await userEvent.type(within(section).getByLabelText(/new/i), 'New child{Enter}');
     await waitFor(() => expect(backend.calls.some((c) => c.method === 'POST' && c.path.endsWith('/rows') && c.body.parentId === 't1')).toBe(true));
   });
@@ -227,7 +231,7 @@ describe('task panel', () => {
     render(<TaskPanelHost />);
     const section = await screen.findByTestId('task-comments');
     await within(section).findByText('First comment');
-    await userEvent.type(within(section).getByLabelText('Add a comment'), 'Second one{Enter}');
+    await userEvent.type(screen.getByLabelText('Add a comment'), 'Second one{Enter}');
     expect(await within(section).findByText('Second one')).toBeTruthy();
     await waitFor(() => expect(backend.count('POST /api/tasks/t1/comments')).toBe(1));
 
@@ -246,7 +250,7 @@ describe('task panel', () => {
     render(<TaskPanelHost />);
     const section = await screen.findByTestId('task-comments');
     await within(section).findByText('First comment');
-    await userEvent.type(within(section).getByLabelText('Add a comment'), 'Will fail{Enter}');
+    await userEvent.type(screen.getByLabelText('Add a comment'), 'Will fail{Enter}');
     await waitFor(() => expect(fake.toasts).toEqual([{ kind: 'error', message: 'Failed to add comment' }]));
     expect(within(section).queryByText('Will fail', { selector: '.cl-comment__text' })).toBeNull();
   });
@@ -264,5 +268,105 @@ describe('task panel', () => {
     act(() => fake.emit('rows_changed', { tableRef: 'tasks:p1', ids: ['t1'], change: 'deleted' }));
     expect(await screen.findByText('This task is not available', {}, { timeout: 3000 })).toBeTruthy();
     expect(fake.toasts).toEqual([]);
+  });
+
+  it('collapses empty properties behind "Add property" and reveals them on request', async () => {
+    render(<TaskPanelHost />);
+    const props = await screen.findByTestId('task-properties');
+    await within(props).findByText('Note');
+    // Link has no value: no row of dashes for it
+    expect(within(props).queryByText('Link')).toBeNull();
+    const more = within(props).getByRole('button', { name: /Add property/ });
+    expect(more.getAttribute('aria-expanded')).toBe('false');
+    await userEvent.click(more);
+    expect(within(props).getByText('Link')).toBeTruthy();
+    await userEvent.click(within(props).getByRole('button', { name: 'Hide empty' }));
+    expect(within(props).queryByText('Link')).toBeNull();
+  });
+
+  it('shows no add-property control to someone who cannot edit', async () => {
+    rows.t1 = task('t1', 'Parent task', { canEdit: false });
+    render(<TaskPanelHost />);
+    const props = await screen.findByTestId('task-properties');
+    await within(props).findByText('Note');
+    expect(within(props).queryByRole('button', { name: /Add property/ })).toBeNull();
+    expect((screen.getByLabelText('Task name') as HTMLInputElement).readOnly).toBe(true);
+  });
+
+  it('has a done toggle that sets the done status and back to the first open one', async () => {
+    render(<TaskPanelHost />);
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Mark as done' }));
+    await waitFor(() => expect(backend.calls.some((c) => c.method === 'PATCH' && c.body.values.status === 'done')).toBe(true));
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Mark as not done' }));
+    await waitFor(() => expect(backend.calls.some((c) => c.method === 'PATCH' && c.body.values.status === 'todo')).toBe(true));
+  });
+
+  it('shows sections without items as a heading only', async () => {
+    goto('/p/p1/pages?task=sub1');
+    render(<TaskPanelHost />);
+    await screen.findByDisplayValue('Child task');
+    for (const id of ['task-subtasks', 'task-checklist', 'task-clips', 'task-comments']) {
+      const section = await screen.findByTestId(id);
+      expect(section.querySelector('.cl-sec__body')).toBeNull();
+    }
+    expect(screen.queryByText('No comments yet')).toBeNull();
+    expect(screen.queryByText('No clips linked')).toBeNull();
+    // The add action is still there, and opens the add row
+    await userEvent.click(within(screen.getByTestId('task-checklist')).getByLabelText('Add checklist item'));
+    expect(screen.getByLabelText('Add a checklist item')).toBeTruthy();
+  });
+
+  it('sends the comment on Enter and Ctrl+Enter, and breaks the line on Shift+Enter', async () => {
+    backend.on('POST /api/tasks/t1/comments', (c) => ({
+      body: { comment: { id: 'n1', userId: 'u1', userName: 'Test User', text: c.body.text, createdAt: new Date().toISOString() } },
+    }));
+    render(<TaskPanelHost />);
+    const box = (await screen.findByLabelText('Add a comment')) as HTMLTextAreaElement;
+    await userEvent.type(box, 'one{Shift>}{Enter}{/Shift}two');
+    expect(backend.count('POST /api/tasks/t1/comments')).toBe(0);
+    expect(box.value).toBe('one\ntwo');
+    await userEvent.keyboard('{Control>}{Enter}{/Control}');
+    await waitFor(() => expect(backend.calls.filter((c) => c.method === 'POST' && c.path.endsWith('/comments'))[0]?.body.text).toBe('one\ntwo'));
+    expect(box.value).toBe('');
+  });
+
+  it('labels the panel as a region and moves focus in, then back to the row when it closes', async () => {
+    const row = document.createElement('div');
+    row.tabIndex = 0;
+    row.dataset.rowId = 't1';
+    document.body.appendChild(row);
+    row.focus();
+    render(<TaskPanelHost />);
+    const panel = await screen.findByRole('complementary', { name: 'Task' });
+    await waitFor(() => expect(document.activeElement).toBe(panel));
+    await userEvent.click(await screen.findByLabelText('Close task'));
+    await waitFor(() => expect(document.activeElement).toBe(row));
+    row.remove();
+  });
+
+  it('keeps the page usable: no scrim, and another task swaps in without closing', async () => {
+    render(<TaskPanelHost />);
+    await screen.findByDisplayValue('Parent task');
+    expect(screen.queryByTestId('task-scrim')).toBeNull();
+    act(() => goto('/p/p1/pages?task=t2'));
+    await waitFor(() => expect((screen.getByLabelText('Task name') as HTMLInputElement).value).toBe('Other'));
+    expect(screen.getAllByTestId('task-panel')).toHaveLength(1);
+  });
+
+  it('toggles the wide reading mode', async () => {
+    render(<TaskPanelHost />);
+    await screen.findByDisplayValue('Parent task');
+    await userEvent.click(screen.getByLabelText('Wide view'));
+    expect(screen.getByTestId('task-panel').className).toContain('is-wide');
+    await userEvent.click(screen.getByLabelText('Narrow view'));
+    expect(screen.getByTestId('task-panel').className).not.toContain('is-wide');
+  });
+
+  it('puts History in the more-actions menu and hides the editor status bar', async () => {
+    render(<TaskPanelHost />);
+    expect((await screen.findByTestId('collab')).getAttribute('data-hide-status')).toBe('true');
+    await userEvent.click(await screen.findByLabelText('More actions'));
+    expect(await screen.findByRole('menuitem', { name: 'History' })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: 'Delete task' })).toBeTruthy();
   });
 });

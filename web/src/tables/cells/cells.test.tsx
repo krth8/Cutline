@@ -135,9 +135,9 @@ describe('displays', () => {
     expect(screen.getByText('v3')).toBeTruthy();
   });
 
-  it('relation shows a count; formula shows number, text and booleans', () => {
-    renderDisplay(col('relation'), ['a', 'b']);
-    expect(screen.getByText('2 linked rows')).toBeTruthy();
+  it('relation shows the linked titles as chips; formula shows number, text and booleans', () => {
+    renderDisplay(col('relation', { config: { target: 'tbl_x' } }), [{ id: 'a', label: 'Alpha' }, { id: 'b', label: 'Bravo' }]);
+    expect(screen.getAllByTestId('relation-chip').map((c) => c.textContent)).toEqual(['Alpha', 'Bravo']);
     renderDisplay(col('formula'), 'abc');
     expect(screen.getByText('abc')).toBeTruthy();
     renderDisplay(col('formula'), true);
@@ -541,8 +541,8 @@ describe('multi-select editors', () => {
 });
 
 describe('readonly editors', () => {
-  it.each<ColumnType>(['formula', 'relation'])('%s leaves immediately', (type) => {
-    const { onCancel, onCommit } = setupEditor(col(type), null);
+  it('formula leaves immediately', () => {
+    const { onCancel, onCommit } = setupEditor(col('formula'), null);
     expect(onCancel).toHaveBeenCalled();
     expect(onCommit).not.toHaveBeenCalled();
   });
@@ -601,7 +601,7 @@ describe('registry: toText / parseText / isEmpty / compare', () => {
     expect(getCell('formula').parseText).toBeUndefined();
     expect(getCell('relation').parseText).toBeUndefined();
     expect(getCell('formula').toText(1.5, col('formula'))).toMatch(/1[.,]5/);
-    expect(getCell('relation').toText(['a', 'b'], col('relation'))).toBe('a, b');
+    expect(getCell('relation').toText([{ id: 'a', label: 'Alpha' }, { id: 'b', label: 'Bravo' }], col('relation'))).toBe('Alpha, Bravo');
   });
 
   it('isEmpty', () => {
