@@ -233,7 +233,7 @@ async def move_preview(page_id: str, space: str, user: dict = Depends(require_au
     if page["kind"] == "task":
         raise HTTPException(status_code=400, detail="A task page cannot be moved")
     if page["system"]:
-        raise HTTPException(status_code=400, detail="The Tasks page cannot be moved to another space")
+        raise HTTPException(status_code=400, detail="The dashboard cannot be moved to another space")
     space_type, project_id, _parent = _destination({"space": space}, user)
     before = _readers(page["spaceType"], page["projectId"], page["ownerId"])
     after = _readers(space_type, project_id, user["id"])
@@ -293,7 +293,7 @@ async def delete_page(page_id: str, user: dict = Depends(require_auth)):
     if page["archivedAt"] is None:
         raise HTTPException(status_code=409, detail="Archive the page before deleting it")
     if page["system"]:
-        raise HTTPException(status_code=400, detail="The Tasks page cannot be deleted")
+        raise HTTPException(status_code=400, detail="The dashboard cannot be deleted")
     delete_files_of_page_tree(page_id)
     db_delete_page(page_id)
     await close_unavailable_rooms()

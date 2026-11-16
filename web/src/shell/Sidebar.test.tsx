@@ -110,15 +110,17 @@ describe('Sidebar', () => {
       window.history.pushState({}, '', '/p/p1/tasks');
       window.dispatchEvent(new CustomEvent(URL_CHANGED_EVENT));
     });
-    expect(within(nav()).getByRole('link', { name: 'Tasks' }).getAttribute('aria-current')).toBe('page');
+    // the project's own row is the current one (its dashboard and its all-tasks view are the project itself)
+    expect(within(nav()).getByRole('link', { name: 'Project One' }).getAttribute('aria-current')).toBe('page');
+    expect(within(nav()).queryByRole('link', { name: 'Tasks' })).toBeNull(); // there is no fixed Tasks entry
   });
 
   it('a project name opens that project in the tab that is showing, and expands it', async () => {
     const user = userEvent.setup();
     render(<NavApp />);
     await user.click(within(nav()).getByRole('link', { name: 'Project One' }));
-    expect(fake.navigations).toEqual(['/p/p1/pages']); // from Home: the Main tab
-    expect(within(nav()).getByRole('link', { name: 'Tasks' })).toBeTruthy();
+    expect(fake.navigations).toEqual(['/p/p1/pages']); // from Home: its dashboard
+    expect(screen.getByRole('button', { name: 'Collapse Project One' })).toBeTruthy();
     go('/p/p1/review');
     await user.click(within(nav()).getByRole('link', { name: 'Project Two' }));
     expect(fake.navigations[fake.navigations.length - 1]).toBe('/p/p2/review');
@@ -127,14 +129,11 @@ describe('Sidebar', () => {
     expect(fake.navigations[fake.navigations.length - 1]).toBe('/p/p1/lounge');
   });
 
-  it('a project without the Main tab has no Tasks, no pages and nothing to unfold', async () => {
+  it('a project without the Home tab has no pages and nothing to unfold', async () => {
     const user = userEvent.setup();
     render(<NavApp />);
     await user.click(screen.getByRole('button', { name: 'Expand Project One' }));
     expect(screen.queryByRole('button', { name: 'Expand Project Two' })).toBeNull();
-    expect(screen.getAllByRole('link', { name: 'Tasks' })).toHaveLength(1);
-    await user.click(screen.getByRole('link', { name: 'Tasks' }));
-    expect(fake.navigations).toEqual(['/p/p1/tasks']);
     // its name opens the first tab it has
     await user.click(within(nav()).getByRole('link', { name: 'Project Two' }));
     expect(fake.navigations[fake.navigations.length - 1]).toBe('/p/p2/review');
@@ -190,7 +189,7 @@ describe('Sidebar', () => {
     fake.data.projects[1]!.canTasks = true;
     window.history.replaceState({}, '', '/p/p1/pages');
     const first = render(<NavApp />);
-    expect(screen.getAllByRole('link', { name: 'Tasks' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Collapse Project One' })).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Expand Project Two' }));
     first.unmount();
     window.history.replaceState({}, '', '/home');

@@ -181,7 +181,7 @@ def db_update_page(page_id: str, title=_UNSET, icon=_UNSET, parent_id=_UNSET, so
             if row["kind"] == "task":
                 raise ValueError("A task page cannot be moved")
             if row["system_key"]:
-                raise ValueError("The Tasks page cannot be moved")
+                raise ValueError("The dashboard cannot be moved")
             if parent_id:
                 _check_parent(conn, page_id, parent_id, row["space_type"], row["project_id"], row["owner_id"])
             sets.append("parent_id = ?")
@@ -229,7 +229,7 @@ def db_move_page(page_id: str, space_type: str, project_id: Optional[str], owner
         if row["kind"] == "task":
             raise ValueError("A task page cannot be moved")
         if row["system_key"]:
-            raise ValueError("The Tasks page cannot be moved to another space")
+            raise ValueError("The dashboard cannot be moved to another space")
         if row["archived_at"]:
             raise ValueError("Restore the page before moving it")
         if (row["space_type"], row["project_id"], row["owner_id"]) == (space_type, project_id, owner_id):
@@ -258,7 +258,7 @@ def db_set_archived(page_id: str, archived: bool) -> Optional[dict]:
         if archived and row["kind"] == "task":
             raise ValueError("A task page cannot be archived")
         if archived and row["system_key"]:
-            raise ValueError("The Tasks page cannot be archived or deleted")
+            raise ValueError("The dashboard cannot be archived or deleted")
         execute(conn, _SUBTREE + " UPDATE pages SET archived_at = ?, updated_at = ? WHERE id IN (SELECT id FROM sub)",
                 (page_id, now if archived else None, now))
         if archived:
@@ -274,11 +274,11 @@ def db_set_archived(page_id: str, archived: bool) -> Optional[dict]:
 
 def db_delete_page(page_id: str) -> bool:
     """Delete a page and its sub-pages for good (callers only allow this for archived pages).
-    Raises ValueError when the subtree holds a project's Tasks page."""
+    Raises ValueError when the subtree holds a project's dashboard."""
     with get_db() as conn:
         if fetchone(execute(conn, _SUBTREE + " SELECT 1 AS x FROM pages WHERE id IN (SELECT id FROM sub) "
                             "AND system_key IS NOT NULL", (page_id,))):
-            raise ValueError("The Tasks page cannot be deleted")
+            raise ValueError("The dashboard cannot be deleted")
         execute(conn, _SUBTREE + " UPDATE users SET home_page_id = NULL WHERE home_page_id IN (SELECT id FROM sub)",
                 (page_id,))
         # Views made for these pages go with them

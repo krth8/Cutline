@@ -156,7 +156,7 @@ async def create_template(data: dict, user: dict = Depends(require_auth)):
     try:
         bundle = freeze_bundle(await build_bundle([page_id], True), template_id)
         for page in bundle["pages"]:
-            page["system"] = None  # a template never carries the Tasks page's system key
+            page["system"] = None  # a template never carries a system key (the dashboard of a project)
         saved = db_add_template(template_id, name, description, scope, user["id"], len(bundle["pages"]), bundle)
     except ValueError as exc:
         delete_template_files(template_id)
@@ -264,11 +264,12 @@ async def copy_project_setup(project_id: str, data: dict, user: dict = Depends(r
     roots = [p["id"] for p in listing if p["parentId"] is None]
     tables = tuple(t["id"] for t in db_list_custom_tables("project", source_id))
     copied = 0
-    tasks_page = next((p["id"] for p in db_list_pages("project", project_id) if p["system"] == "tasks"), None)
+    # The source's dashboard lands on the dashboard this project already has
+    tasks_page = next((p["id"] for p in db_list_pages("project", project_id) if p["system"] == "dashboard"), None)
     if roots:
         bundle = await build_bundle(roots, True, extra_tables=tables)
         made = instantiate(bundle, user, "project", project_id, None,
-                           system_pages={"tasks": tasks_page} if tasks_page else None)
+                           system_pages={"dashboard": tasks_page} if tasks_page else None)
         table_map = made["tableMap"]
         copied = len([k for k in made["pageIds"] if k != tasks_page])
         first = db_get_page(made["rootIds"][0]) if made["rootIds"] else None

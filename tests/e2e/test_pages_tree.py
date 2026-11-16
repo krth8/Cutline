@@ -26,10 +26,11 @@ def space_pages(server, project, archived=False):
 
 
 def titles(server, project, parent=None, archived=False):
-    """Titles of the children of `parent` (None = top level) in order, from the API."""
+    """Titles of the children of `parent` (None = top level) in order, from the API. The project's dashboard
+    is its front page, not one of the pages of the tree, so it is left out."""
     ids = {p["id"] for p in space_pages(server, project, archived)}
     pages = [p for p in space_pages(server, project, archived)
-             if p["parentId"] == parent or (parent is None and p["parentId"] not in ids)]
+             if not p.get("system") and (p["parentId"] == parent or (parent is None and p["parentId"] not in ids))]
     return [p["title"] for p in sorted(pages, key=lambda p: p["sortOrder"])]
 
 
@@ -52,7 +53,7 @@ def title_field(page):
 def open_project_pages(page, server, project, user=None, password=None):
     if user:
         login(page, server.base_url, user, goto=f"/p/{project}/pages")
-    expect(page.locator("[data-testid=space-overview]")).to_be_visible()
+    expect(page.locator("[data-testid=page-view]")).to_be_visible(timeout=15000)  # the project's dashboard
     wait_js(page, "window.Live && Live.isConnected()", 10000)
     page.wait_for_timeout(2500)  # the watch list is sent to the server within 2 s
 
@@ -77,10 +78,7 @@ def scene(server, new_page):
     project = server.create_project("Spot")
     for uid in users.values():
         server.grant_access(project, uid)
-    # These tests are about ordinary pages and start from an empty tree: take the Tasks page every project
-    # gets (T13) out of the database. Its own behaviour is tested in test_tasks_tab.py and tests/test_tasks_page.py.
-    server.sql("DELETE FROM views WHERE owner_page_id IN (SELECT id FROM pages WHERE project_id = ? AND system_key = 'tasks')", (project,))
-    server.sql("DELETE FROM pages WHERE project_id = ? AND system_key = 'tasks'", (project,))
+    # The tree starts empty: the project's dashboard is its front page, not a row of the tree
     ana = new_page(name="ana")
     ben = new_page(name="ben")
     login(ana, server.base_url, "ana", goto=f"/p/{project}/pages")
@@ -94,9 +92,9 @@ def scene(server, new_page):
 
 def test_create_nested_pages_through_the_ui(scene, server):
     ana, project = scene["ana"], scene["project"]
-    expect(ana.locator("[data-testid=space-overview]").get_by_text("No pages yet.")).to_be_visible()
+    assert project_tree(ana, project).get_by_role("treeitem").count() == 0
 
-    ana.locator("[data-testid=space-overview]").get_by_role("button", name="Create the first page").click()
+    project_tree(ana, project).get_by_role("button", name="New page").click()
     expect(title_field(ana)).to_be_focused()  # a new page asks for its title straight away
     ana.keyboard.type("Plan")
     ana.keyboard.press("Enter")
@@ -253,9 +251,8 @@ def test_viewer_sees_the_tree_without_edit_affordances(scene, server, new_page):
     project = scene["project"]
     vera = new_page(name="vera")
     login(vera, server.base_url, "vera", goto=f"/p/{project}/pages")
-    expect(vera.locator("[data-testid=space-overview]")).to_be_visible()
+    expect(vera.locator("[data-testid=page-view]")).to_be_visible(timeout=15000)
     expect(tree_row(vera, "Plan")).to_be_visible()
-    assert vera.locator("[data-testid=space-overview]").get_by_role("button", name="New page").count() == 0
     assert project_tree(vera, project).get_by_role("button", name="New page").count() == 0
     tree_row(vera, "Plan").hover()
     assert vera.get_by_role("button", name="Add subpage to Plan").count() == 0
@@ -327,4 +324,4 @@ def test_a_page_deleted_while_open_is_not_available(scene, server):
     server.api(f"/api/pages/{doomed}", method="DELETE")
     expect(ben.get_by_text("This page is not available")).to_be_visible()
     ben.get_by_role("link", name="Back to Spot").click()
-    expect(ben.locator("[data-testid=space-overview]")).to_be_visible()
+    expect(ben.locator("[data-testid=page-view]")).to_be_visible()  # the dashboard

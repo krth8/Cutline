@@ -38,7 +38,7 @@ def scene(server, new_page):
     login(ana, server.base_url, "ana", goto="/me")
     expect(ana.locator("[data-testid=space-overview]")).to_be_visible()
     login(ben, server.base_url, "ben", goto=f"/p/{project}/pages")
-    expect(ben.locator("[data-testid=space-overview]")).to_be_visible()
+    expect(ben.locator("[data-testid=page-view]")).to_be_visible(timeout=15000)  # the project's dashboard
     watching(ana)
     watching(ben)
     return {"ana": ana, "ben": ben, "project": project, "token": token, "notes": notes["id"]}

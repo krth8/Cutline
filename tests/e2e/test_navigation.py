@@ -99,10 +99,10 @@ def test_the_tabs_show_the_open_project(scene, server):
     page.wait_for_url(f"**/p/{spot}/pages")
     assert current_tab(page) == "Home"
 
-    project(page, spot).locator("[data-testid=nav-tasks]").click()
-    page.wait_for_url(f"**/p/{spot}/tasks")
-    page.wait_for_selector("[data-testid=table-layout]", timeout=20000)
-    assert current_tab(page) == "Home" and current(page) == ["Tasks"]
+    # the project's front page is its dashboard: an ordinary page with live blocks
+    expect(page.locator("[data-testid=page-view] .cl-page__title")).to_have_value("Dashboard", timeout=20000)
+    page.wait_for_selector("[data-testid=view-block]", timeout=20000)
+    assert current(page) == ["Spot"]
 
     project(page, spot).get_by_role("treeitem", name="Brief").click()
     page.wait_for_url(f"**/p/{spot}/page/{scene['brief']}")
@@ -121,15 +121,18 @@ def test_the_tabs_show_the_open_project(scene, server):
     assert current_tab(page) == "Review"
 
 
-def test_tasks_is_listed_once_per_project_and_not_among_the_pages(scene, server):
+def test_a_project_has_no_fixed_tasks_entry_and_its_dashboard_is_not_a_row_of_the_tree(scene, server):
     page = scene["page"]
     tab(page, "main")  # the page trees are part of the Home tab
     for project_id in (scene["spot"], scene["other"]):
         row = project(page, project_id)
         if row.locator(".cl-nav__chevron").get_attribute("aria-expanded") != "true":
             row.locator(".cl-nav__chevron").click()
-        expect(row.get_by_role("link", name="Tasks", exact=True)).to_have_count(1)
+        expect(row.locator(".cl-nav__children")).to_be_visible()
+        assert row.get_by_role("link", name="Tasks", exact=True).count() == 0
         assert row.get_by_role("treeitem", name="Tasks", exact=True).count() == 0
+        assert row.get_by_role("treeitem", name="Dashboard", exact=True).count() == 0
+    assert project(page, scene["spot"]).get_by_role("treeitem").count() == 1  # Brief
 
 
 def test_with_no_project_open_the_tabs_are_the_general_screens(scene, server):

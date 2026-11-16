@@ -357,15 +357,15 @@ def test_duplicate_permissions(client, world, share):
     assert client.post(f"/api/pages/{team_page['id']}/duplicate", json={}).status_code == 401
 
 
-def test_the_tasks_page_is_copied_as_an_ordinary_page(client, world):
+def test_the_dashboard_is_copied_as_an_ordinary_page(client, world):
     a = world["a"]
     rows = ok(client.get(f"/api/spaces/{world['sa']}/pages", headers=auth(a)))
-    system = next(r for r in rows if r["system"] == "tasks")
+    system = next(r for r in rows if r["system"] == "dashboard")
     copy = ok(duplicate(client, a, system["id"]))
-    assert copy["system"] is None and copy["title"] == "Tasks (copy)"
-    assert len(own_views(client, a, copy["id"])) == 1
-    assert [r for r in ok(client.get(f"/api/spaces/{world['sa']}/pages", headers=auth(a))) if r["system"]] == [system | {}] or \
-        len([r for r in ok(client.get(f"/api/spaces/{world['sa']}/pages", headers=auth(a))) if r["system"] == "tasks"]) == 1
+    assert copy["system"] is None and copy["title"] == "Dashboard (copy)"
+    assert len(own_views(client, a, copy["id"])) == 5
+    rows = ok(client.get(f"/api/spaces/{world['sa']}/pages", headers=auth(a)))
+    assert len([r for r in rows if r["system"] == "dashboard"]) == 1
 
 
 # ---------- templates ----------
@@ -539,7 +539,7 @@ def test_copy_setup_copies_pages_columns_tables_and_task_views_but_no_tasks(clie
     ok(client.post(f"/api/tables/{table}/rows", json={"values": {"name": "Oslo"}}, headers=auth(a)))
     add_view(client, a, root["id"], table, "Places")
     tasks_page = next(r for r in ok(client.get(f"/api/spaces/{world['sa']}/pages", headers=auth(a))) if r["system"])
-    tview = own_views(client, a, tasks_page["id"])[0]
+    tview = next(v for v in own_views(client, a, tasks_page["id"]) if v["name"] == "All tasks")
     client.patch(f"/api/views/{tview['id']}", json={"config": {"query": {"parentId": None}, "columns": [{"key": key}]}},
                  headers=auth(a))
     ok(client.post(f"/api/projects/{src}/tasks", json={"name": "A real task"}, headers=auth(a)))
@@ -550,15 +550,19 @@ def test_copy_setup_copies_pages_columns_tables_and_task_views_but_no_tasks(clie
 
     space = f"p:{target}"
     rows = ok(client.get(f"/api/spaces/{space}/pages", headers=auth(world["admin"])))
-    assert sorted(r["title"] for r in rows) == ["Chapter", "Handbook", "Tasks"]
-    assert len([r for r in rows if r["system"] == "tasks"]) == 1
-    # the columns exist in the new project and the Tasks view uses them
+    assert sorted(r["title"] for r in rows) == ["Chapter", "Dashboard", "Handbook"]
+    assert len([r for r in rows if r["system"] == "dashboard"]) == 1
+    # the columns exist in the new project and the dashboard's All tasks view uses them
     cols = ok(client.get(f"/api/tables/tasks:{target}/schema", headers=auth(world["admin"])))["columns"]
     assert any(c["key"] == key and c["name"] == "Budget" for c in cols)
     new_tasks_page = next(r for r in rows if r["system"])
-    view, = own_views(client, world["admin"], new_tasks_page["id"])
+    view = next(v for v in own_views(client, world["admin"], new_tasks_page["id"]) if v["name"] == "All tasks")
     assert view["tableRef"] == f"tasks:{target}" and view["config"]["columns"] == [{"key": key}]
-    assert [n["viewId"] for n in nodes(new_tasks_page["id"], "viewBlock")] == [view["id"]]
+    # the dashboard has the copied views (no second set), and its blocks point at them
+    mine = {v["id"] for v in own_views(client, world["admin"], new_tasks_page["id"])}
+    assert len(mine) == 5
+    assert {n["viewId"] for n in nodes(new_tasks_page["id"], "viewBlock")} <= mine
+    assert [n["viewId"] for n in nodes(new_tasks_page["id"], "chart")] == [view["id"]]
     # a table with the same columns but no rows
     handbook = next(r for r in rows if r["title"] == "Handbook")
     place, = own_views(client, world["admin"], handbook["id"])

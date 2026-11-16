@@ -34,3 +34,9 @@
 .app[data-view="pages"] .context-toolbar {
   display: none;
 }
+
+/* Room for the block handle (the + and the grip left of a block) so it never lies over the sidebar,
+   also when the right panel makes the content narrow */
+@media (min-width: 801px) {
+  .cl-main { padding-left: 56px; padding-right: 56px; }
+}

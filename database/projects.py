@@ -30,10 +30,10 @@ def db_create_project(project_id: str, name: str, created_by: str = None) -> dic
             granted_by=created_by
         )
 
-    # Every project starts with its Tasks page
-    from .tasks_page import ensure_tasks_page
+    # Every project starts with its dashboard, the front page of the project
+    from .dashboard_page import ensure_dashboard_page
     with get_db() as conn:
-        ensure_tasks_page(conn, project_id, created_by)
+        ensure_dashboard_page(conn, project_id, created_by)
 
     return {
         "id": project_id,

@@ -22,6 +22,8 @@ export function ViewPage({ viewId }: { viewId: string }) {
   );
 }
 
+const ALL_TASKS = 'All tasks';
+
 type TasksState =
   | { status: 'loading' }
   | { status: 'ready'; viewId: string; pageId: string }
@@ -29,18 +31,19 @@ type TasksState =
   | { status: 'missing' }
   | { status: 'error'; message: string };
 
-/** The id of the table view that sits on the project's Tasks page: first view owned by that page. */
+/** The project's "All tasks" view. It is owned by the dashboard page (older projects: by their Tasks page). */
 async function findTasksView(projectId: string): Promise<{ viewId: string; pageId: string } | null> {
   const pages = await listPages(`p:${projectId}`);
-  const page = pages.find((p) => p.system === 'tasks');
+  const page = pages.find((p) => p.system === 'dashboard') ?? pages.find((p) => p.system === 'tasks');
   if (!page) return null;
-  const { views } = await requestJson<{ views: Array<{ id: string }> }>('GET', `/api/views?ownerPageId=${encodeURIComponent(page.id)}`);
-  const first = views[views.length - 1]; // the list is newest first; the original Tasks view is the oldest
+  const { views } = await requestJson<{ views: Array<{ id: string; name?: string; layout?: string }> }>('GET', `/api/views?ownerPageId=${encodeURIComponent(page.id)}`);
+  // On the dashboard it is the one called "All tasks"; on an old Tasks page the oldest (the list is newest first)
+  const first = views.find((v) => v.name === ALL_TASKS) ?? (page.system === 'tasks' ? views[views.length - 1] : undefined);
   if (first) return { viewId: first.id, pageId: page.id };
   // The block was removed from the page and took its view along: make a plain nested table again
   const made = await createView({
     tableRef: `tasks:${projectId}`,
-    name: 'Tasks',
+    name: ALL_TASKS,
     layout: 'table',
     config: { query: { parentId: null } },
     ownerPageId: page.id,
@@ -87,7 +90,7 @@ export function TasksTab({ projectId }: { projectId: string }) {
     return (
       <div className="cl-viewpage" data-testid="tasks-error">
         <p className="cl-viewshell__state cl-viewshell__state--error" role="alert">
-          {state.status === 'missing' ? 'This project has no Tasks page yet.' : state.message}
+          {state.status === 'missing' ? 'This project has no dashboard yet.' : state.message}
         </p>
       </div>
     );
@@ -99,9 +102,9 @@ export function TasksTab({ projectId }: { projectId: string }) {
         menuItems={[
           {
             id: 'open-page',
-            label: 'Open as page',
+            label: 'Open the dashboard',
             testId: 'tasks-open-page',
-            onSelect: () => navigate({ kind: 'projectPage', projectId, pageId: state.pageId }),
+            onSelect: () => navigate({ kind: 'projectPages', projectId }),
           },
         ]}
       />

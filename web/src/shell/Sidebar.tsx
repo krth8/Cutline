@@ -8,7 +8,6 @@ import { getPlatform } from '../platform';
 import { buildRoute, navigate, routeProjectId, type Route } from '../router';
 import { openSearch, shortcutLabel } from '../search';
 import { Button, cx, Menu } from '../ui';
-import { usePageStore } from '../pages/tree/space';
 import { useOpenProjects } from './navState';
 import { projectMenuItems } from './projectMenu';
 import { allowedTabs, projectTabs, tabOf, tabRoute } from './ProjectTabs';
@@ -101,29 +100,15 @@ function SectionSlots({ space, route }: { space: Space; route: Route }) {
   );
 }
 
-/** The project's Tasks entry, first among its pages. It is also current while the project's Tasks page or a task view is open. */
-function TasksLink({ projectId, route }: { projectId: string; route: Route }) {
-  const { snap } = usePageStore(`p:${projectId}`);
-  const inProject = routeProjectId(route) === projectId;
-  const onTasksPage = route.kind === 'projectPage' && inProject && snap.model.byId.get(route.pageId)?.page.system === 'tasks';
-  const active = inProject && (route.kind === 'projectTasks' || route.kind === 'projectView' || onTasksPage);
-  return (
-    <NavLink to={{ kind: 'projectTasks', projectId }} active={active} indent testId="nav-tasks">
-      <Icon name="tasks" />
-      <span className="cl-nav__label">Tasks</span>
-    </NavLink>
-  );
-}
-
 type SidebarProject = ReturnType<ReturnType<typeof getPlatform>['projects']>[number];
 
 /**
- * One project: its name opens it in the tab that is showing (Main, Review or Lounge); under it are Tasks
- * and its pages.
+ * One project: its name opens it in the tab that is showing (Home, Review or Lounge; in Home that is its
+ * dashboard); under it are its pages.
  */
 function ProjectItem({ project, route, tree, open, onOpenChange }: { project: SidebarProject; route: Route; tree: boolean; open: boolean; onOpenChange: (open: boolean) => void }) {
   const current = routeProjectId(route) === project.id;
-  const onOverview = route.kind === 'projectPages' && current;
+  const onOverview = (route.kind === 'projectPages' || route.kind === 'projectTasks') && current;
   const panelId = `cl-project-${project.id}`;
   const moreRef = useRef<HTMLButtonElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -185,7 +170,6 @@ function ProjectItem({ project, route, tree, open, onOpenChange }: { project: Si
       ) : null}
       {open && hasMain ? (
         <div id={panelId} className="cl-nav__children">
-          <TasksLink projectId={project.id} route={route} />
           <SectionSlots space={{ kind: 'project', projectId: project.id }} route={route} />
         </div>
       ) : null}

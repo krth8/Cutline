@@ -158,7 +158,7 @@ def test_deep_links_and_project_links_still_open_what_they_opened(scene, server,
     assert ben.evaluate("AppState.activeTab") == "review"
 
     ben.goto(f"{server.base_url}/p/{project}/pages")
-    expect(ben.locator("[data-testid=space-overview]")).to_be_visible(timeout=15000)
+    expect(ben.locator("[data-testid=page-view]")).to_be_visible(timeout=15000)  # the project's dashboard
     assert ben.evaluate("AppState.activeTab") == "pages"
 
     ben.goto(f"{server.base_url}/me")

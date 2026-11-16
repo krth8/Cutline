@@ -5,13 +5,14 @@
 import { registerRouteView, registerSidebarSection } from '../../shell/registry';
 import { PageView } from '../PageView';
 import { PageTree } from './PageTree';
+import { ProjectHome } from './ProjectHome';
 import { SpaceOverview } from './SpaceOverview';
 
 export function registerPageTree(): () => void {
   const offs = [
     registerSidebarSection('page-tree', PageTree),
     registerRouteView('me', SpaceOverview),
-    registerRouteView('projectPages', SpaceOverview),
+    registerRouteView('projectPages', ProjectHome),
     registerRouteView('mePage', PageView),
     registerRouteView('projectPage', PageView),
   ];

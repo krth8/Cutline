@@ -112,7 +112,7 @@ def test_save_as_template_and_use_it_in_another_project(scene, server):
     expect(alice.get_by_text("Template saved")).to_be_visible()
 
     alice.goto(f"{server.base_url}/p/{scene['beta']}/pages")
-    alice.wait_for_selector("[data-testid=space-overview]", timeout=15000)
+    alice.wait_for_selector("[data-testid=page-view]", timeout=15000)
     alice.locator(f'.cl-tree[data-space="p:{scene["beta"]}"]').get_by_role("button", name="More page options").click()
     alice.get_by_role("menuitem", name="New from template...").click()
     dialog = alice.get_by_role("dialog")
@@ -129,13 +129,13 @@ def test_save_as_template_and_use_it_in_another_project(scene, server):
 def test_meeting_notes_appears_in_a_second_users_tree(scene, server, new_page):
     bob = new_page(name="bob")
     login(bob, server.base_url, "bob", goto=f"/p/{scene['alpha']}/pages")
-    expect(bob.locator("[data-testid=space-overview]")).to_be_visible()
+    expect(bob.locator("[data-testid=page-view]")).to_be_visible(timeout=15000)
     wait_js(bob, "window.Live && Live.isConnected()", 10000)
     bob.wait_for_timeout(2500)  # the watch list is sent to the server within 2 s
 
     alice = scene["alice"]
     alice.goto(f"{server.base_url}/p/{scene['alpha']}/pages")
-    alice.wait_for_selector("[data-testid=space-overview]", timeout=15000)
+    alice.wait_for_selector("[data-testid=page-view]", timeout=15000)
     alice.locator(f'.cl-tree[data-space="p:{scene["alpha"]}"]').get_by_role("button", name="More page options").click()
     alice.get_by_role("menuitem", name="New from template...").click()
     alice.get_by_role("dialog").get_by_role("button", name="Use Meeting notes").click()

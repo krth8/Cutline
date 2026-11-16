@@ -64,18 +64,15 @@ def test_the_tab_shows_the_projects_tasks_as_a_table_inside_the_shell(server, sc
     # The columns of the old list, in its order
     headers = page.evaluate("() => [...document.querySelectorAll('[data-testid=table-header] [data-col]')].map(h => h.dataset.col)")
     assert headers == ["name", "status", "priority", "assignees", "dueDate", "stage"]
-    # The sidebar lists Tasks once under the project (highlighted here); the Tasks page is not in the page tree
-    nav_tasks = page.locator("[data-testid=cl-sidebar] [data-testid=nav-tasks]")
-    expect(nav_tasks).to_have_count(1)
-    assert nav_tasks.get_attribute("aria-current") == "page"
+    # There is no fixed Tasks page: the sidebar has no Tasks entry, and the view belongs to the project's dashboard
+    assert page.locator("[data-testid=cl-sidebar] [data-testid=nav-tasks]").count() == 0
     assert page.locator("[data-testid=cl-sidebar] [role=treeitem][aria-label=Tasks]").count() == 0
     page.click("[data-testid=toolbar-more]")
     page.click("[data-testid=tasks-open-page]")
-    page.wait_for_selector("[data-testid=view-block] [data-testid=table-layout]", timeout=20000)
-    assert f"/p/{scene['project']}/page/" in page.url
-    wait_for(lambda: sorted(names(page)) == ["Alpha", "Beta", "Gamma"])
-    # "Open full page" of the block uses the real route
-    page.click("[data-testid=view-block] [data-testid=toolbar-more]")
+    page.wait_for_url(f"**/p/{scene['project']}/pages", timeout=20000)
+    page.wait_for_selector("[data-testid=view-block]", timeout=20000)
+    # "Open full page" of a block uses the real route
+    page.locator("[data-testid=view-block] [data-testid=toolbar-more]").first.click()
     href = page.get_attribute("[data-testid=viewblock-open]", "href")
     assert href.startswith(f"/p/{scene['project']}/view/")
 
@@ -170,12 +167,11 @@ def test_the_old_task_list_comes_back_with_the_switch(server, scene, new_page):
     assert page.evaluate("localStorage.getItem('legacyTasks')") == "0"
 
 
-def test_the_sidebar_opens_a_projects_tasks_on_the_new_list_by_default(server, scene, new_page):
+def test_the_tasks_address_opens_the_new_list_by_default(server, scene, new_page):
     page = new_page(name="editor-projects")
     login(page, server.base_url, "editor")
     page.wait_for_selector("[data-testid=cl-sidebar]", timeout=10000)
-    page.click(f"[data-testid=project-card][data-project-id='{scene['project']}']")
-    page.click("[data-testid=cl-sidebar] [data-testid=nav-tasks]")
+    page.goto(f"{server.base_url}/p/{scene['project']}/tasks")
     page.wait_for_selector(f"{TAB} [data-testid=table-layout]", timeout=20000)
     assert page.url.endswith(f"/p/{scene['project']}/tasks")
 
