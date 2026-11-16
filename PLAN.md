@@ -756,8 +756,13 @@ Risks:
 | S5 | done | main | Merged. One `mention` node with a `kind`. Migration 010 (`page_refs`, `notifications.link`). Refs and notifications are produced at snapshot (about 3 to 8 s after a mention). |
 | S6 | done | main | Merged. Node `clipEmbed` keyed by project and base name. Migration 011 (`tasks.comment_id`, `clip_frame`). Review deep link `/p/<id>/review?clip=&v=&frame=`. Frame seek is untested (no video in the fixtures). |
 | C1, C2 | done | main | Merged. Migration 015. Table endpoints `GET/POST /api/tables`, `GET/PATCH/DELETE /api/tables/{ref}`; schema carries `space`; rows open with `?row=<ref>:<id>`. Schema changes on a project table are owner or admin only. Open: no rename control for a table in the UI, custom rows have no trash, orphan `table_columns` and `views` after a project is deleted. |
-| C3 to C5 | not started | | |
+| C3 | done | main | Merged. Column type `relation` with `config.target`; values are `[{id, label}]`. No migration. Browser tests in `test_relations.py` fail in full runs and pass alone: not explained yet. |
+| C4 | not started | | |
+| C5 | done | main | Merged. Node `chart` (bar, line, donut), hand-written SVG. Query key `groupBucket` (day, week, month) for a date `groupBy`. A donut ignores negative values. |
 | H1 | done | main | Merged. `GET /api/search`, palette in web/src/search/ with `registerCommand`. No index: LIKE over page text and in-memory scans. Page text lags typing by up to about 35 s. |
 | H2 | done | main | Merged. Migration 017 (`page_versions`). Automatic version at most every 10 min and when the last editor leaves; unnamed versions are thinned, capped at 200 per page. Restore rewrites the live document, so carets and local undo reset. |
 | H3 | done | main | Merged. Migration 018 (`tasks.deleted_at`). Deleted tasks are not loaded into memory; purge after 30 days. `TableSource` has optional trash methods; only tasks implement them. |
-| H4 to H10 | not started | | |
+| H4 | done | main | Merged. Migration 020 (`templates`; 019 is unused). `api/pageclone.py` holds the copy rules for duplicate, templates and project setup copy. Template files on disk are not garbage-collected. A copy is capped at 500 pages. |
+| H5 | done | main | Merged. Markdown or zip per page, CSV per view (`POST /api/tables/{ref}/export` for unsaved view state). PDF is browser print with `print.css`; no server renderer. |
+| H6 to H10 | not started | | |
+| N1 to N5 | done | main | Design consolidation, outside the original plan: one sidebar navigation on every screen (project tabs removed), quiet embedded views, page typography, a single-column task panel, and all colours and spacing as tokens in `static/css/theme.css` (see `docs/THEME.md`). The light theme is a draft. |
