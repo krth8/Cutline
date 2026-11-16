@@ -1,0 +1,173 @@
+/* The chart block. Colours come from the app's variables; the categorical palette is defined here for both themes. */
+:root {
+  --cl-chart-1: #7c93ff;
+  --cl-chart-2: #f2a65a;
+  --cl-chart-3: #4fc3a1;
+  --cl-chart-4: #ee73a6;
+  --cl-chart-5: #b794f4;
+  --cl-chart-6: #e6d35a;
+  --cl-chart-7: #5ac8e8;
+  --cl-chart-8: #ef8a73;
+  --cl-chart-none: #6f6f7d; /* the empty group */
+  --cl-chart-other: #9a9aae; /* the merged slice of a donut */
+}
+[data-theme="light"] {
+  --cl-chart-1: #3b5bdb;
+  --cl-chart-2: #d9730d;
+  --cl-chart-3: #1c8a6b;
+  --cl-chart-4: #c2255c;
+  --cl-chart-5: #7048e8;
+  --cl-chart-6: #a68a00;
+  --cl-chart-7: #0c8599;
+  --cl-chart-8: #d6452b;
+  --cl-chart-none: #a3a8b0;
+  --cl-chart-other: #7d848c;
+}
+
+.cl-chart-node { margin: 8px 0; }
+
+.cl-chart {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 8px 10px 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.cl-chart--editable { cursor: pointer; }
+.cl-chart--editable:hover { background: var(--bg-hover); }
+.ProseMirror-selectednode .cl-chart { border-color: var(--accent); }
+
+.cl-chart__head { display: flex; align-items: center; gap: 8px; min-height: 22px; flex: none; }
+.cl-chart__title { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-chart__gear {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+.cl-chart:hover .cl-chart__gear, .cl-chart:focus-within .cl-chart__gear, .cl-chart__gear:focus-visible { opacity: 1; }
+.cl-chart__gear:hover { background: var(--bg-hover); color: var(--text); }
+.cl-chart__gear:focus-visible { outline: 2px solid var(--accent); }
+
+.cl-chart__body { position: relative; flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; }
+.cl-chart__ready { animation: cl-chart-in 0.2s ease-out; }
+@keyframes cl-chart-in { from { opacity: 0; } to { opacity: 1; } }
+
+.cl-chart__note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  min-height: 60px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.cl-chart__skeleton { display: flex; align-items: flex-end; gap: 12px; height: 100%; padding: 8px 24px 24px; box-sizing: border-box; }
+.cl-chart__skeleton span { flex: 1; border-radius: 3px 3px 0 0; background: var(--bg-hover); animation: cl-chart-pulse 1.2s ease-in-out infinite; }
+@keyframes cl-chart-pulse { 50% { opacity: 0.45; } }
+
+/* The drawing */
+.cl-chart__plot { position: relative; }
+.cl-chart__svg { display: block; overflow: visible; font-size: 11px; }
+.cl-chart__grid { stroke: var(--border-medium); stroke-width: 1; }
+.cl-chart__axis { stroke: var(--text-muted); stroke-width: 1; opacity: 0.6; }
+.cl-chart__tick, .cl-chart__label { fill: var(--text-muted); font-size: 11px; }
+.cl-chart__value { fill: var(--text); font-size: 11px; font-weight: 600; }
+.cl-chart__line { stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.cl-chart__dot { stroke: var(--bg-solid); stroke-width: 1.5; }
+.cl-chart__bar { opacity: 0.92; }
+.cl-chart__mark:hover .cl-chart__bar, .cl-chart__mark:focus-within .cl-chart__bar { opacity: 1; }
+.cl-chart__mark:hover .cl-chart__dot, .cl-chart__mark:focus-within .cl-chart__dot { stroke: var(--text); }
+.cl-chart__hit { fill: transparent; outline: none; }
+.cl-chart__hit:hover { fill: var(--bg-hover); opacity: 0.5; }
+.cl-chart__hit:focus-visible { stroke: var(--accent); stroke-width: 2; }
+.cl-chart__slice { stroke: var(--bg-solid); stroke-width: 1.5; outline: none; }
+.cl-chart__slice:hover, .cl-chart__slice:focus-visible { stroke: var(--text); }
+
+/* Donut */
+.cl-chart__donut { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.cl-chart__donut--wide { flex-direction: row; justify-content: center; gap: 24px; }
+.cl-chart__ring { flex: none; }
+.cl-chart__total { fill: var(--text); font-size: 22px; font-weight: 700; }
+.cl-chart__total-label { fill: var(--text-muted); font-size: 11px; }
+.cl-chart__legend { list-style: none; margin: 0; padding: 0; min-width: 0; max-width: 100%; flex: 0 1 280px; font-size: 12px; }
+.cl-chart__legend-item { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.cl-chart__swatch { flex: none; width: 10px; height: 10px; border-radius: 2px; }
+.cl-chart__legend-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-chart__legend-value { flex: none; font-weight: 600; }
+.cl-chart__legend-pct { flex: none; width: 38px; text-align: right; color: var(--text-muted); }
+
+/* Tooltip */
+.cl-chart__tip {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: var(--bg-solid);
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.cl-chart__tip--below { transform: translate(-50%, 0); }
+.cl-chart__tip-title { color: var(--text-muted); }
+.cl-chart__tip-value { font-weight: 600; }
+
+/* Only assistive technology sees the data table */
+.cl-chart__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The bottom edge */
+.cl-chart__resize { position: absolute; left: 0; right: 0; bottom: -3px; height: 8px; cursor: ns-resize; border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+.cl-chart__resize:hover, .cl-chart__resize:focus-visible { background: var(--accent-bg-strong); outline: none; }
+
+@media (prefers-reduced-motion: reduce) { .cl-chart__ready, .cl-chart__skeleton span { animation: none; } }
+
+/* The settings popover */
+.cl-chart-setup { width: min(300px, 94vw); max-height: min(80vh, 560px); overflow-y: auto; padding: 12px; }
+.cl-chart-setup__body { display: flex; flex-direction: column; gap: 10px; }
+.cl-chart-setup__field { display: flex; flex-direction: column; gap: 3px; margin: 0; }
+.cl-chart-setup__name { font-size: 12px; color: var(--text-muted); }
+.cl-chart-setup__control {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+.cl-chart-setup__actions { display: flex; justify-content: flex-end; }

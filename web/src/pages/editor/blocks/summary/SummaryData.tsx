@@ -66,7 +66,7 @@ function WithSchema({ view, fn, column, children }: { view: ViewWithOwner; fn: S
   );
 }
 
-function failure(e: Error): SummaryState {
+export function failure(e: Error): Extract<SummaryState, { kind: 'denied' | 'gone' | 'error' }> {
   if (isDenied(e)) return { kind: 'denied' };
   if (isGone(e)) return { kind: 'gone' };
   return { kind: 'error', message: e.message };

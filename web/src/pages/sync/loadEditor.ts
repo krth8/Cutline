@@ -12,6 +12,7 @@ import * as ReactDom from 'react-dom';
 import * as AwarenessProtocol from 'y-protocols/awareness';
 import * as Y from 'yjs';
 import * as summaryHost from '../editor/blocks/summary/host';
+import * as chartHost from '../editor/blocks/chart/host';
 import * as clipEmbedHost from '../editor/blocks/clipEmbed/host';
 import * as mentionHost from '../editor/blocks/mention/host';
 import * as pageListHost from '../editor/blocks/pageList/host';
@@ -33,6 +34,7 @@ if (lazy) {
     'editor-registry': editorRegistry,
     'view-block-host': viewBlockHost,
     'summary-host': summaryHost,
+    'chart-host': chartHost,
     'clip-embed-host': clipEmbedHost,
     'mention-host': mentionHost,
     'page-list-host': pageListHost,

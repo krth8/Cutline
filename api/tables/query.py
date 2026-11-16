@@ -59,7 +59,8 @@ OPS_BY_TYPE: Dict[str, set] = {
 }
 
 SUMMARY_FUNCTIONS = {"count", "countEmpty", "countFilled", "sum", "avg", "min", "max", "percentChecked"}
-_TOP_LEVEL_KEYS = {"filter", "sort", "groupBy", "summaries", "parentId", "search", "limit", "offset"}
+_TOP_LEVEL_KEYS = {"filter", "sort", "groupBy", "groupBucket", "summaries", "parentId", "search", "limit", "offset"}
+GROUP_BUCKETS = ("day", "week", "month")
 _MAX_FILTER_DEPTH = 8
 
 
@@ -389,8 +390,19 @@ def _sort_rows(rows: List[dict], sort: list, ctx: _Ctx) -> List[dict]:
     return rows
 
 
-def _group_keys(col: dict, v: Any) -> List[Optional[str]]:
-    """The groups a cell belongs to ([None] = the empty group; several for multi-value cells)."""
+def _bucket_key(d: date, bucket: str) -> str:
+    """The group key of a date: the day itself, the Monday of its week, or "YYYY-MM"."""
+    if bucket == "week":
+        return (d - timedelta(days=d.weekday())).isoformat()
+    if bucket == "month":
+        return d.isoformat()[:7]
+    return d.isoformat()
+
+
+def _group_keys(col: dict, v: Any, bucket: Optional[str] = None) -> List[Optional[str]]:
+    """The groups a cell belongs to ([None] = the empty group; several for multi-value cells).
+
+    ``bucket`` (day, week, month) coarsens the groups of a date column."""
     ctype = col["type"]
     if ctype == "checkbox":
         return ["true" if v else "false"]
@@ -400,7 +412,7 @@ def _group_keys(col: dict, v: Any) -> List[Optional[str]]:
         return [_fmt_number(v)] if _is_number(v) else [str(v)]
     if ctype == "date":
         d = _cell_date(v)
-        return [d.isoformat() if d else str(v)]
+        return [_bucket_key(d, bucket or "day") if d else str(v)]
     keys = atoms(col, v) if ctype not in TEXTY and ctype != "formula" else [str(v)]
     seen, unique = set(), []
     for k in keys:
@@ -544,6 +556,12 @@ def run_query(rows: List[dict], columns: List[dict], query: Optional[dict], *, m
         group_col = ctx.column(query["groupBy"], "groupBy column")
         if group_col["type"] == "longtext":
             raise QueryError(f"Cannot group by long text column '{group_col['key']}'")
+    bucket = query.get("groupBucket")
+    if bucket is not None:
+        if bucket not in GROUP_BUCKETS:
+            raise QueryError(f"groupBucket must be one of: {', '.join(GROUP_BUCKETS)}")
+        if group_col is None or group_col["type"] != "date":
+            raise QueryError("groupBucket needs groupBy on a date column")
 
     summary_spec = _check_summaries(query["summaries"], ctx) if query.get("summaries") else None
 
@@ -572,7 +590,7 @@ def run_query(rows: List[dict], columns: List[dict], query: Optional[dict], *, m
     result: Dict[str, Any] = {"total": len(result_rows)}
 
     if group_col is not None:
-        cells = [(r, _group_keys(group_col, (r.get("values") or {}).get(group_col["key"]))) for r in result_rows]
+        cells = [(r, _group_keys(group_col, (r.get("values") or {}).get(group_col["key"]), bucket)) for r in result_rows]
         order = _group_order(group_col, [k for _, keys in cells for k in keys])
         position = {k: i for i, k in enumerate(order)}
         members: Dict[Optional[str], List[dict]] = {k: [] for k in order}
