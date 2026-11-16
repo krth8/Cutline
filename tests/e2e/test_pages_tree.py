@@ -264,7 +264,7 @@ def test_viewer_sees_the_tree_without_edit_affordances(scene, server, new_page):
     expect(vera.locator("[data-testid=page-view]").get_by_role("heading", name="Plan")).to_be_visible()
     assert title_field(vera).count() == 0
     vera.get_by_role("button", name="Page menu").click()
-    assert vera.get_by_role("menuitem").count() == 2  # only "History" and "Copy link"
+    assert vera.get_by_role("menuitem").count() == 5  # History, the three export entries and Copy link
     # the server agrees
     status = vera.evaluate(
         "fetch('/api/spaces/p:" + project + "/pages', {method: 'POST', headers: {'Content-Type': 'application/json'},"
