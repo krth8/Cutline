@@ -96,3 +96,40 @@ def test_reply_must_point_at_a_comment_in_the_project(client, admin, make_projec
     parent = post(client, project_id, admin["token"]).json()
     assert post(client, project_id, admin["token"], parentId=parent["id"]).json()["parentId"] == parent["id"]
     assert post(client, project_id, admin["token"], parentId="nope").json()["parentId"] is None
+
+
+def _mentions(client, token):
+    res = client.get("/api/notifications", headers=auth(token))
+    return [n for n in res.json()["notifications"] if n["type"] == "mention"]
+
+
+def test_tagging_someone_tells_them_once_and_only_people_with_review(client, admin, make_project, make_user, grant):
+    project_id = make_project()
+    rita, lars = make_user(), make_user()
+    grant(project_id, rita["user"]["id"])
+    grant(project_id, lars["user"]["id"], can_review=False, can_tasks=True)  # no Review tab
+    text = f"@{rita['user']['username']} and @{lars['user']['username']}, see this. Again @{rita['user']['username']}."
+    post(client, project_id, admin["token"], text=text, clipBaseName="shot_010")
+    told = _mentions(client, rita["token"])
+    assert len(told) == 1
+    assert "tagged you on shot_010" in told[0]["title"]
+    assert told[0]["link"] == f"/p/{project_id}/review?clip=shot_010"
+    assert _mentions(client, lars["token"]) == []
+    # tagging yourself tells nobody
+    post(client, project_id, rita["token"], text=f"note to @{rita['user']['username']}")
+    assert len(_mentions(client, rita["token"])) == 1
+
+
+def test_a_reply_tells_the_author_of_the_comment(client, admin, make_project, make_user, grant):
+    project_id = make_project()
+    rita = make_user()
+    grant(project_id, rita["user"]["id"])
+    parent = post(client, project_id, rita["token"], text="Too dark?").json()
+    drawing = {"strokes": [{"x": 1, "y": 1}, {"x": 2, "y": 2}], "frame": 12}
+    reply = post(client, project_id, admin["token"], text="Like this", parentId=parent["id"], drawing=drawing).json()
+    assert reply["parentId"] == parent["id"] and reply["drawing"]["strokes"]
+    told = _mentions(client, rita["token"])
+    assert [n["title"] for n in told] == ["admin replied to your comment on a clip"]
+    # answering yourself tells nobody
+    post(client, project_id, rita["token"], text="ok", parentId=parent["id"])
+    assert len(_mentions(client, rita["token"])) == 1

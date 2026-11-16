@@ -53,12 +53,19 @@ function setupCommentSubmit() {
     document.getElementById('submitCommentBtn')?.addEventListener('click', submitComment);
 
     // Enter to submit (with shift for newline)
-    document.getElementById('commentInput')?.addEventListener('keydown', (e) => {
+    const input = document.getElementById('commentInput');
+    input?.addEventListener('keydown', (e) => {
+        if (CommentTags.onKeydown(e)) return;
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             submitComment();
+        } else if (e.key === 'Escape' && replyingToCommentId) {
+            e.preventDefault();
+            cancelReply();
         }
     });
+    input?.addEventListener('input', () => CommentTags.onInput(input));
+    input?.addEventListener('blur', () => setTimeout(() => CommentTags.close(), 150));
 }
 
 // Track reply state
@@ -79,7 +86,8 @@ async function submitComment() {
     }
 
     const isHtml = AppState.currentMediaType === 'html';
-    const currentFrame = isHtml ? 0 : getCurrentFrame();
+    const replyParent = replyingToCommentId ? AppState.comments.find(c => c.id === replyingToCommentId) : null;
+    const currentFrame = isHtml ? 0 : (replyParent ? replyParent.frame : getCurrentFrame());
     // Element anchor (HTML clips): only on top-level comments, replies follow their parent
     const anchor = isHtml && !replyingToCommentId ? (AppState.pendingAnchor || null) : null;
     const comment = {
@@ -141,103 +149,35 @@ async function submitComment() {
 }
 
 // ============ Reply Functions ============
+// A reply is written in the same box as a comment, so it can carry a drawing and @tags like any other.
 function startReply(commentId, frame) {
-    // Cancel any existing reply first
     cancelReply();
+    const parent = AppState.comments.find(c => c.id === commentId);
+    if (!parent) return;
+    // Replies hang under the top comment of the thread
+    replyingToCommentId = parent.parentId || parent.id;
 
-    replyingToCommentId = commentId;
-
-    // Go to the frame of the comment we're replying to
+    // Go to the frame of the comment, so a drawing in the reply lands on the same picture
     goToFrame(frame);
 
-    // Find the comment element and inject inline reply form after it
-    const commentEl = document.querySelector(`.comment-item[data-comment-id="${commentId}"]`);
-    if (!commentEl) return;
-
-    const parentComment = AppState.comments.find(c => c.id === commentId);
-    const parentName = parentComment?.userName || 'comment';
-
-    // Create inline reply form
-    const replyForm = document.createElement('div');
-    replyForm.className = 'inline-reply-form';
-    replyForm.innerHTML = `
-        <div class="inline-reply-header">
-            <span>Replying to ${escapeHtml(parentName)}</span>
-            <button class="btn-icon btn-xs" onclick="cancelReply()">
+    document.querySelector(`.comment-item[data-comment-id="${commentId}"]`)?.classList.add('is-reply-target');
+    const indicator = document.getElementById('replyIndicator');
+    if (indicator) {
+        indicator.innerHTML = `
+            <span>Replying to <strong>${escapeHtml(parent.userName || 'comment')}</strong></span>
+            <button class="btn-icon btn-xs" onclick="cancelReply()" title="Cancel reply (Esc)">
                 <svg class="icon icon-sm"><use href="/static/icons.svg?v=3#icon-x"/></svg>
-            </button>
-        </div>
-        <div class="inline-reply-input-row">
-            <input type="text" class="inline-reply-input" placeholder="Write a reply..." id="inlineReplyInput">
-            <button class="btn btn-primary btn-sm" onclick="submitInlineReply()">
-                <svg class="icon icon-sm"><use href="/static/icons.svg?v=3#icon-send"/></svg>
-            </button>
-        </div>
-    `;
-
-    // Insert after the comment
-    commentEl.insertAdjacentElement('afterend', replyForm);
-
-    // Focus the input
-    const input = replyForm.querySelector('.inline-reply-input');
+            </button>`;
+        indicator.classList.add('visible');
+    }
+    const input = document.getElementById('commentInput');
     if (input) {
+        input.dataset.placeholder = input.placeholder;
+        input.placeholder = 'Write a reply. Draw on the frame or @ to tag someone...';
         input.focus();
-        // Handle Enter key
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                submitInlineReply();
-            }
-            if (e.key === 'Escape') {
-                cancelReply();
-            }
-        });
     }
-}
-
-async function submitInlineReply() {
-    const input = document.getElementById('inlineReplyInput');
-    if (!input) return;
-
-    const text = input.value.trim();
-    if (!text) return;
-
-    if (!AppState.projectId) {
-        console.error('No project loaded');
-        return;
-    }
-
-    const currentFrame = getCurrentFrame();
-    const comment = {
-        frame: currentFrame,
-        userName: AppState.userName || 'Guest',
-        text: text,
-        drawing: null,
-        clipBaseName: AppState.currentClip?.baseName || null,
-        clipVersion: AppState.currentClip?.version || null,
-        parentId: replyingToCommentId
-    };
-
-    // Use session endpoint if in session, otherwise use project endpoint
-    const endpoint = AppState.sessionId
-        ? `/api/session/${AppState.sessionId}/comment`
-        : `/api/projects/${AppState.projectId}/comment`;
-
-    const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(comment)
-    });
-
-    if (response.ok) {
-        addCommentLocally(await response.json());
-    } else {
-        showCommentError(response, 'Could not post the reply');
-        return;
-    }
-
-    // Clear reply state
-    cancelReply();
+    const submit = document.getElementById('submitCommentBtn');
+    if (submit) submit.textContent = 'Reply';
 }
 
 /** Show a comment this tab just saved (other tabs get it over the live connection). */
@@ -259,19 +199,19 @@ async function showCommentError(response, fallback) {
 
 function cancelReply() {
     replyingToCommentId = null;
-
-    // Remove any inline reply forms
-    const inlineForm = document.querySelector('.inline-reply-form');
-    if (inlineForm) {
-        inlineForm.remove();
-    }
-
-    // Also hide old-style reply indicator (backwards compat)
+    document.querySelectorAll('.comment-item.is-reply-target').forEach(el => el.classList.remove('is-reply-target'));
     const replyIndicator = document.getElementById('replyIndicator');
     if (replyIndicator) {
         replyIndicator.classList.remove('visible');
         replyIndicator.innerHTML = '';
     }
+    const input = document.getElementById('commentInput');
+    if (input && input.dataset.placeholder) {
+        input.placeholder = input.dataset.placeholder;
+        delete input.dataset.placeholder;
+    }
+    const submit = document.getElementById('submitCommentBtn');
+    if (submit) submit.textContent = 'Post';
 }
 
 // ============ Resolved Toggle ============
@@ -412,8 +352,8 @@ function renderComments() {
         const canDelete = c.user === AppState.userId || AppState.isAdmin;
         const deleteBtn = canDelete ? `<button class="comment-action-btn" onclick="event.stopPropagation(); deleteComment('${c.id}')" title="Delete"><svg class="icon icon-sm"><use href="/static/icons.svg?v=3#icon-trash"/></svg></button>` : '';
 
-        // Reply button
-        const replyBtn = `<button class="comment-action-btn" onclick="event.stopPropagation(); startReply('${c.id}', ${c.frame})" title="Reply"><svg class="icon icon-sm"><use href="/static/icons.svg?v=3#icon-reply"/></svg></button>`;
+        // Reply: a word under the comment
+        const replyBtn = `<button class="comment-reply-btn" onclick="event.stopPropagation(); startReply('${c.id}', ${c.frame})">Reply</button>`;
 
         // Resolved/checkmark button
         const isResolved = c.resolved || false;
@@ -457,12 +397,14 @@ function renderComments() {
                         ${drawingIndicator}
                         ${resolvedBtn}
                         ${taskBtn}
-                        ${replyBtn}
                         ${deleteBtn}
                     </div>
                 </div>
-                ${c.text ? `<div class="comment-text">${escapeHtml(c.text)}</div>` : ''}
-                <div class="comment-time">${c.timestamp ? new Date(c.timestamp).toLocaleTimeString() : ''}</div>
+                ${c.text ? `<div class="comment-text">${CommentTags.render(c.text)}</div>` : ''}
+                <div class="comment-foot">
+                    ${commentTimeLabel(c) ? `<span class="comment-time">${commentTimeLabel(c)}</span>` : ''}
+                    ${replyBtn}
+                </div>
             </div>
         `;
     }).join('');
@@ -1410,7 +1352,6 @@ window.deleteComment = deleteComment;
 window.createTaskFromComment = createTaskFromComment;
 window.openCommentTask = openCommentTask;
 window.startReply = startReply;
-window.submitInlineReply = submitInlineReply;
 window.cancelReply = cancelReply;
 window.toggleCommentResolved = toggleCommentResolved;
 window.handleCommentDeleted = handleCommentDeleted;
@@ -1463,3 +1404,110 @@ async function downloadComments(format) {
 
 window.showCommentsDownloadMenu = showCommentsDownloadMenu;
 window.downloadComments = downloadComments;
+
+
+// ============ When a comment was written ============
+function commentTimeLabel(c) {
+    const stamp = c.createdAt || c.timestamp;
+    if (!stamp) return '';
+    const when = new Date(stamp);
+    if (isNaN(when)) return '';
+    const sameDay = when.toDateString() === new Date().toDateString();
+    const time = when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return sameDay ? time : `${when.toLocaleDateString([], { day: 'numeric', month: 'short' })} ${time}`;
+}
+
+// ============ @tags in comments ============
+// Typing @ in the comment box lists the people of the project; the server tells the ones that are tagged.
+const CommentTags = (() => {
+    const TAG = /(^|[^\w@])@([\w.\-]{1,80})/g;
+    let members = null, membersFor = null, list = null, matches = [], active = 0, range = null;
+
+    async function load() {
+        const projectId = AppState.projectId;
+        if (!projectId || AppState.isShareLinkGuest) return [];
+        if (members && membersFor === projectId) return members;
+        try {
+            const res = await fetch(`/api/projects/${projectId}/members`);
+            members = res.ok ? ((await res.json()).members || []) : [];
+        } catch (e) { members = []; }
+        membersFor = projectId;
+        return members;
+    }
+
+    function render(text) {
+        return escapeHtml(text).replace(TAG, '$1<span class="comment-mention">@$2</span>');
+    }
+
+    function close() {
+        if (list) { list.remove(); list = null; }
+        matches = []; range = null;
+    }
+
+    function draw(input) {
+        if (!list) {
+            list = document.createElement('div');
+            list.className = 'comment-tag-list';
+            list.setAttribute('role', 'listbox');
+            input.parentElement.insertBefore(list, input);
+        }
+        list.innerHTML = matches.map((m, i) => `
+            <div class="comment-tag-option ${i === active ? 'active' : ''}" role="option" data-index="${i}">
+                <span class="comment-tag-avatar">${escapeHtml(m.username.substr(0, 2).toUpperCase())}</span>${escapeHtml(m.username)}
+            </div>`).join('');
+        list.querySelectorAll('.comment-tag-option').forEach(el => {
+            el.addEventListener('mousedown', (e) => { e.preventDefault(); pick(input, Number(el.dataset.index)); });
+        });
+    }
+
+    function pick(input, index) {
+        const m = matches[index];
+        if (!m || !range) return close();
+        const value = input.value;
+        input.value = value.slice(0, range.start) + '@' + m.username + ' ' + value.slice(range.end);
+        const caret = range.start + m.username.length + 2;
+        input.setSelectionRange(caret, caret);
+        close();
+        input.focus();
+    }
+
+    function tagAtCaret(input) {
+        const caret = input.selectionStart;
+        const found = /(^|[^\w@])@([\w.\-]*)$/.exec(input.value.slice(0, caret));
+        return found ? { query: found[2].toLowerCase(), start: caret - found[2].length - 1, end: caret } : null;
+    }
+
+    async function onInput(input) {
+        if (!tagAtCaret(input)) return close();
+        const all = await load();
+        // The box may have changed while the people were loading: read it again
+        const tag = tagAtCaret(input);
+        if (!tag) return close();
+        const found = all.filter(m => m.id !== AppState.userId && m.username.toLowerCase().includes(tag.query))
+            .sort((a, b) => a.username.toLowerCase().indexOf(tag.query) - b.username.toLowerCase().indexOf(tag.query)).slice(0, 6);
+        if (!found.length) return close();
+        matches = found;
+        range = { start: tag.start, end: tag.end };
+        active = Math.min(active, matches.length - 1);
+        draw(input);
+    }
+
+    /** True when the key was used by the list (the box must not act on it). */
+    function onKeydown(e) {
+        if (!list || !matches.length) return false;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            active = (active + (e.key === 'ArrowDown' ? 1 : matches.length - 1)) % matches.length;
+            draw(e.target);
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+            pick(e.target, active);
+        } else if (e.key === 'Escape') {
+            close();
+        } else {
+            return false;
+        }
+        e.preventDefault();
+        return true;
+    }
+
+    return { render, onInput, onKeydown, close };
+})();

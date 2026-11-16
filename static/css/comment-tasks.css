@@ -21,3 +21,31 @@
     background: var(--primary);
     color: #fff;
 }
+
+/* Under a comment: when it was written, and Reply */
+.comment-foot { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.comment-foot .comment-time { margin-top: 0; }
+.comment-reply-btn {
+    background: none; border: 0; padding: 2px 8px; margin-left: -8px; border-radius: 6px; cursor: pointer;
+    font: inherit; font-size: 12px; font-weight: 600; color: var(--text-muted);
+}
+.comment-foot .comment-time + .comment-reply-btn { margin-left: 0; }
+.comment-reply-btn:hover { background: var(--accent-bg-hover); color: var(--accent-light); }
+.comment-item.is-reply-target { border-color: var(--accent); background: var(--accent-bg); }
+
+/* The comment box while it writes a reply */
+.reply-indicator { margin-bottom: 6px; border-radius: 6px; background: var(--accent-bg); color: var(--accent-light); }
+
+/* @tags: in the text and the list while typing one */
+.comment-mention { color: var(--accent-light); background: var(--accent-bg); border-radius: 4px; padding: 0 3px; font-weight: 600; }
+.comment-input-area { position: relative; }
+.comment-tag-list {
+    position: absolute; left: 12px; right: 12px; bottom: calc(100% - 4px); z-index: 20; padding: 4px;
+    background: var(--bg-solid); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+}
+.comment-tag-option { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.comment-tag-option.active, .comment-tag-option:hover { background: var(--accent-bg-strong); }
+.comment-tag-avatar {
+    width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; flex: none;
+    background: var(--accent); color: #fff; font-size: 9px; font-weight: 700;
+}
