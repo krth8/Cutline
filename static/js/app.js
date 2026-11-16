@@ -783,9 +783,10 @@ async function createProject() {
         }
         loadProjects();
 
-        // Also refresh the projects grid if on Projects tab
-        if (typeof loadProjectsGrid === 'function') {
-            loadProjectsGrid();
+        // Open the new project in the sidebar's navigation (its overview page)
+        if (!AppState.isShareLinkGuest) {
+            history.pushState({}, '', `/p/${encodeURIComponent(data.project_id)}/pages`);
+            window.dispatchEvent(new CustomEvent('cutline:navigate'));
         }
 
     } catch (e) {
@@ -1415,13 +1416,13 @@ function renderProjectsSidebar() {
         appContainer.classList.toggle('projects-expanded', AppState.expandedProjectsView);
     }
 
-    // Add project placeholder (shown for users with create permission)
-    const addProjectPlaceholder = canCreateProject() ? `
-        <div class="project-add" onclick="showCreateProject()">
-            <div class="project-add-icon"><svg class="icon icon-lg"><use href="/static/icons.svg#icon-plus"/></svg></div>
-            <div class="project-add-text">New project</div>
-        </div>
-    ` : '';
+    // The sidebar (React) picks the project; this panel lists only the clips of the open project
+    const title = document.getElementById('reviewPanelTitle');
+    if (title) title.textContent = (AppState.projects.find(p => p.id === AppState.projectId) || {}).name || 'Clips';
+    window.dispatchEvent(new CustomEvent('cutline:projects-changed'));
+
+    // "New project" lives in the sidebar now, not in this panel
+    const addProjectPlaceholder = '';
 
     // Grid placeholder for grid view
     const addProjectGridPlaceholder = canCreateProject() ? `
@@ -1484,7 +1485,7 @@ function renderProjectsSidebar() {
     }
 
     // Normal list view
-    const projectItems = AppState.projects.map(p => {
+    const projectItems = AppState.projects.filter(p => p.id === AppState.projectId).map(p => {
         const isActive = p.id === AppState.projectId;
         const clipCount = p.clipCount || 0;
         const coverStyle = p.coverImage ? `background-image: url('${p.coverImage}')` : '';
@@ -3116,22 +3117,23 @@ async function deleteProfileImage() {
 
 // ============ Theme Functions ============
 function setTheme(theme) {
-    // Store current theme
-    localStorage.setItem('theme', theme);
+    // Store and apply the choice (system, light, dark or custom) through the shared helper from index.html
+    if (window.CutlineTheme) window.CutlineTheme.set(theme);
+    else localStorage.setItem('theme', theme);
 
     // Apply theme to document
     if (theme === 'custom') {
         // Load custom colors
         const customColors = JSON.parse(localStorage.getItem('customTheme') || '{}');
         applyCustomTheme(customColors);
-        document.documentElement.setAttribute('data-theme', 'custom');
+        if (!window.CutlineTheme) document.documentElement.setAttribute('data-theme', 'custom');
 
         // Show custom options
         const customOptions = document.getElementById('themeCustomOptions');
         if (customOptions) customOptions.classList.remove('hidden');
     } else {
-        // Apply dark or light theme
-        document.documentElement.setAttribute('data-theme', theme);
+        // System, dark or light: CutlineTheme has set data-theme on <html>
+        if (!window.CutlineTheme) document.documentElement.setAttribute('data-theme', theme);
 
         // Hide custom options
         const customOptions = document.getElementById('themeCustomOptions');
@@ -3218,7 +3220,7 @@ function adjustColor(hex, percent) {
 }
 
 function initTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
+    const savedTheme = window.CutlineTheme ? window.CutlineTheme.get() : (localStorage.getItem('theme') || 'dark');
     setTheme(savedTheme);
 
     // Load custom colors into pickers if available

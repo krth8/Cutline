@@ -2,6 +2,7 @@
 a comment seen live, a deep link, and the unavailable state for someone without access. Views are at /dev/view/<viewId>."""
 
 import json
+import re
 
 import pytest
 
@@ -58,6 +59,8 @@ def scene(server):
     project = server.create_project("Panel")
     for uid in (alice, bob):
         server.grant_access(project, uid)
+    for name in ("To do", "Done"):  # the done toggle needs a status column with a done option
+        server.api("/api/statuses", {"name": name, "color": "#336699"})
     ref = f"tasks:{project}"
     server.api(f"/api/tables/{ref}/columns", {"name": "Note", "type": "text"})
     column = next(c["key"] for c in server.api(f"/api/tables/{ref}/schema")["columns"] if c["name"] == "Note")
@@ -101,9 +104,16 @@ def test_clicking_a_task_opens_the_panel_and_imports_the_old_description(scene, 
     # The old plain-text description arrives as page content
     wait_text(alice, "Old description text")
     wait_text(people["bob"], "Old description text")
-    # Properties: every column of the table is there, the custom one too
+    # Properties: the empty ones are collapsed behind "Add property"; revealed, every column is there, the custom one too
+    more = alice.locator(f"{PANEL} .cl-props__more")
+    if more.count():
+        more.click()
     labels = alice.locator(f"{PANEL} .cl-props__label").all_inner_texts()
     assert "Status" in labels and "Note" in labels and "Name" not in labels
+    # Created and Created by are one muted line with a real date, not a dash row
+    assert "Created" not in labels and "Created by" not in labels
+    created = alice.inner_text(f"{PANEL} [data-testid=task-created]")
+    assert re.fullmatch(r"Created by \w+ · .*\d{4}", created), created
 
 
 def test_two_people_typing_in_the_body_at_once_keep_both_texts(scene, people):
@@ -141,11 +151,41 @@ def test_a_comment_is_seen_live(scene, people):
     assert bob.locator(f"{PANEL} .cl-comment__author").first.inner_text() == "alice"
 
 
+def test_a_comment_sent_with_ctrl_enter_from_the_composer_reaches_the_other_user(scene, people):
+    alice, bob = people["alice"], people["bob"]
+    box = f"{PANEL} [data-testid=task-composer] textarea"
+    bob.fill(box, "First line")
+    bob.keyboard.press("Shift+Enter")
+    bob.keyboard.type("second line")
+    assert bob.input_value(box) == "First line\nsecond line"
+    bob.keyboard.press("Control+Enter")
+    alice.wait_for_selector(f"{PANEL} .cl-comment__text:has-text('second line')", timeout=10000)
+    # the composer stays at the bottom of the panel, in view
+    assert bob.locator(box).is_visible() and bob.locator(box).bounding_box()["y"] > 500
+
+
+def test_the_done_toggle_changes_the_status_the_other_user_sees(scene, server, people):
+    alice, bob = people["alice"], people["bob"]
+    toggle = f"{PANEL} [data-testid=task-done]"
+    assert alice.get_attribute(toggle, "aria-checked") == "false"
+    alice.click(toggle)
+    bob.wait_for_selector(f"{toggle}[aria-checked=true]", timeout=10000)
+    schema = server.api(f"/api/tables/{scene['ref']}/schema")
+    done = {o["value"] for o in next(c for c in schema["columns"] if c["key"] == "status")["options"] if o.get("done")}
+    row = next(r for r in server.api(f"/api/tables/{scene['ref']}/query", {})["rows"] if r["id"] == scene["task"])
+    assert row["values"]["status"] in done
+    bob.click(toggle)
+    alice.wait_for_selector(f"{toggle}[aria-checked=false]", timeout=10000)
+
+
 def test_escape_closes_the_panel_and_keeps_the_view(scene, people):
     bob = people["bob"]
-    bob.keyboard.press("Escape")  # first Escape leaves the editor
     bob.click(f"{PANEL} .cl-task__title")
-    bob.keyboard.press("Escape")  # leaves the field
+    bob.keyboard.press("Escape")  # leaves the field, the panel stays
+    assert bob.is_visible(PANEL)
+    bob.click(f"{PANEL} [aria-label='Add a comment']")
+    bob.keyboard.press("Escape")  # leaves the composer
+    assert bob.is_visible(PANEL)
     bob.keyboard.press("Escape")
     bob.wait_for_selector(PANEL, state="detached", timeout=5000)
     assert "task=" not in bob.url
@@ -158,3 +198,21 @@ def test_a_user_without_access_sees_the_unavailable_state(scene, server, new_pag
     carol.wait_for_selector(f"{PANEL} [data-testid=task-unavailable]", timeout=15000)
     assert "This task is not available" in carol.inner_text(PANEL)
     assert carol.locator(".toast, .toast-error").count() == 0
+
+
+def test_the_panel_leaves_the_table_visible_and_clicking_another_row_swaps_the_task(scene, server, people):
+    alice = people["alice"]
+    second = server.create_task(scene["project"], "Second task")["task"]["id"]
+    alice.reload()
+    wait_js(alice, "window.Live && Live.isConnected()", 10000)
+    alice.wait_for_selector(f"{PANEL} [data-testid=task-properties]", timeout=15000)
+    # the panel is about 540 px wide and the list behind it is still there
+    box = alice.locator(PANEL).bounding_box()
+    assert 480 <= box["width"] <= 600, box
+    assert alice.is_visible("[data-testid=list-layout]")
+    assert alice.locator("[data-testid=task-scrim]").count() == 0
+    alice.wait_for_selector(f"[data-row-id='{second}'] [data-testid=list-title]", timeout=15000)
+    alice.click(f"[data-row-id='{second}'] [data-testid=list-title]")
+    alice.wait_for_function(f"document.querySelector('{PANEL}').dataset.taskId === {json.dumps(second)}", timeout=10000)
+    alice.wait_for_function("() => document.querySelector('[data-testid=task-panel] [aria-label=\"Task name\"]')?.value === 'Second task'", timeout=10000)
+    assert alice.locator(PANEL).count() == 1

@@ -23,6 +23,7 @@ from fastapi import HTTPException
 from api.events import live
 from api.routes import tasks as task_api
 from api.state import projects
+from api.tables import relations
 from database import db_check_project_access, db_get_project_access, db_get_user_by_id
 from database.table_columns import (
     db_create_table_column,
@@ -33,7 +34,7 @@ from database.table_columns import (
     db_update_table_column,
 )
 
-CUSTOM_TYPES = ("text", "longtext", "number", "checkbox", "date", "select", "multiselect", "url", "person", "people")
+CUSTOM_TYPES = ("text", "longtext", "number", "checkbox", "date", "select", "multiselect", "url", "person", "people", "relation")
 SELECT_TYPES = ("select", "multiselect")
 MULTI_TYPES = ("multiselect", "people")
 TEXT_TYPES = ("text", "longtext", "url")
@@ -79,7 +80,7 @@ def list_columns(ref: str) -> List[dict]:
 def empty_value(col_type: str) -> Any:
     if col_type == "checkbox":
         return False
-    if col_type in MULTI_TYPES:
+    if col_type in MULTI_TYPES or col_type == "relation":
         return []
     return None
 
@@ -176,12 +177,16 @@ def project_user_check(project_id: str) -> Callable[[str], bool]:
     return lambda user_id: _user_has_access(user_id, project_id)
 
 
-def validate_value(col: dict, value: Any, user_ok: Callable[[str], bool]) -> Any:
+def validate_value(col: dict, value: Any, user_ok: Callable[[str], bool], principal: Optional[dict] = None,
+                   current: Any = None) -> Any:
     """The normalised value for a custom column (the empty value for 'nothing'), or HTTP 400.
 
-    ``user_ok`` says which user ids a person / people column of this table accepts.
+    ``user_ok`` says which user ids a person / people column of this table accepts. ``principal`` (the
+    writer) and ``current`` (the stored value) are used by relation columns.
     """
     ctype, name = col["type"], col["name"]
+    if ctype == "relation":
+        return relations.validate_ids(principal, col, value, current)
     if ctype in TEXT_TYPES:
         if value is None:
             return None
@@ -250,7 +255,8 @@ def split_values(values: dict) -> Tuple[dict, dict]:
     return {k: v for k, v in values.items() if k not in custom}, custom
 
 
-def checked_values(cols: Dict[str, dict], custom: dict, base: Optional[dict], user_ok: Callable[[str], bool]) -> dict:
+def checked_values(cols: Dict[str, dict], custom: dict, base: Optional[dict], user_ok: Callable[[str], bool],
+                   principal: Optional[dict] = None) -> dict:
     """Validate row values for custom columns (``cols``: key -> Column) and merge them over ``base``.
 
     Returns the complete object to store (empty values removed).
@@ -260,7 +266,7 @@ def checked_values(cols: Dict[str, dict], custom: dict, base: Optional[dict], us
         col = cols.get(key)
         if not col:
             raise _bad(f"Unknown column '{key}'")
-        normal = validate_value(col, value, user_ok)
+        normal = validate_value(col, value, user_ok, principal, merged.get(key))
         if is_empty_value(normal):
             merged.pop(key, None)
         else:
@@ -268,10 +274,11 @@ def checked_values(cols: Dict[str, dict], custom: dict, base: Optional[dict], us
     return merged
 
 
-def checked_custom_values(project_id: str, custom: dict, base: Optional[dict] = None) -> dict:
+def checked_custom_values(project_id: str, custom: dict, base: Optional[dict] = None,
+                          principal: Optional[dict] = None) -> dict:
     """checked_values for the custom columns of a project's tasks (the stored custom_fields)."""
     cols = {c["key"]: c for c in list_columns(table_ref(project_id))}
-    return checked_values(cols, custom, base, project_user_check(project_id))
+    return checked_values(cols, custom, base, project_user_check(project_id), principal)
 
 
 def row_values(task: dict, cols: List[dict]) -> dict:
@@ -388,6 +395,10 @@ class ColumnHost:
     def user_ok(self, user_id: str) -> bool:
         raise NotImplementedError
 
+    def relation_space(self) -> Tuple[str, str]:
+        """('project', projectId) or ('personal', ownerId): decides which tables a relation may point at."""
+        raise NotImplementedError
+
     def stored_values(self) -> Dict[str, dict]:
         """row id -> stored values object, for every row that has any."""
         raise NotImplementedError
@@ -433,6 +444,9 @@ class TasksColumnHost(ColumnHost):
     def user_ok(self, user_id: str) -> bool:
         return _user_has_access(user_id, self.project_id)
 
+    def relation_space(self) -> Tuple[str, str]:
+        return ("project", self.project_id)
+
     def stored_values(self) -> Dict[str, dict]:
         return db_project_custom_fields(self.project_id)
 
@@ -464,6 +478,8 @@ async def create_column_in(host: ColumnHost, principal: dict, data: Any) -> dict
         config["options"] = clean_options(data.get("options") or [])
     elif data.get("options"):
         raise _bad(f"Options only apply to select and multiselect columns, not {col_type}")
+    if col_type == "relation":
+        config = relations.clean_config(principal, host.relation_space(), data.get("config"))
     key = KEY_PREFIX + secrets.token_hex(4)
     stored = db_create_table_column(ref, key, name, col_type, config, principal.get("id"))
     await host.announce([])
@@ -502,6 +518,18 @@ async def update_column_in(host: ColumnHost, principal: dict, key: str, data: An
 
     new_type = check_type(data["type"]) if "type" in data else old_type
     retype = new_type != old_type
+    old_config = dict(stored["config"] or {})
+    target_changed = False
+    if retype and old_type == "relation":
+        config = clean_config(data["config"]) if "config" in data else {}
+    if new_type == "relation":
+        if retype and "config" not in data:
+            raise _bad("A relation column needs a config like {target, multiple?, twoWay?}")
+        if "config" in data:
+            given = clean_config(data["config"])
+            merged_config = {**(old_config if old_type == "relation" else {}), **given}
+            config = relations.clean_config(principal, host.relation_space(), merged_config)
+            target_changed = retype or config["target"] != old_config.get("target")
     options_given = "options" in data
     if options_given and new_type not in SELECT_TYPES:
         raise _bad(f"Options only apply to select and multiselect columns, not {new_type}")
@@ -542,9 +570,22 @@ async def update_column_in(host: ColumnHost, principal: dict, key: str, data: An
         config.pop("options", None)
 
     # ----- values
-    if retype:
+    if new_type == "relation" and (target_changed or config.get("multiple") is False):
+        # A new target clears the links; switching to a single link keeps the first one
         for row_id, stored_row in values.items():
             if key in stored_row:
+                ids = relations.stored_ids(stored_row[key])
+                set_value(row_id, None if target_changed else ids[:1])
+    elif retype:
+        titles = (relations.labels_for_retype(principal, old_config, [r.get(key) for r in values.values()])
+                  if old_type == "relation" else {})
+        for row_id, stored_row in values.items():
+            if key not in stored_row:
+                continue
+            if old_type == "relation":
+                text = ", ".join(titles[i] for i in relations.stored_ids(stored_row[key]) if i in titles)
+                set_value(row_id, convert_value("text", [], new_type, new_options, text) if text else None)
+            else:
                 set_value(row_id, convert_value(old_type, old_options, new_type, new_options, stored_row[key]))
     elif options_given:
         keep = {o["value"] for o in new_options}

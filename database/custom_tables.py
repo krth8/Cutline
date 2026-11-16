@@ -167,3 +167,23 @@ def write_custom_values(table_id: str):
             execute(conn_, "UPDATE custom_rows SET data = ?, updated_at = ? WHERE table_id = ? AND id = ?",
                     (json.dumps(values), now, table_id, row_id))
     return write
+
+
+def db_custom_row_names(table_id: str, row_ids: List[str], title_key: str = "name") -> Dict[str, str]:
+    """row id -> title, for the given rows of one table that exist (one query per 500 ids)."""
+    out: Dict[str, str] = {}
+    ids = list(dict.fromkeys(row_ids))
+    with get_db() as conn:
+        for start in range(0, len(ids), 500):
+            chunk = ids[start:start + 500]
+            marks = ", ".join("?" for _ in chunk)
+            rows = fetchall(execute(conn, f"SELECT id, data FROM custom_rows WHERE table_id = ? AND id IN ({marks})",
+                                    (table_id, *chunk)))
+            for row in rows:
+                try:
+                    data = json.loads(row["data"]) if row["data"] else {}
+                except ValueError:
+                    data = {}
+                title = data.get(title_key) if isinstance(data, dict) else None
+                out[row["id"]] = title if isinstance(title, str) else ""
+    return out

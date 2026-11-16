@@ -20,7 +20,7 @@ import { getPlatform } from '../platform';
 import { Backlinks } from './backlinks';
 import { setHomePage, useHomePageId } from './home/homeStore';
 import { buildRoute, navigate, type Route } from '../router';
-import { Button, cx, Menu, Popover, type MenuItem } from '../ui';
+import { Avatar, Button, cx, Menu, Popover, type MenuItem } from '../ui';
 import {
   consumeTitleFocus,
   createAndOpen,
@@ -32,6 +32,7 @@ import {
 import { ancestorsOf } from './tree/treeModel';
 import { MoveDialog } from './tree/MoveDialog';
 import { HistoryDialog } from './history';
+import { SyncStatus, type SyncInfo } from './sync/CollabEditor';
 import './PageView.css';
 
 // ---- the body slot ----
@@ -39,6 +40,8 @@ import './PageView.css';
 export interface PageBodyProps {
   pageId: string;
   editable: boolean;
+  /** The body reports its sync state and the people on the page; the header shows them. */
+  onSync?(info: SyncInfo): void;
 }
 
 let pageBody: ComponentType<PageBodyProps> | null = null;
@@ -262,6 +265,7 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [sync, setSync] = useState<SyncInfo | null>(null);
   const menuAnchor = useRef<HTMLButtonElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const [focusTitle] = useState(() => consumeTitleFocus(pageId));
@@ -417,6 +421,17 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
             </li>
           </ol>
         </nav>
+        <div className="cl-page__status">
+          {sync && sync.peers.length > 0 ? (
+            <span className="cl-page__peers" aria-label="People on this page">
+              {sync.peers.slice(0, 4).map((p) => (
+                <Avatar key={p.id} name={p.name} size={22} />
+              ))}
+              {sync.peers.length > 4 ? <span className="cl-page__peers-more">+{sync.peers.length - 4}</span> : null}
+            </span>
+          ) : null}
+          {sync ? <SyncStatus status={sync.status} quiet /> : null}
+        </div>
         <Button
           ref={menuAnchor}
           variant="ghost"
@@ -479,7 +494,7 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
       </header>
 
       <div className="cl-page__body" ref={bodyRef} tabIndex={-1}>
-        {Body ? <Body pageId={pageId} editable={editable} /> : <div className="cl-page__placeholder">The editor is not loaded</div>}
+        {Body ? <Body pageId={pageId} editable={editable} onSync={setSync} /> : <div className="cl-page__placeholder">The editor is not loaded</div>}
       </div>
       {archived ? null : <Backlinks kind="page" id={pageId} />}
     </article>

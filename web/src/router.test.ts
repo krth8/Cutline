@@ -10,6 +10,7 @@ const samples: Array<[string, Route]> = [
   ['/p/proj1/view/v1', { kind: 'projectView', projectId: 'proj1', viewId: 'v1' }],
   ['/me/view/v1?task=t1', { kind: 'meView', viewId: 'v1', task: 't1' }],
   ['/p/proj1/page/pg1', { kind: 'projectPage', projectId: 'proj1', pageId: 'pg1' }],
+  ['/lounge', { kind: 'lounge' }],
   ['/p/proj1/review', { kind: 'review', projectId: 'proj1' }],
   ['/p/proj1/review?clip=7&v=2&session=s9', { kind: 'review', projectId: 'proj1', clip: '7', v: '2', session: 's9' }],
   ['/home?task=t1', { kind: 'home', task: 't1' }],

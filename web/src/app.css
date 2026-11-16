@@ -2,10 +2,10 @@
 .cl-fullscreen {
   position: fixed;
   inset: 0;
-  z-index: 15000;
+  z-index: var(--z-app-fullscreen);
   overflow: auto;
   background: var(--bg-dark);
   color: var(--text);
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-sans);
   user-select: text;
 }

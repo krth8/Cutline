@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { getPlatform } from '../../../platform';
 import { Popover, cx } from '../../../ui';
-import { projectsForCreate } from '../../store';
+import { ProjectSelect, useAddProject } from '../../addProject';
 import type { LayoutProps, Row, View } from '../../types';
 import { doneModel } from '../list/listHelpers';
 import {
@@ -475,8 +475,7 @@ interface CreateProps {
 /** Adds a row on one day: a title input (and a project choice for `tasks:*`). */
 function CreateInline({ day, schema, view, cfg, actions, onClose }: CreateProps) {
   const [title, setTitle] = useState('');
-  const [projectId, setProjectId] = useState('');
-  const projects = view.tableRef === 'tasks:*' ? projectsForCreate() : [];
+  const add = useAddProject(view.id, view.tableRef);
   const form = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -489,7 +488,7 @@ function CreateInline({ day, schema, view, cfg, actions, onClose }: CreateProps)
     if (!text) return onClose();
     let opts: { projectId: string } | undefined;
     if (view.tableRef === 'tasks:*') {
-      const chosen = projectId || projects[0]?.id;
+      const chosen = add.projectId;
       if (!chosen) {
         getPlatform().toast('error', 'You have no project to add a task to');
         return;
@@ -522,15 +521,7 @@ function CreateInline({ day, schema, view, cfg, actions, onClose }: CreateProps)
           if (e.key === 'Escape') onClose();
         }}
       />
-      {projects.length > 1 && (
-        <select className="cl-cal__create-project" aria-label="Project" value={projectId || projects[0]!.id} onChange={(e) => setProjectId(e.target.value)}>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      )}
+      <ProjectSelect add={add} className="cl-cal__create-project" />
     </form>
   );
 }

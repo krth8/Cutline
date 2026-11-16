@@ -167,7 +167,7 @@ describe('calendar layout', () => {
     );
     const { actions } = setup([], { view: { id: 'v1', tableRef: 'tasks:*', name: 'Cal', layout: 'calendar', config: { query: {} } } });
     await user.click(day('2026-11-20'));
-    await user.selectOptions(screen.getByLabelText('Project'), 'p2');
+    await user.selectOptions(screen.getByLabelText('Project for the new row'), 'p2');
     await user.type(within(screen.getByTestId('calendar-create')).getByRole('textbox'), 'X{Enter}');
     expect(actions.createRow).toHaveBeenCalledWith({ name: 'X', dueDate: '2026-11-20' }, { projectId: 'p2' });
   });

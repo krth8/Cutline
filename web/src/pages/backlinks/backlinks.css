@@ -1,9 +1,9 @@
-.cl-backlinks { margin-top: 32px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 14px; }
+.cl-backlinks { margin-top: var(--space-7); padding-top: var(--space-3); border-top: 1px solid var(--border); font-size: var(--font-size-lg); }
 .cl-backlinks__toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 2px 4px;
+  gap: var(--space-1-5);
+  padding: var(--space-0-5) var(--space-1);
   font: inherit;
   color: var(--text-secondary);
   background: transparent;
@@ -12,6 +12,6 @@
   cursor: pointer;
 }
 .cl-backlinks__toggle:hover { color: var(--text); background: var(--bg-hover); }
-.cl-backlinks__list { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
-.cl-backlinks__link { display: inline-block; padding: 3px 4px; color: var(--text); text-decoration: none; border-radius: var(--radius-sm); }
+.cl-backlinks__list { margin: var(--space-1-5) 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-0-5); }
+.cl-backlinks__link { display: inline-block; padding: 3px var(--space-1); color: var(--text); text-decoration: none; border-radius: var(--radius-sm); }
 .cl-backlinks__link:hover { background: var(--bg-hover); }

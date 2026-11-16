@@ -59,13 +59,29 @@ function safeRect(fn: (() => DOMRect | null) | null | undefined): DOMRect | null
   }
 }
 
+/** Order of the groups in the menu, by how often people need them; unknown groups follow in registration order. */
+export const SLASH_GROUP_ORDER = ['Basic', 'Lists', 'Media', 'Views', 'Numbers', 'Extras', 'Advanced'];
+
+function groupRank(group: string): number {
+  const i = SLASH_GROUP_ORDER.indexOf(group);
+  return i < 0 ? SLASH_GROUP_ORDER.length : i;
+}
+
 /** Items matching `query`: base items, then registry items; without a query they are grouped. */
 export function slashItemsFor(query: string): SlashItem[] {
   const all = filterSlashItems([...BASE_SLASH_ITEMS, ...getRegisteredSlashItems()], query);
   if (query.trim()) return all;
   const groups = new Map<string, SlashItem[]>();
   for (const item of all) groups.set(item.group, [...(groups.get(item.group) ?? []), item]);
-  return [...groups.values()].flat();
+  return [...groups.entries()].sort((a, b) => groupRank(a[0]) - groupRank(b[0])).flatMap(([, list]) => list);
+}
+
+const SLASH_KEY = new PluginKey('clSlash');
+
+/** True while the slash suggestion is still active in the editor state. */
+function suggestionActive(editor: Editor): boolean {
+  const state = SLASH_KEY.getState(editor.state) as { active?: boolean } | undefined;
+  return !!state?.active;
 }
 
 export const SlashCommand = Extension.create<{ store: SlashStore }>({
@@ -80,7 +96,7 @@ export const SlashCommand = Extension.create<{ store: SlashStore }>({
     return [
       Suggestion<SlashItem, SlashItem>({
         editor: this.editor,
-        pluginKey: new PluginKey('clSlash'),
+        pluginKey: SLASH_KEY,
         char: '/',
         allowSpaces: false,
         startOfLine: false,
@@ -94,12 +110,15 @@ export const SlashCommand = Extension.create<{ store: SlashStore }>({
             clientRect?: (() => DOMRect | null) | null;
             command: (i: SlashItem) => void;
           }) => {
+            // Items are computed here, not taken from the (async) suggestion props: those are empty until a
+            // fetch resolves, and the fetch is aborted when the plugin views are re-created.
+            const items = slashItemsFor(props.query);
             const sameQuery = props.query === store.state.query && store.state.open;
             store.set({
               open: true,
               query: props.query,
-              items: props.items,
-              selected: sameQuery ? Math.min(store.state.selected, Math.max(0, props.items.length - 1)) : 0,
+              items,
+              selected: sameQuery ? Math.min(store.state.selected, Math.max(0, items.length - 1)) : 0,
               rect: safeRect(props.clientRect),
               run: props.command,
             });
@@ -107,7 +126,11 @@ export const SlashCommand = Extension.create<{ store: SlashStore }>({
           return {
             onStart: update,
             onUpdate: update,
-            onExit: () => store.close(),
+            // Re-creating the plugin views (any plugin being registered or removed) also calls onExit while the
+            // suggestion is still active; only a real exit closes the menu.
+            onExit: (props) => {
+              if (!suggestionActive(props.editor)) store.close();
+            },
             onKeyDown: ({ event }) => {
               if (event.isComposing || !store.state.open) return false;
               switch (event.key) {

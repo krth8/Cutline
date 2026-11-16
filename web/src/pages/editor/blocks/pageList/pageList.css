@@ -1,11 +1,11 @@
 /* The page list block ("Recently changed pages") */
-.cl-pagelist-node { margin: 8px 0; }
-.cl-pagelist { border: 1px solid var(--border, rgba(127, 127, 127, 0.25)); border-radius: var(--radius-sm, 6px); padding: 4px; }
-.cl-pagelist__settings { display: flex; gap: 8px; padding: 4px 8px 8px; font-size: 12px; }
+.cl-pagelist-node { margin: var(--space-2) 0; }
+.cl-pagelist { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-1); }
+.cl-pagelist__settings { display: flex; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-2); font-size: var(--font-size-sm); }
 .cl-pagelist__list { list-style: none; margin: 0; padding: 0; }
-.cl-pagelist__item { display: flex; align-items: baseline; gap: 8px; padding: 6px 8px; border-radius: var(--radius-sm, 6px); color: var(--text); text-decoration: none; }
+.cl-pagelist__item { display: flex; align-items: baseline; gap: var(--space-2); padding: var(--space-1-5) var(--space-2); border-radius: var(--radius-sm); color: var(--text); text-decoration: none; }
 .cl-pagelist__item:hover { background: var(--bg-hover); }
 .cl-pagelist__icon { flex: 0 0 auto; }
 .cl-pagelist__title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cl-pagelist__meta { flex: 0 0 auto; font-size: 12px; color: var(--text-muted); }
-.cl-pagelist__state { padding: 10px 8px; color: var(--text-muted); font-size: 13px; }
+.cl-pagelist__meta { flex: 0 0 auto; font-size: var(--font-size-sm); color: var(--text-muted); }
+.cl-pagelist__state { padding: var(--space-2-5) var(--space-2); color: var(--text-muted); font-size: var(--font-size-md); }

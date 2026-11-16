@@ -42,7 +42,7 @@ describe('queryModel', () => {
   it('offers operators by column type', () => {
     expect(opsFor('date')).toContain('relative');
     expect(opsFor('checkbox')).toEqual(['eq']);
-    expect(opsFor('relation')).toEqual(['empty', 'notEmpty']);
+    expect(opsFor('relation')).toEqual(['contains', 'empty', 'notEmpty']);
   });
 });
 
@@ -128,7 +128,27 @@ describe('ViewShell', () => {
     fake.data.user = { id: 'u9', username: 'Vi', role: 'viewer' };
     render(<ViewShell viewId="v1" />);
     await screen.findByText('Alpha');
-    expect(screen.queryByTestId('toolbar-more')).toBeNull();
+    fireEvent.click(screen.getByTestId('toolbar-more'));
+    await screen.findByRole('menuitemcheckbox', { name: 'Nest subtasks' });
+    expect(screen.queryByRole('menuitem', { name: 'Trash' })).toBeNull();
+  });
+
+  it('switches subtask nesting from the "..." menu', async () => {
+    render(<ViewShell viewId="v1" />);
+    await screen.findByText('Alpha');
+    fireEvent.click(screen.getByTestId('toolbar-more'));
+    fireEvent.click(await screen.findByTestId('table-nest'));
+    await waitFor(() => expect(stored.config.query).toEqual({ parentId: null }), { timeout: 3000 });
+  });
+
+  it('shows the host menu items and no leftover toolbar classes of the editor', async () => {
+    const onSelect = vi.fn();
+    render(<ViewShell viewId="v1" menuItems={[{ id: 'open-page', label: 'Open as page', testId: 'tasks-open-page', onSelect }]} />);
+    await screen.findByText('Alpha');
+    expect(document.querySelector('.cl-toolbar')).toBeNull();
+    fireEvent.click(screen.getByTestId('toolbar-more'));
+    fireEvent.click(await screen.findByTestId('tasks-open-page'));
+    expect(onSelect).toHaveBeenCalledOnce();
   });
 
   it('saves sort and group in the view config', async () => {
@@ -202,5 +222,107 @@ describe('ViewShell', () => {
     backend.on('GET /api/views/v1', () => ({ status: 403, body: { detail: 'Access denied' } }));
     render(<ViewShell viewId="v1" />);
     expect((await screen.findByRole('alert')).textContent).toContain('Access denied');
+  });
+});
+
+describe('ViewShell embedded in a page', () => {
+  it('has every control in the strip, reachable by keyboard, with the view name as plain title', async () => {
+    render(<ViewShell viewId="v1" variant="embedded" />);
+    await screen.findByText('Alpha');
+    const strip = screen.getByTestId('view-toolbar');
+    expect(strip.className).toContain('cl-viewbar--embedded');
+    expect(screen.getByTestId('viewblock-name')).toBeTruthy();
+    expect(screen.getByTestId('view-count').textContent).toBe('2');
+    for (const id of ['layout-switch', 'toolbar-search-toggle', 'new-row', 'toolbar-more']) {
+      const el = screen.getByTestId(id);
+      expect(strip.contains(el)).toBe(true);
+      expect(el.tabIndex).toBeGreaterThanOrEqual(0);
+      el.focus();
+      expect(document.activeElement).toBe(el);
+    }
+  });
+
+  it('is hidden at rest and shown on hover, on focus within and on touch screens (stylesheet rules)', () => {
+    // vitest runs with css: false, so read the stylesheet as text (no node typings in this project)
+    const fs = (globalThis as any).process.getBuiltinModule('node:fs');
+    const css: string = fs.readFileSync('src/tables/toolbar/toolbar.css', 'utf8');
+    expect(css).toContain('.cl-viewshell--embedded .cl-viewbar { opacity: 0;');
+    expect(css).toContain('.cl-viewshell--embedded:hover .cl-viewbar');
+    expect(css).toContain('.cl-viewshell--embedded:focus-within .cl-viewbar');
+    expect(css).toContain('@media (hover: none) { .cl-viewshell--embedded .cl-viewbar { opacity: 1; } }');
+  });
+
+  it('shows chips only for options that are set; the others are in the "..." menu', async () => {
+    stored = { ...stored, config: { query: { sort: [{ column: 'name', dir: 'asc' }] } } };
+    render(<ViewShell viewId="v1" variant="embedded" />);
+    await screen.findByText('Alpha');
+    expect(screen.getByTestId('toolbar-sort').textContent).toContain('1');
+    for (const id of ['toolbar-filter', 'toolbar-group', 'toolbar-columns', 'toolbar-summaries']) expect(screen.queryByTestId(id)).toBeNull();
+    fireEvent.click(screen.getByTestId('toolbar-more'));
+    fireEvent.click(await screen.findByTestId('menu-filter'));
+    expect(await screen.findByTestId('panel-filter')).toBeTruthy();
+  });
+
+  it('switches the layout from one dropdown', async () => {
+    render(<ViewShell viewId="v1" variant="embedded" />);
+    await screen.findByText('Alpha');
+    expect(screen.queryByTestId('layout-board')).toBeNull();
+    fireEvent.click(screen.getByTestId('layout-switch'));
+    fireEvent.click(await screen.findByTestId('layout-board'));
+    await waitFor(() => expect(stored.layout).toBe('board'));
+  });
+
+  it('on a page that cannot be edited only search and the host menu items remain', async () => {
+    render(
+      <ViewShell
+        viewId="v1"
+        variant="embedded"
+        editable={false}
+        menuItems={[{ id: 'open', label: 'Open full page', testId: 'viewblock-open', onSelect: () => {} }]}
+      />,
+    );
+    await screen.findByText('Alpha');
+    for (const id of ['layout-switch', 'new-row', 'toolbar-filter', 'toolbar-sort']) expect(screen.queryByTestId(id)).toBeNull();
+    expect(screen.getByTestId('toolbar-search-toggle')).toBeTruthy();
+    expect((screen.getByTestId('viewblock-name') as HTMLInputElement).readOnly).toBe(true);
+    fireEvent.click(screen.getByTestId('toolbar-more'));
+    expect(await screen.findByTestId('viewblock-open')).toBeTruthy();
+    expect(screen.queryByTestId('menu-filter')).toBeNull();
+    expect(screen.queryByTestId('table-nest')).toBeNull();
+  });
+});
+
+describe('New in a tasks:* view', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    fake.data.projects = [
+      { id: 'p1', name: 'One', canTasks: true, isOwner: true },
+      { id: 'p2', name: 'Two', canTasks: true, isOwner: false },
+    ];
+    stored = { ...stored, tableRef: 'tasks:*' };
+    backend.on('GET /api/tables/tasks:*/schema', () => ({ body: schemaOf('tasks:*') }));
+    backend.on('POST /api/tables/tasks:*/query', () => ({ body: resultOf([rowOf('t1', 'Alpha')]) }));
+    backend.on('POST /api/tables/tasks:*/rows', () => ({ body: rowOf('t9', 'X') }));
+  });
+
+  it('asks for title and project only after New was pressed, and remembers the project', async () => {
+    const { unmount } = render(<ViewShell viewId="v1" />);
+    await screen.findByText('Alpha');
+    expect(screen.queryByTestId('new-row-project')).toBeNull();
+    expect(screen.queryByTestId('new-row-title')).toBeNull();
+    fireEvent.click(screen.getByTestId('new-row'));
+    fireEvent.change(await screen.findByTestId('new-row-project'), { target: { value: 'p2' } });
+    fireEvent.change(screen.getByTestId('new-row-title'), { target: { value: 'Cut' } });
+    fireEvent.click(screen.getByTestId('new-row-add'));
+    await waitFor(() => expect(backend.count('POST /api/tables/tasks:*/rows')).toBe(1));
+    const body = backend.calls.find((c) => c.path.endsWith('/rows'))?.body;
+    expect(body.values).toEqual({ name: 'Cut' });
+    expect(body.projectId).toBe('p2');
+    unmount();
+
+    render(<ViewShell viewId="v1" />);
+    await screen.findByText('Alpha');
+    fireEvent.click(screen.getByTestId('new-row'));
+    expect(((await screen.findByTestId('new-row-project')) as HTMLSelectElement).value).toBe('p2');
   });
 });

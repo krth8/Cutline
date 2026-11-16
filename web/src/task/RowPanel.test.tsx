@@ -78,8 +78,13 @@ describe('row panel of a custom table', () => {
     expect(((await screen.findByLabelText('Row name')) as HTMLInputElement).value).toBe('Shot 010');
     const props = await screen.findByTestId('task-properties');
     expect(within(props).getByText('Notes')).toBeTruthy();
+    // 'Finished' (false) is empty: collapsed until "Add property" is pressed
+    expect(within(props).queryByText('Finished')).toBeNull();
+    await userEvent.click(within(props).getByRole('button', { name: /Add property/ }));
     expect(within(props).getByText('Finished')).toBeTruthy();
-    expect(within(props).getByText('Created')).toBeTruthy();
+    // Created is the muted footer line, not a row
+    expect(within(props).queryByText('Created')).toBeNull();
+    expect(within(props).getByTestId('task-created').textContent).toBe('Created · Jan 2, 2030');
     expect(within(props).queryByText('Name')).toBeNull(); // the name is the title
     expect(screen.getByText('Shots')).toBeTruthy(); // the table's name
     expect(screen.queryByTestId('task-body')).toBeNull();
@@ -134,7 +139,8 @@ describe('row panel of a custom table', () => {
 
   it('deletes a row after a confirm and closes', async () => {
     render(<RowPanelHost />);
-    await userEvent.click(await screen.findByLabelText('Delete row'));
+    await userEvent.click(await screen.findByLabelText('More actions'));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Delete row' }));
     await waitFor(() => expect(backend.count(`DELETE /api/tables/${REF}/rows/r1`)).toBe(1));
     expect(fake.confirmations[0]?.opts?.danger).toBe(true);
     expect(window.location.search).toBe('');
@@ -145,7 +151,7 @@ describe('row panel of a custom table', () => {
     render(<RowPanelHost />);
     const title = (await screen.findByLabelText('Row name')) as HTMLInputElement;
     expect(title.readOnly).toBe(true);
-    expect(screen.queryByLabelText('Delete row')).toBeNull();
+    expect(screen.queryByLabelText('More actions')).toBeNull(); // the menu only holds Delete
   });
 
   it('shows "not available" without a toast when the row cannot be read', async () => {
