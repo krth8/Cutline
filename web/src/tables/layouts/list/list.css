@@ -6,7 +6,19 @@
 }
 .cl-list__row:hover { background: var(--bg-hover); }
 .cl-list__row:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
-.cl-list__check { flex: none; margin: 0; width: 16px; height: 16px; cursor: pointer; }
+.cl-list__check {
+  flex: none; margin: 0; width: 16px; height: 16px; cursor: pointer; appearance: none; -webkit-appearance: none;
+  display: inline-grid; place-content: center; background: transparent;
+  border: 1.5px solid var(--cl-border-strong); border-radius: var(--radius-full);
+}
+.cl-list__check:hover { border-color: var(--accent); }
+.cl-list__check:checked { background: var(--accent); border-color: var(--accent); }
+.cl-list__check:checked::after {
+  content: ''; width: 4px; height: 8px; margin-top: -2px; transform: rotate(45deg);
+  border: solid var(--text-on-accent); border-width: 0 2px 2px 0;
+}
+.cl-list__check:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cl-list__check:disabled { opacity: 0.5; cursor: default; }
 .cl-list__title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .cl-list__title:hover { text-decoration: underline; }
 .cl-list__row.is-done .cl-list__title { text-decoration: line-through; color: var(--text-muted); }

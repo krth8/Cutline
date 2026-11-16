@@ -3,7 +3,7 @@ import type { SpaceKey } from '../../api/pageTree';
 import { navigate } from '../../router';
 import type { SidebarSectionProps } from '../../shell/registry';
 import { pageExportItems } from '../../export';
-import { Button, cx, Menu, type MenuItem } from '../../ui';
+import { cx, Menu, type MenuItem } from '../../ui';
 import { setHomePage, useHomePageId } from '../home/homeStore';
 import { ArchivedDialog } from './ArchivedList';
 import { duplicateAndOpen, openTemplates } from '../templates';
@@ -122,6 +122,8 @@ export function PageTree({ space, route }: SidebarSectionProps) {
   const [drop, setDrop] = useState<{ id: string; position: DropPosition } | null>(null);
   const [tailActive, setTailActive] = useState(false);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLButtonElement | null>(null);
   const [moving, setMoving] = useState<{ from: SpaceKey; id: string; destination?: SpaceKey } | null>(null);
   const [moveTarget, setMoveTarget] = useState(false);
   const dragId = useRef<string | null>(null);
@@ -434,16 +436,6 @@ export function PageTree({ space, route }: SidebarSectionProps) {
     body = (
       <div className="cl-tree__empty">
         <div className="cl-tree__note">No pages yet.</div>
-        {canEdit ? (
-          <>
-            <Button size="sm" onClick={() => void addSubpage(null)}>
-              New page
-            </Button>
-            <Button size="sm" onClick={() => openTemplates({ space: key })}>
-              New from template...
-            </Button>
-          </>
-        ) : null}
       </div>
     );
   } else {
@@ -473,16 +465,6 @@ export function PageTree({ space, route }: SidebarSectionProps) {
             />
           ) : null}
         </div>
-        {canEdit ? (
-          <>
-            <button type="button" className="cl-tree__new" onClick={() => void addSubpage(null)}>
-              <span aria-hidden="true">+</span> New page
-            </button>
-            <button type="button" className="cl-tree__new" onClick={() => openTemplates({ space: key })}>
-              <span aria-hidden="true">+</span> New from template...
-            </button>
-          </>
-        ) : null}
       </>
     );
   }
@@ -510,9 +492,38 @@ export function PageTree({ space, route }: SidebarSectionProps) {
       }}
     >
       {body}
-      <button type="button" className="cl-tree__archived" onClick={() => setArchivedOpen(true)}>
-        Archived
-      </button>
+      {/* One quiet line under the pages: the new page, and a menu for templates and the archive */}
+      <div className={cx('cl-tree__foot', moreOpen && 'is-menu-open')}>
+        {canEdit ? (
+          <button type="button" className="cl-tree__new" onClick={() => void addSubpage(null)}>
+            <span aria-hidden="true">+</span> New page
+          </button>
+        ) : (
+          <span className="cl-tree__new is-static" />
+        )}
+        <button
+          ref={moreRef}
+          type="button"
+          className="cl-tree__footmore"
+          aria-haspopup="menu"
+          aria-label="More page options"
+          title="Templates and archived pages"
+          onClick={() => setMoreOpen(true)}
+        >
+          &hellip;
+        </button>
+        <Menu
+          open={moreOpen}
+          onOpenChange={setMoreOpen}
+          anchorRef={moreRef}
+          placement="bottom-start"
+          aria-label="More page options"
+          items={[
+            ...(canEdit ? [{ id: 'template', label: 'New from template...', onSelect: () => openTemplates({ space: key }) }] : []),
+            { id: 'archived', label: 'Archived pages', onSelect: () => setArchivedOpen(true) },
+          ]}
+        />
+      </div>
       <ArchivedDialog space={key} open={archivedOpen} onClose={() => setArchivedOpen(false)} />
       {moving ? (
         <MoveDialog

@@ -241,6 +241,17 @@ interface CardProps {
 
 function Card({ row, lane, titleColumn, columns, isDragged, showDropBefore, onPointerDown, onOpen }: CardProps) {
   const title = String(row.values[titleColumn] ?? '').trim();
+  // The values sit on one line under the title (wrapping when they must); empty ones take no room
+  const fields = columns.flatMap((c) => {
+    const def = getCell(c.type);
+    const value = row.values[c.key];
+    if (def.isEmpty(value)) return [];
+    return [
+      <div key={c.key} className="cl-board__field" title={c.name}>
+        <def.Display column={c} value={value} row={row} compact />
+      </div>,
+    ];
+  });
   return (
     <>
       {showDropBefore && <div className="cl-board__drop-line" />}
@@ -256,16 +267,7 @@ function Card({ row, lane, titleColumn, columns, isDragged, showDropBefore, onPo
         }}
       >
         <div className="cl-board__card-title">{title || 'Untitled'}</div>
-        {columns.map((c) => {
-          const def = getCell(c.type);
-          const value = row.values[c.key];
-          if (def.isEmpty(value)) return null;
-          return (
-            <div key={c.key} className="cl-board__field" title={c.name}>
-              <def.Display column={c} value={value} row={row} compact />
-            </div>
-          );
-        })}
+        {fields.length ? <div className="cl-board__card-fields">{fields}</div> : null}
       </article>
     </>
   );

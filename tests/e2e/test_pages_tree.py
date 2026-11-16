@@ -205,7 +205,8 @@ def test_archive_hides_the_subtree_for_both_and_restore_brings_it_back(scene, se
     assert {p["title"] for p in space_pages(server, project, archived=True)} == {"Alpha", "Beta"}
 
     # ben restores it from the Archived list
-    project_tree(ben, project).get_by_role("button", name="Archived").click()
+    project_tree(ben, project).get_by_role("button", name="More page options").click()
+    ben.get_by_role("menuitem", name="Archived pages").click()
     dialog = ben.get_by_role("dialog")
     expect(dialog.get_by_text("Alpha")).to_be_visible()
     dialog.get_by_role("button", name="Restore Alpha").click()
@@ -221,7 +222,8 @@ def test_delete_forever_removes_the_page_for_everyone(scene, server):
     server.api(f"/api/pages/{page_id(server, project, 'Gamma')}", {"archived": True}, method="PATCH")
     expect(tree_row(ana, "Gamma")).to_have_count(0)
 
-    project_tree(ana, project).get_by_role("button", name="Archived").click()
+    project_tree(ana, project).get_by_role("button", name="More page options").click()
+    ana.get_by_role("menuitem", name="Archived pages").click()
     dialog = ana.get_by_role("dialog")
     dialog.get_by_role("button", name="Delete Gamma forever").click()
     ana.locator(".confirm-submit").click()  # the legacy confirm dialog behind platform.confirm

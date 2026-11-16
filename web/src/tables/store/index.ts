@@ -8,7 +8,7 @@ export {
   type ViewPatch,
   type ViewSource,
 } from './viewSource';
-export { projectsForCreate, updateRow, deleteRows, restoreRows, moveRow, UNDO_TOAST_MS } from './mutations';
+export { projectsForCreate, rowKey, updateRow, deleteRows, restoreRows, moveRow, UNDO_TOAST_MS } from './mutations';
 export { refreshTable } from './registry';
 export { STORE_CONFIG, type QueryState, type SchemaState } from './registry';
 export { StoreDemo } from './StoreDemo';

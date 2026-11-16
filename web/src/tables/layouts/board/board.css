@@ -1,5 +1,8 @@
-.cl-board { display: flex; flex-direction: column; gap: var(--space-2); min-height: 0; height: 100%; color: var(--text); font-size: var(--font-size-md); }
-.cl-board__bar { display: flex; justify-content: flex-end; }
+.cl-board { position: relative; display: flex; flex-direction: column; gap: var(--space-2); min-height: 0; height: 100%; color: var(--text); font-size: var(--font-size-md); }
+/* "Card fields" floats over the top right corner and shows while the board is used */
+.cl-board__bar { position: absolute; top: calc(-1 * var(--space-6)); right: 0; z-index: var(--z-raised); opacity: 0; transition: opacity var(--transition-fast); }
+.cl-board:hover .cl-board__bar, .cl-board__bar:focus-within, .cl-board__bar:has([open]) { opacity: 1; }
+@media (hover: none) { .cl-board__bar { opacity: 1; } }
 .cl-board__empty { padding: var(--space-6) var(--space-2); color: var(--text-muted); }
 .cl-board__lanes { display: flex; align-items: flex-start; gap: var(--space-2-5); flex: 1; min-height: 0; overflow: auto; padding-bottom: var(--space-2); }
 .cl-board.is-dragging { user-select: none; cursor: grabbing; }
@@ -22,7 +25,8 @@
 .cl-board__card.is-draggable { cursor: grab; touch-action: pan-y; }
 .cl-board__card.is-dragged { opacity: 0.4; }
 .cl-board__card-title { font-weight: var(--font-weight-medium); overflow-wrap: anywhere; }
-.cl-board__field { min-width: 0; font-size: var(--font-size-sm); color: var(--text-secondary); }
+.cl-board__card-fields { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+.cl-board__field { min-width: 0; max-width: 100%; font-size: var(--font-size-sm); color: var(--text-secondary); }
 .cl-board__drop-line, .cl-board__drop-end { height: 3px; flex: none; background: var(--accent); border-radius: 2px; }
 
 .cl-board__ghost { position: fixed; z-index: var(--z-palette); max-width: 240px; padding: var(--space-1-5) var(--space-2-5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; color: var(--text); background: var(--modal-elevated); border: 1px solid var(--accent); border-radius: var(--radius-sm); box-shadow: 0 6px 20px var(--shadow-medium); }
@@ -34,6 +38,8 @@
 .cl-board__add-input:focus-visible, .cl-board__add-project:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .cl-board__fields { position: relative; font-size: var(--font-size-md); }
-.cl-board__fields summary { cursor: pointer; color: var(--text-secondary); }
+.cl-board__fields summary { cursor: pointer; color: var(--text-muted); font-size: var(--font-size-sm); list-style: none; padding: var(--space-0-5) var(--space-1-5); border-radius: var(--radius-sm); }
+.cl-board__fields summary::-webkit-details-marker { display: none; }
+.cl-board__fields summary:hover { background: var(--bg-hover); color: var(--text); }
 .cl-board__fields-list { position: absolute; right: 0; z-index: var(--z-local-popup); display: flex; flex-direction: column; gap: var(--space-1); min-width: 160px; margin-top: var(--space-1); padding: var(--space-2); background: var(--modal-elevated); border: 1px solid var(--border-medium); border-radius: var(--radius-md); box-shadow: 0 8px 28px var(--shadow-medium); }
 .cl-board__fields-list label { display: flex; align-items: center; gap: var(--space-1-5); }

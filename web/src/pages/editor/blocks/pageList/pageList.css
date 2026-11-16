@@ -1,9 +1,25 @@
 /* The page list block ("Recently changed pages") */
 .cl-pagelist-node { margin: var(--space-2) 0; }
-.cl-pagelist { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-1); }
-.cl-pagelist__settings { display: flex; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-2); font-size: var(--font-size-sm); }
-.cl-pagelist__list { list-style: none; margin: 0; padding: 0; }
-.cl-pagelist__item { display: flex; align-items: baseline; gap: var(--space-2); padding: var(--space-1-5) var(--space-2); border-radius: var(--radius-sm); color: var(--text); text-decoration: none; }
+.cl-pagelist { position: relative; }
+/* Which pages and how many: a small strip over the top right corner, shown while the block is used */
+.cl-pagelist__settings {
+  position: absolute; top: calc(-1 * var(--space-6)); right: 0; z-index: var(--z-raised);
+  display: flex; gap: var(--space-1); font-size: var(--font-size-sm);
+  opacity: 0; transition: opacity var(--transition-fast);
+}
+.cl-pagelist:hover .cl-pagelist__settings, .cl-pagelist__settings:focus-within { opacity: 1; }
+@media (hover: none) { .cl-pagelist__settings { opacity: 1; } }
+.cl-pagelist__settings select {
+  height: var(--control-height-xs); padding: 0 var(--space-1); font: inherit; color: var(--text-secondary);
+  background: var(--bg-solid); border: 1px solid var(--border-medium); border-radius: var(--radius-sm); cursor: pointer;
+}
+.cl-pagelist__settings select:hover { color: var(--text); }
+.cl-pagelist__settings select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Inside the editor's text the list rules of the prose would add bullets and underlines */
+.cl-pagelist .cl-pagelist__list { list-style: none; margin: 0; padding: 0; }
+.cl-pagelist .cl-pagelist__list li { margin: 0; }
+.cl-pagelist a.cl-pagelist__item { color: var(--text); text-decoration: none; }
+.cl-pagelist__item { display: flex; align-items: baseline; gap: var(--space-2); padding: var(--space-1-5) var(--space-1-5); border-radius: var(--radius-sm); color: var(--text); text-decoration: none; }
 .cl-pagelist__item:hover { background: var(--bg-hover); }
 .cl-pagelist__icon { flex: 0 0 auto; }
 .cl-pagelist__title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

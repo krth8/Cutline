@@ -88,6 +88,7 @@ def test_duplicate_shows_text_image_and_board_and_views_are_independent(scene, s
     alice.wait_for_selector(PROSE, timeout=20000)
     expect(alice.locator(PROSE)).to_contain_text("Hello from the original")
     alice.wait_for_selector(f"{BLOCK}[data-state=ready]", timeout=15000)
+    alice.wait_for_selector("[data-testid=view-block] .cl-board__card-title", timeout=15000)  # the rows come after the view
     assert card_titles(alice) == ["Alpha task"]
     image = alice.locator(f"{PROSE} img")
     expect(image).to_be_visible()
@@ -112,7 +113,8 @@ def test_save_as_template_and_use_it_in_another_project(scene, server):
 
     alice.goto(f"{server.base_url}/p/{scene['beta']}/pages")
     alice.wait_for_selector("[data-testid=space-overview]", timeout=15000)
-    alice.locator(f'.cl-tree[data-space="p:{scene["beta"]}"]').get_by_role("button", name="New from template...").first.click()
+    alice.locator(f'.cl-tree[data-space="p:{scene["beta"]}"]').get_by_role("button", name="More page options").click()
+    alice.get_by_role("menuitem", name="New from template...").click()
     dialog = alice.get_by_role("dialog")
     dialog.get_by_role("searchbox", name="Search templates").fill("plan")
     dialog.get_by_role("button", name="Use Plan template").click()
@@ -134,7 +136,8 @@ def test_meeting_notes_appears_in_a_second_users_tree(scene, server, new_page):
     alice = scene["alice"]
     alice.goto(f"{server.base_url}/p/{scene['alpha']}/pages")
     alice.wait_for_selector("[data-testid=space-overview]", timeout=15000)
-    alice.locator(f'.cl-tree[data-space="p:{scene["alpha"]}"]').get_by_role("button", name="New from template...").first.click()
+    alice.locator(f'.cl-tree[data-space="p:{scene["alpha"]}"]').get_by_role("button", name="More page options").click()
+    alice.get_by_role("menuitem", name="New from template...").click()
     alice.get_by_role("dialog").get_by_role("button", name="Use Meeting notes").click()
     alice.wait_for_selector(PROSE, timeout=20000)
     expect(alice.locator(PROSE)).to_contain_text("Attendees")

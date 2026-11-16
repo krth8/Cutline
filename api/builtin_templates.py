@@ -122,7 +122,6 @@ async def shot_list(target: Target, title: Optional[str]) -> dict:
     table = await custom_source.create_table(target.user, {
         "name": page["title"], "space": target.space,
         "columns": [
-            {"name": "Shot", "type": "text"},
             {"name": "Description", "type": "text"},
             {"name": "Status", "type": "select",
              "options": [{"label": "Planned", "color": "#9ca3af"}, {"label": "Shot", "color": "#3b82f6"},
@@ -131,8 +130,10 @@ async def shot_list(target: Target, title: Optional[str]) -> dict:
             {"name": "Due date", "type": "date"},
         ]})
     keys = {c["name"]: c["key"] for c in db_list_table_columns(table["ref"])}
-    columns = [{"key": "name", "hidden": True}] + [{"key": keys[n]} for n in
-                                                   ("Shot", "Description", "Status", "Assignee", "Due date")]
+    # The shot is the row's own name: the title every layout, link and search shows. A separate "Shot" column
+    # beside a hidden name made a row look empty as soon as the layout changed.
+    columns = ([{"key": "name"}] + [{"key": keys[n]} for n in ("Description", "Status", "Assignee", "Due date")]
+               + [{"key": "createdAt", "hidden": True}, {"key": "createdBy", "hidden": True}])
     view = target.view(page["id"], table["ref"], "Shots", "table", {"query": {}, "columns": columns})
     doc, fragment = _new_doc()
     _element(fragment, "viewBlock", viewId=view)

@@ -151,7 +151,8 @@ describe('menu items', () => {
     window.addEventListener('cutline:open-templates', (e) => events.push(JSON.stringify((e as CustomEvent).detail)), { once: true });
     render(<PageTree space={{ kind: 'personal' }} route={{ kind: 'me' }} />);
     await screen.findByRole('tree');
-    await user.click(screen.getByRole('button', { name: 'New from template...' }));
+    await user.click(screen.getByRole('button', { name: 'More page options' }));
+    await user.click(screen.getByRole('menuitem', { name: 'New from template...' }));
     expect(events).toEqual(['{"space":"me"}']);
     await user.click(screen.getByRole('button', { name: 'Actions for Plan' }));
     await user.click(screen.getByRole('menuitem', { name: 'Duplicate' }));

@@ -14,7 +14,7 @@ import { getPlatform } from '../../../platform';
 import * as tablesApi from '../../../api/tables';
 import { cx } from '../../../ui';
 import { getCell, isColumnEditable } from '../../cells';
-import { refreshTable } from '../../store';
+import { refreshTable, rowKey } from '../../store';
 import { useAddProject } from '../../addProject';
 import type { Column, LayoutProps, Row } from '../../types';
 import { orderedColumns } from '../../viewColumns';
@@ -567,7 +567,7 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
       case 'row':
         return (
           <DataRow
-            key={item.id}
+            key={rowKey(item.id)}
             row={item.row}
             depth={item.depth}
             caret={item.caret}

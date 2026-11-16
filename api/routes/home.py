@@ -11,6 +11,7 @@ Share-link guests are refused everywhere (require_auth).
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.auth import can_access_space, require_auth
+from api.events import live
 from api.home_template import create_dashboard
 from api.state import projects
 from database.access import db_list_accessible_projects
@@ -43,6 +44,8 @@ async def open_home(user: dict = Depends(require_auth)):
         return {"pageId": page_id, "created": False}
     page = create_dashboard(user)
     db_set_home_page_id(user["id"], page["id"])
+    # The page tree of the sidebar may already be on screen (the landing page is the Projects grid)
+    await live.to_user(user["id"], {"type": "page_changed", "pageId": page["id"], "change": "created"})
     return {"pageId": page["id"], "created": True}
 
 

@@ -507,7 +507,7 @@ def test_every_builtin_opens_with_its_views(client, world, builtin, where):
         assert ref.startswith("tbl_")
         schema = ok(client.get(f"/api/tables/{ref}/schema", headers=auth(a)))
         assert [(c["name"], c["type"]) for c in schema["columns"] if not c.get("builtin")] == [
-            ("Shot", "text"), ("Description", "text"), ("Status", "select"), ("Assignee", "person"),
+            ("Description", "text"), ("Status", "select"), ("Assignee", "person"),
             ("Due date", "date")]
 
 

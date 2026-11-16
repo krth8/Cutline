@@ -125,14 +125,15 @@ export function reorderTarget(
   return following ? { ids: [draggedId], before: following.id } : { ids: [draggedId] };
 }
 
-/** Columns shown on a card: the chosen ones, else the view's visible columns; never the title or lane column. */
+/** Columns shown on a card: the chosen ones, else the view's visible columns without the read-only ones (who
+ *  made a row and when: they can still be chosen); never the title or lane column. */
 export function cardColumnsOf(schema: TableSchema, config: View['config'], groupBy: string | undefined): Column[] {
   const board = readBoardConfig(config);
   const skip = new Set([schema.titleColumn, groupBy]);
   const byKey = new Map(schema.columns.map((c) => [c.key, c]));
   const chosen = board.cardColumns.map((k) => byKey.get(k)).filter((c): c is Column => !!c && !skip.has(c.key));
   if (board.cardColumns.length) return chosen;
-  return visibleColumns(schema, config).filter((c) => !skip.has(c.key));
+  return visibleColumns(schema, config).filter((c) => !skip.has(c.key) && !c.readonly);
 }
 
 export function toggleIn(list: string[], id: string): string[] {

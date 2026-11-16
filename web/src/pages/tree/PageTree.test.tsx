@@ -375,7 +375,7 @@ describe('permissions', () => {
     fake.navigations.length = 0;
     await user.click(row('B'));
     expect(fake.navigations).toEqual(['/p/p1/page/B']);
-    expect(screen.getByRole('button', { name: 'Archived' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'More page options' })).toBeTruthy(); // the archive stays reachable
   });
 
   it('a viewer role user keeps full rights in the personal space', async () => {
@@ -400,7 +400,8 @@ describe('archived list', () => {
       return json(info(node('X', null, 0, 'Old plan')));
     };
     await renderTree();
-    await user.click(screen.getByRole('button', { name: 'Archived' }));
+    await user.click(screen.getByRole('button', { name: 'More page options' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Archived pages' }));
     const dialog = await screen.findByRole('dialog');
     expect(await within(dialog).findByText('Old plan')).toBeTruthy();
     expect(within(dialog).getByText('Old step')).toBeTruthy();
@@ -415,7 +416,8 @@ describe('archived list', () => {
     fake.routes['GET /api/spaces/me/pages?archived=1'] = () => json([node('X', null, 0, 'Old plan')]);
     fake.routes['DELETE /api/pages/X'] = () => json({ success: true });
     await renderTree();
-    await user.click(screen.getByRole('button', { name: 'Archived' }));
+    await user.click(screen.getByRole('button', { name: 'More page options' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Archived pages' }));
     await user.click(await screen.findByRole('button', { name: 'Delete Old plan forever' }));
     await waitFor(() => expect(fake.fetchCalls.some((c) => c.init?.method === 'DELETE')).toBe(true));
     expect(fake.confirmations).toHaveLength(1);

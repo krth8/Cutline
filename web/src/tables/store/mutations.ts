@@ -84,6 +84,17 @@ export function projectsForCreate(): Array<{ id: string; name: string }> {
     .map((p) => ({ id: p.id, name: p.name }));
 }
 
+/** The key a freshly created row was first shown under (its temporary id), by its real id. */
+const rowKeys = new Map<string, string>();
+
+/**
+ * A key for rendering a row that stays the same when a new row gets its real id from the server. Layouts key
+ * their rows with it, so a cell that is being edited in a new row is not thrown away when the answer arrives.
+ */
+export function rowKey(id: string): string {
+  return rowKeys.get(id) ?? id;
+}
+
 export async function createRow(
   ref: string,
   values: Record<string, unknown>,
@@ -110,6 +121,7 @@ export async function createRow(
   addOp(op);
   try {
     const row = await request;
+    rowKeys.set(row.id, temp.id);
     // Queries that showed the temporary row get the real one at the same place
     settleOp(op, (q) => (q.base ? applyOp(q.base, { ...op, row }, q.query, q.table.ref) : null));
     invalidate([ref, row.tableRef]);
