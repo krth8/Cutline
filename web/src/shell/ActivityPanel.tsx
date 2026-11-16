@@ -196,9 +196,10 @@ export function ActivityPanel({ projectId }: { projectId: string | null }) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const soon = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => void load(), 400);
+      timer = setTimeout(() => void load(), 600);
     };
-    const offs = [platform.live.on('activity', soon), platform.live.on('resync', soon)];
+    // The events that already tell people about these changes; the list itself comes from the server
+    const offs = ['task_created', 'task_updated', 'comment_added', 'page_changed', 'resync'].map((type) => platform.live.on(type, soon));
     const tick = setInterval(() => setNow(Date.now()), 60000);
     return () => {
       offs.forEach((off) => off());

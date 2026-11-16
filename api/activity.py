@@ -1,7 +1,8 @@
 """Recording activity (database/activity.py) from the places where things change.
 
-Every function here is safe to call from a request: a failure is printed, never raised, and people watching
-the project are told that there is something new (``activity`` over the live connection; they fetch the list).
+Every function here is safe to call from a request: a failure is printed, never raised. No live message of
+its own is sent: the panel fetches the list again when it hears the events that already exist (task_created,
+task_updated, comment_added, page_changed), which go to the people who may see them.
 
 Kinds: ``task.created``, ``task.status``, ``task.assigned``, ``task.due``, ``task.renamed``, ``page.created``,
 ``comment.added``. The prefix decides who may see it: task.* and page.* need the Home tab of the project,
@@ -11,7 +12,6 @@ comment.* the Review tab.
 from typing import Iterable, List, Optional
 from urllib.parse import quote
 
-from api.events import live
 from database.activity import db_add_activity
 from database.clips import db_list_statuses
 
@@ -25,7 +25,6 @@ async def record(project_id: str, actor: Optional[dict], kind: str, title: str, 
     try:
         actor_id = None if not actor or actor.get("is_guest") else actor.get("id")
         db_add_activity(project_id, actor_id, _name(actor), kind, title, detail, link, involves)
-        await live.to_project(project_id, {"type": "activity", "kind": kind}, echo=True)
     except Exception as exc:
         print(f"Could not record activity {kind} in {project_id}: {exc}")
 

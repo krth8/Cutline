@@ -71,7 +71,7 @@ describe('ActivityPanel', () => {
     expect((await screen.findByTestId('activity-event')).textContent).toContain('rita created the page Brief');
 
     fake.routes['/api/activity?scope=project&projectId=p1'] = { events: [event({ title: 'New task' }), event({ kind: 'page.created', title: 'Brief' })] };
-    act(() => fake.emit('activity', { kind: 'task.created' }));
+    act(() => fake.emit('task_created', { project: 'p1' }));
     await waitFor(() => expect(screen.getAllByTestId('activity-event')).toHaveLength(2), { timeout: 2000 });
   });
 
