@@ -119,6 +119,7 @@ def test_save_as_template_and_use_it_in_another_project(scene, server):
     alice.wait_for_selector(PROSE, timeout=20000)
     expect(alice.locator(PROSE)).to_contain_text("Hello from the original")
     alice.wait_for_selector(f"{BLOCK}[data-state=ready]", timeout=15000)
+    alice.wait_for_function("() => document.querySelectorAll('[data-testid=view-block] .cl-board__card-title').length > 0", timeout=15000)
     assert card_titles(alice) == ["Beta task"]  # the board reads the new project's tasks
     assert alice.url.split("/p/")[1].startswith(scene["beta"])
 
