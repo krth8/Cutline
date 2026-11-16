@@ -11,6 +11,7 @@ import type * as Y from 'yjs';
 import { Callout } from './extensions/callout';
 import { ImageNode } from './extensions/image';
 import { EditorKeys } from './extensions/keys';
+import { BlockWidthAttr, Column, Columns } from './extensions/layout';
 import { MarkdownPaste } from './extensions/markdownPaste';
 import { SlashCommand, type SlashStore } from './extensions/slash';
 import { scanUnknownNodes, unsupportedNode } from './extensions/unsupported';
@@ -78,6 +79,9 @@ export function buildExtensions(opts: BuildOptions): AnyExtension[] {
     Highlight,
     ImageNode,
     Callout,
+    Columns,
+    Column,
+    BlockWidthAttr,
     Markdown,
     MarkdownPaste,
     EditorKeys,

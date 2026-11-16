@@ -10,6 +10,7 @@ import { duplicateAndOpen, openTemplates } from '../templates';
 import { MoveDialog } from './MoveDialog';
 import {
   canEditSpace,
+  overviewRoute,
   createAndOpen,
   activePageId,
   openPage,
@@ -23,6 +24,7 @@ import {
   canDrop,
   planDrop,
   planMoveToTop,
+  subtreeIds,
   visibleRows,
   type DropPosition,
   type VisibleRow,
@@ -237,6 +239,18 @@ export function PageTree({ space, route }: SidebarSectionProps) {
     if (key === 'me' && id !== homeId) items.push({ id: 'set-home', label: 'Set as home', onSelect: () => void setHomePage(id) });
     items.push(...pageExportItems(id));
     items.push({ type: 'separator' }, { id: 'archive', label: 'Archive', danger: true, onSelect: () => void store.archive(id) });
+    items.push({
+      id: 'delete',
+      label: 'Delete',
+      danger: true,
+      onSelect: () => {
+        // The open page may be the one deleted, or one under it: then there is nothing left to show
+        const open = activeId !== null && subtreeIds(model, id).includes(activeId);
+        void store.deleteNow(id, node.page.title).then((deleted) => {
+          if (deleted && open) navigate(overviewRoute(key));
+        });
+      },
+    });
     return items;
   }
 

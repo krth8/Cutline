@@ -108,7 +108,7 @@ export function updatePage(id: string, patch: PageUpdate): Promise<PageInfo> {
   return request<PageInfo>(pagePath(id), json('PATCH', patch));
 }
 
-/** Delete an archived page and its sub-pages for good. */
+/** Delete a page and its sub-pages for good (archived or not). */
 export async function deletePage(id: string): Promise<void> {
   await request<{ success: boolean }>(pagePath(id), { method: 'DELETE' });
 }

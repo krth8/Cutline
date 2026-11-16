@@ -323,12 +323,14 @@ def test_cannot_create_or_move_under_an_archived_page(client, team):
     assert patch(client, t, other["id"], parentId=a["id"]).status_code == 400
 
 
-def test_delete_only_archived_pages_and_takes_the_subtree(client, team):
+def test_delete_takes_the_subtree_archived_or_not(client, team):
     t = team["member"]
     a = create(client, t, team["space"], "A")
     b = create(client, t, team["space"], "B", parent=a["id"])
     keep = create(client, t, team["space"], "Keep")
-    assert client.delete(f"/api/pages/{a['id']}", headers=auth(t)).status_code == 409
+    live = create(client, t, team["space"], "Live")
+    assert client.delete(f"/api/pages/{live['id']}", headers=auth(t)).status_code == 200  # no need to archive first
+    assert client.get(f"/api/pages/{live['id']}", headers=auth(t)).status_code == 404
     patch(client, t, a["id"], archived=True)
     assert client.delete(f"/api/pages/{a['id']}", headers=auth(t)).status_code == 200
     assert client.get(f"/api/pages/{a['id']}", headers=auth(t)).status_code == 404

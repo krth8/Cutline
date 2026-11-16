@@ -273,7 +273,7 @@ def db_set_archived(page_id: str, archived: bool) -> Optional[dict]:
 
 
 def db_delete_page(page_id: str) -> bool:
-    """Delete a page and its sub-pages for good (callers only allow this for archived pages).
+    """Delete a page and its sub-pages for good.
     Raises ValueError when the subtree holds a project's dashboard."""
     with get_db() as conn:
         if fetchone(execute(conn, _SUBTREE + " SELECT 1 AS x FROM pages WHERE id IN (SELECT id FROM sub) "

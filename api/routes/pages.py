@@ -288,10 +288,8 @@ async def move_page(page_id: str, data: dict, user: dict = Depends(require_auth)
 
 @router.delete("/api/pages/{page_id}")
 async def delete_page(page_id: str, user: dict = Depends(require_auth)):
-    """Delete an archived page and its sub-pages for good."""
+    """Delete a page and its sub-pages for good, archived or not (the client asks before it calls this)."""
     page = _load(page_id, user, write=True)
-    if page["archivedAt"] is None:
-        raise HTTPException(status_code=409, detail="Archive the page before deleting it")
     if page["system"]:
         raise HTTPException(status_code=400, detail="The dashboard cannot be deleted")
     delete_files_of_page_tree(page_id)

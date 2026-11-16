@@ -37,7 +37,7 @@ function ChartNodeView({ node, editor, updateAttributes, deleteNode, selected, g
     bucket: cleanBucket(a.bucket),
   };
   return (
-    <NodeViewWrapper className="cl-chart-node" contentEditable={false}>
+    <NodeViewWrapper className="cl-chart-node" contentEditable={false} data-width={node.attrs.width || undefined}>
       <host.ChartContent
         attrs={attrs}
         editable={editable}

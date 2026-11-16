@@ -2,6 +2,7 @@ import type { Editor, Range } from '@tiptap/core';
 import { setBlockKind, type BlockKind } from './blocks';
 import type { SlashItem } from './registry';
 import type { CalloutTone } from './extensions/callout';
+import { insertColumns } from './extensions/layout';
 
 const kind =
   (k: BlockKind) =>
@@ -29,6 +30,8 @@ export const BASE_SLASH_ITEMS: SlashItem[] = [
   { title: 'Numbered list', description: 'A list with numbers', icon: '1.', keywords: ['ol', 'ordered', 'steps'], group: 'Lists', run: kind('orderedList') },
   { title: 'To-do list', description: 'Checkable items', icon: '☐', keywords: ['task', 'checkbox', 'todo', 'checklist'], group: 'Lists', run: kind('taskList') },
   { title: 'Code block', description: 'Monospaced code', icon: '</>', keywords: ['code', 'snippet', 'pre'], group: 'Basic', run: kind('codeBlock') },
+  { id: 'columns-2', title: '2 columns', description: 'Blocks side by side', icon: '||', keywords: ['columns', 'side', 'layout', 'grid', 'split', 'two'], group: 'Advanced', run: insertColumns(2) },
+  { id: 'columns-3', title: '3 columns', description: 'Three blocks side by side', icon: '|||', keywords: ['columns', 'side', 'layout', 'grid', 'three'], group: 'Advanced', run: insertColumns(3) },
   { id: 'callout-info', title: 'Callout', description: 'Highlighted note', icon: 'i', keywords: ['note', 'info', 'tip', 'admonition'], group: 'Advanced', run: callout('info') },
   { id: 'callout-success', title: 'Success callout', description: 'Green highlighted note', icon: '✓', keywords: ['callout', 'done', 'ok'], group: 'Advanced', run: callout('success') },
   { id: 'callout-warning', title: 'Warning callout', description: 'Amber highlighted note', icon: '!', keywords: ['callout', 'caution', 'attention'], group: 'Advanced', run: callout('warning') },

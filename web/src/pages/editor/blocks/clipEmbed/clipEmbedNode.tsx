@@ -12,7 +12,7 @@ import { CLIP_EMBED, cleanCount, type ClipEmbedAttrs } from './model';
 function ClipEmbedNodeView({ node, editor, updateAttributes, deleteNode }: NodeViewProps) {
   const editable = useEditorState({ editor, selector: (s) => s.editor.isEditable });
   return (
-    <NodeViewWrapper className="cl-clipembed-node" contentEditable={false} data-clip-embed="">
+    <NodeViewWrapper className="cl-clipembed-node" contentEditable={false} data-clip-embed="" data-width={node.attrs.width || undefined}>
       <host.ClipEmbedContent
         attrs={node.attrs as ClipEmbedAttrs}
         editable={editable}

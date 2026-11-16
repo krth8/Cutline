@@ -318,6 +318,11 @@ class Renderer:
         inner = self.blocks(node.children)
         return "\n".join(("> " + line).rstrip() for line in inner.split("\n"))
 
+    def b_columns(self, node, attrs) -> str:
+        # Side by side on screen, one after the other in the export
+        parts = [self.blocks(column.children) for column in node.children if isinstance(column, XmlElement)]
+        return "\n\n".join(p for p in parts if p.strip())
+
     def b_callout(self, node, attrs) -> str:
         kind = ALERTS.get(str(attrs.get("tone") or "info"), "NOTE")
         inner = f"[!{kind}]\n" + self.blocks(node.children)

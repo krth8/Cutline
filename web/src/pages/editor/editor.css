@@ -372,3 +372,27 @@ span.cl-unsupported .cl-unsupported__label { display: inline; }
   .cl-editor__prose { font-size: 16px; }
   .cl-handle { display: none; }
 }
+
+/* ---- block width: Text (the reading column), Wide, Full ---- */
+/* --cl-avail is the room the page has (set on the content area by the shell); without it a block keeps the text width */
+.cl-editor__prose [data-width="wide"] { --cl-block-w: max(100%, min(1200px, var(--cl-avail, 100%))); }
+.cl-editor__prose [data-width="full"] { --cl-block-w: max(100%, var(--cl-avail, 100%)); }
+.cl-editor__prose :is([data-width="wide"], [data-width="full"]) {
+  width: var(--cl-block-w);
+  max-width: none;
+  margin-left: calc((100% - var(--cl-block-w)) / 2);
+}
+/* inside a column a block is as wide as its column */
+.cl-column :is([data-width="wide"], [data-width="full"]) { width: auto; margin-left: 0; }
+
+/* ---- columns: blocks side by side ---- */
+.cl-columns { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px 24px; margin: 12px 0; }
+.cl-column { flex: 1 1 260px; min-width: 0; }
+.cl-column > :first-child { margin-top: 0; }
+.cl-column > :last-child { margin-bottom: 0; }
+/* while editing, the columns show where they are */
+.cl-editor__prose[contenteditable="true"] .cl-column { outline: 1px dashed transparent; outline-offset: 6px; border-radius: 4px; }
+.cl-editor__prose[contenteditable="true"] .cl-columns:hover .cl-column { outline-color: var(--border-medium); }
+/* a view in a column keeps its name readable; its toolbar gives way */
+.cl-column .cl-viewhead__title { flex-shrink: 0; max-width: 100%; }
+.cl-column .cl-viewbar { overflow: hidden; }

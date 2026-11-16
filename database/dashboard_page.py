@@ -64,13 +64,17 @@ def _heading(fragment, text: str) -> None:
 
 def build_document(views: dict, project_id: str) -> bytes:
     """The stored Yjs document, with the node names and attributes of the editor's blocks
-    (web/src/pages/editor/blocks/*): progress, the key numbers, my tasks, the schedule, the pages."""
+    (web/src/pages/editor/blocks/*, extensions/layout.ts): progress and the key numbers beside my tasks and the
+    overdue ones, then the schedule and the pages."""
     doc = Doc()
     fragment = doc.get(FRAGMENT, type=XmlFragment)
 
-    _element(fragment, "chart", viewId=views["all"], type="donut", groupBy="status", fn="count", title="Progress")
+    # Top row, side by side: progress with the key numbers under it, and my tasks
+    top = _element(fragment, "columns", width="wide")
+    left, right = _element(top, "column"), _element(top, "column")
+    _element(left, "chart", viewId=views["all"], type="donut", groupBy="status", fn="count", title="Progress")
 
-    numbers = _element(fragment, "paragraph")
+    numbers = _element(left, "paragraph")
     for label, view, fn, last in (("Done: ", "all", "percentDone", False), ("Open tasks: ", "open", "count", False),
                                   ("Mine: ", "mine", "count", False), ("Overdue: ", "overdue", "count", True)):
         numbers.children.append(XmlText(label))
@@ -79,8 +83,9 @@ def build_document(views: dict, project_id: str) -> bytes:
             numbers.children.append(XmlText("   ·   "))
 
     # a view block shows the name of its view, so these need no heading
-    _element(fragment, "viewBlock", viewId=views["mine"])
-    _element(fragment, "viewBlock", viewId=views["schedule"])
+    _element(right, "viewBlock", viewId=views["mine"])
+    _element(right, "viewBlock", viewId=views["overdue"])
+    _element(fragment, "viewBlock", viewId=views["schedule"], width="wide")
     _heading(fragment, "Pages")
     _element(fragment, "pageList", scope=f"p:{project_id}", limit=8)
     _element(fragment, "paragraph")  # a free line at the end to keep typing

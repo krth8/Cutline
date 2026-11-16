@@ -54,8 +54,12 @@ def test_the_dashboard_is_built_from_blocks_over_views_it_owns(client, team):
     page = system_pages(team["project"])[0]
     fragment = stored_document(page["id"])
     tags = [getattr(c, "tag", None) for c in fragment.children]
-    assert tags == ["chart", "paragraph", "viewBlock", "viewBlock", "heading", "pageList", "paragraph"]
-    chart = fragment.children[0]
+    assert tags == ["columns", "viewBlock", "heading", "pageList", "paragraph"]
+    top = fragment.children[0]
+    assert top.attributes["width"] == "wide" and [c.tag for c in top.children] == ["column", "column"]
+    left, right = top.children
+    assert [c.tag for c in left.children] == ["chart", "paragraph"] and [c.tag for c in right.children] == ["viewBlock", "viewBlock"]
+    chart = left.children[0]
     assert chart.attributes["type"] == "donut" and chart.attributes["groupBy"] == "status"
 
     views = client.get(f"/api/views?ownerPageId={page['id']}", headers=auth(team["member"])).json()["views"]
@@ -64,10 +68,11 @@ def test_the_dashboard_is_built_from_blocks_over_views_it_owns(client, team):
     assert all(v["tableRef"] == f"tasks:{team['project']}" and v["ownerPageId"] == page["id"] for v in views)
     # every view a block points at exists
     ids = {v["id"] for v in views}
-    pointed = [c.attributes["viewId"] for c in fragment.children if getattr(c, "tag", None) in ("chart", "viewBlock")]
-    pointed += [c.attributes["viewId"] for c in fragment.children[1].children if getattr(c, "tag", None) == "summaryInline"]
-    assert len(pointed) == 7 and set(pointed) <= ids
-    assert fragment.children[5].attributes["scope"] == f"p:{team['project']}"
+    pointed = [c.attributes["viewId"] for c in [chart, *right.children, fragment.children[1]]]
+    pointed += [c.attributes["viewId"] for c in left.children[1].children if getattr(c, "tag", None) == "summaryInline"]
+    assert len(pointed) == 8 and set(pointed) <= ids
+    assert fragment.children[1].attributes["width"] == "wide"  # the schedule
+    assert fragment.children[3].attributes["scope"] == f"p:{team['project']}"
 
     # "All tasks" is the table the Tasks route opens full page: nested subtasks, the columns of the old list
     everything = client.get(f"/api/views/{by_name[ALL_TASKS]['id']}", headers=auth(team["member"])).json()
@@ -92,7 +97,8 @@ def test_cannot_archive_delete_or_move_it(client, team, make_project):
     page_id = system_pages(team["project"])[0]["id"]
     res = patch(client, t, page_id, archived=True)
     assert res.status_code == 400 and "dashboard" in res.json()["detail"]
-    assert client.delete(f"/api/pages/{page_id}", headers=auth(t)).status_code == 409  # not archived, never will be
+    res = client.delete(f"/api/pages/{page_id}", headers=auth(t))
+    assert res.status_code == 400 and "cannot be deleted" in res.json()["detail"]
 
     # even a page that is somehow archived cannot be deleted
     with get_db() as conn:
@@ -139,7 +145,7 @@ def test_the_page_opens_over_the_sync_socket_with_its_blocks(client, team, ticke
     doc = Doc()
     doc.apply_update(first[1:])
     tags = [getattr(c, "tag", None) for c in doc.get("default", type=XmlFragment).children]
-    assert tags[0] == "chart"
+    assert tags[0] == "columns"
 
 
 # ---------- migration 024 ----------

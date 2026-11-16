@@ -143,3 +143,7 @@
 @media (prefers-reduced-motion: reduce) {
   .cl-page__skeleton span { animation: none; }
 }
+
+/* The page scrolls as a whole (the content area is the scroller), so the editor's own box must not clip:
+   wide and full-width blocks reach outside the column of the page */
+.cl-page .cl-collab__body { overflow: visible; }

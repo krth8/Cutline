@@ -64,6 +64,21 @@ export function Shell() {
     const layout = document.getElementById('clLayout');
     if (layout) layout.dataset.homePanel = hasPanel ? '1' : '0';
   }, [hasPanel]);
+  // How much room a page has for wide blocks: the content area without its padding (editor.css, --cl-avail)
+  const userId = user?.id;
+  useEffect(() => {
+    const main = document.getElementById('cl-main');
+    if (!main || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      const style = getComputedStyle(main);
+      const room = main.clientWidth - parseFloat(style.paddingLeft || '0') - parseFloat(style.paddingRight || '0');
+      main.style.setProperty('--cl-avail', `${Math.max(0, Math.floor(room))}px`);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(main);
+    return () => observer.disconnect();
+  }, [userId]);
   if (!user) {
     return (
       <div className="cl-shell" data-testid="cl-shell">

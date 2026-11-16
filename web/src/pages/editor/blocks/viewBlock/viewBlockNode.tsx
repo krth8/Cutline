@@ -17,7 +17,7 @@ function ViewBlockNodeView({ node, editor, updateAttributes, deleteNode }: NodeV
   const editable = useEditorState({ editor, selector: (s) => s.editor.isEditable });
   const { viewId, height, copyOf } = node.attrs as { viewId: string | null; height: number | null; copyOf: string | null };
   return (
-    <NodeViewWrapper className="cl-viewblock-node" contentEditable={false} data-view-block="">
+    <NodeViewWrapper className="cl-viewblock-node" contentEditable={false} data-view-block="" data-width={node.attrs.width || undefined}>
       <host.ViewBlockContent
         viewId={viewId}
         copying={!!copyOf && !viewId}

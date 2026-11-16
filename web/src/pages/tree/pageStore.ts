@@ -330,6 +330,32 @@ export class PageStore {
     }
   }
 
+  /** Delete a live page and its sub-pages for good, after asking. Resolves true when it is gone. */
+  async deleteNow(id: string, title: string): Promise<boolean> {
+    const gone = new Set(subtreeIds(this.snap.model, id));
+    const more = gone.size - 1;
+    const what = more > 0 ? ` and its ${more} sub-page${more === 1 ? '' : 's'}` : '';
+    const ok = await getPlatform().confirm(`Delete "${title || 'Untitled'}"${what}? This cannot be undone.`, {
+      danger: true,
+      confirmLabel: 'Delete',
+    });
+    if (!ok) return false;
+    const removed = this.snap.pages.filter((p) => gone.has(p.id));
+    this.begin();
+    this.set({ pages: this.snap.pages.filter((p) => !gone.has(p.id)) });
+    try {
+      await deletePage(id);
+      return true;
+    } catch (e) {
+      const have = new Set(this.snap.pages.map((p) => p.id));
+      this.set({ pages: [...this.snap.pages, ...removed.filter((p) => !have.has(p.id))] });
+      this.fail('delete the page', e);
+      return false;
+    } finally {
+      this.end();
+    }
+  }
+
   /** Bring an archived page (with its sub-pages) back. */
   async restore(id: string): Promise<boolean> {
     const removed = this.dropFromArchived(id);

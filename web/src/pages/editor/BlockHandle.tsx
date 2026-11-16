@@ -5,6 +5,7 @@ import { TextSelection } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { Menu, type MenuItem } from '../../ui';
 import { BLOCK_KINDS, setBlockKind } from './blocks';
+import { BLOCK_WIDTHS, WIDTH_LABELS, WIDTH_TYPES, cleanWidth, type BlockWidth } from './extensions/layout';
 
 /**
  * A constant: the drag handle re-registers its ProseMirror plugin whenever this object changes, and every
@@ -49,7 +50,26 @@ export function BlockHandle({ editor }: { editor: Editor }) {
     const t = target.current;
     if (!t) return [];
     const { node, pos } = t;
+    // Blocks that hold data can be wider than the text
+    const sizable = WIDTH_TYPES.includes(node.type.name);
+    const current = cleanWidth(node.attrs.width);
+    const setWidth = (width: BlockWidth) =>
+      editor
+        .chain()
+        .focus()
+        .command(({ tr }) => {
+          tr.setNodeMarkup(pos, undefined, { ...node.attrs, width });
+          return true;
+        })
+        .run();
+    const widths: MenuItem[] = sizable
+      ? [
+          ...BLOCK_WIDTHS.map((w) => ({ id: `width-${w}`, label: `${w === current ? '\u2713 ' : ''}${WIDTH_LABELS[w]}`, onSelect: () => setWidth(w) })),
+          { type: 'separator' as const },
+        ]
+      : [];
     return [
+      ...widths,
       {
         id: 'duplicate',
         label: 'Duplicate',
@@ -59,7 +79,7 @@ export function BlockHandle({ editor }: { editor: Editor }) {
       ...BLOCK_KINDS.map((k) => ({
         id: `turn-${k.id}`,
         label: `Turn into ${k.label}`,
-        disabled: node.type.name === 'image' || node.type.name === 'horizontalRule',
+        disabled: node.type.name === 'image' || node.type.name === 'horizontalRule' || sizable,
         onSelect: () => {
           selectBlock(node, pos);
           setBlockKind(editor.chain().focus(), k.id).run();

@@ -371,6 +371,16 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
           void store.archive(pageId).then(() => load());
         },
       });
+      items.push({
+        id: 'delete',
+        label: 'Delete',
+        danger: true,
+        onSelect: () => {
+          void store.deleteNow(pageId, title).then((deleted) => {
+            if (deleted) navigate(overviewRoute(space));
+          });
+        },
+      });
     }
     items.push({ type: 'separator' });
   }

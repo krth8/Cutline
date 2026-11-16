@@ -289,7 +289,7 @@ describe('the node in the editor', () => {
     });
     await screen.findByTestId('clip-embed-name');
     const stored = (editor.getJSON().content ?? []).find((n) => n.type === 'clipEmbed');
-    expect(stored?.attrs).toEqual({ projectId: 'p1', baseName: 'shot_010', version: 2, frame: 48 });
+    expect(stored?.attrs).toEqual({ projectId: 'p1', baseName: 'shot_010', version: 2, frame: 48, width: 'text' });
     const html = editor.getHTML();
     expect(html).toContain('data-clip-embed');
     expect(html).toContain('data-project-id="p1"');
@@ -300,7 +300,7 @@ describe('the node in the editor', () => {
       editor.commands.setContent(html);
     });
     const again = (editor.getJSON().content ?? []).find((n) => n.type === 'clipEmbed');
-    expect(again?.attrs).toEqual({ projectId: 'p1', baseName: 'shot_010', version: 2, frame: 48 });
+    expect(again?.attrs).toEqual({ projectId: 'p1', baseName: 'shot_010', version: 2, frame: 48, width: 'text' });
   });
 
   it('inserting with the slash entry puts an empty block in and opens the picker', async () => {
@@ -310,7 +310,7 @@ describe('the node in the editor', () => {
       getRegisteredSlashItems().find((i) => i.id === 'clip-embed')!.run(editor, { from: 1, to: 1 });
     });
     const stored = (editor.getJSON().content ?? []).find((n) => n.type === 'clipEmbed');
-    expect(stored?.attrs).toEqual({ projectId: null, baseName: null, version: null, frame: null });
+    expect(stored?.attrs).toEqual({ projectId: null, baseName: null, version: null, frame: null, width: 'text' });
     await screen.findByTestId('clip-picker-list');
   });
 
