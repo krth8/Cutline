@@ -3,73 +3,88 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cutline mock-up: project home</title>
+<title>Cutline mock-up</title>
 <style>
   :root {
-    --bg: #0f0c14; --side: #181628; --card: #1b1829; --card-2: #221f33;
-    --line: rgba(255,255,255,.07); --line-2: rgba(255,255,255,.12);
-    --text: #ecebf5; --dim: #a09db5; --faint: #6f6c85;
-    --accent: #6d5df0; --accent-soft: rgba(109,93,240,.16); --accent-text: #a99ffb;
-    --green: #3fb98a; --amber: #e0a23c; --red: #e5636f;
-    --r: 10px;
+    --bg: #0f0c14; --side: #16131f; --card: #1a1726; --card-2: #221f31; --card-3: #2a2640;
+    --line: rgba(255,255,255,.07); --line-2: rgba(255,255,255,.13);
+    --text: #ecebf5; --dim: #a5a2b8; --faint: #706d86;
+    --accent: #6d5df0; --accent-soft: rgba(109,93,240,.16); --accent-text: #aba1fc;
+    --green: #3fb98a; --amber: #e0a23c; --red: #e5636f; --blue: #4d9fe0; --pink: #d267a4;
+    --r: 10px; --side-w: 232px; --panel-w: 304px;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.45 Inter, "Segoe UI", system-ui, sans-serif; display: grid; grid-template-columns: 232px 1fr; grid-template-rows: 40px 1fr; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.45 Inter, "Segoe UI", system-ui, sans-serif;
+    display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr) var(--panel-w); grid-template-rows: 42px minmax(0, 1fr); overflow: hidden; }
+  body.no-panel { grid-template-columns: var(--side-w) minmax(0, 1fr) 0; }
+  body.no-panel .panel { display: none; }
   button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
   h1, h2, h3, p { margin: 0; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: #2a2640; border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
 
   /* ---------- header ---------- */
-  .brand { background: var(--side); display: flex; align-items: center; gap: 8px; padding: 0 12px; font-weight: 650; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .brand { background: var(--side); display: flex; align-items: center; gap: 8px; padding: 0 14px; font-weight: 650; font-size: 14px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); }
   .brand svg { width: 20px; height: 20px; }
-  .top { display: flex; align-items: center; border-bottom: 1px solid var(--line); padding: 0 16px; gap: 4px; }
-  .tab { height: 40px; padding: 0 12px; color: var(--dim); border-bottom: 2px solid transparent; font-weight: 500; }
+  .top { grid-column: 2 / 4; display: flex; align-items: center; border-bottom: 1px solid var(--line); padding: 0 12px 0 16px; gap: 2px; }
+  .tab { height: 42px; padding: 0 13px; color: var(--dim); border-bottom: 2px solid transparent; font-weight: 550; display: flex; align-items: center; gap: 7px; }
   .tab:hover { color: var(--text); }
   .tab.on { color: var(--text); border-bottom-color: var(--accent); }
-  .top .sp { flex: 1; }
-  .ava { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; border: 2px solid var(--bg); }
-  .a1 { background: #6d5df0; } .a2 { background: #c2587a; } .a3 { background: #2f8f83; } .a4 { background: #b0792b; }
-  .icon-btn { width: 28px; height: 28px; border-radius: 7px; color: var(--dim); }
+  .badge { background: var(--accent); color: #fff; border-radius: 20px; font-size: 10.5px; font-weight: 700; padding: 0 6px; line-height: 16px; }
+  .top .ctx { margin-left: 18px; color: var(--faint); font-size: 12.5px; }
+  .top .ctx b { color: var(--dim); font-weight: 550; }
+  .sp { flex: 1; }
+  .ava { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; flex: none; }
+  .ava.sm { width: 20px; height: 20px; font-size: 9px; }
+  .a1 { background: #6d5df0; } .a2 { background: #c2587a; } .a3 { background: #2f8f83; } .a4 { background: #b0792b; } .a5 { background: #4a7fc4; }
+  .icon-btn { width: 30px; height: 30px; border-radius: 8px; color: var(--dim); display: grid; place-items: center; }
   .icon-btn:hover { background: var(--card-2); color: var(--text); }
+  .icon-btn.on { background: var(--accent-soft); color: var(--accent-text); }
+  .icon-btn svg { width: 16px; height: 16px; }
 
-  /* ---------- sidebar ---------- */
+  /* ---------- left sidebar ---------- */
   .side { background: var(--side); border-right: 1px solid var(--line); padding: 8px; overflow: auto; }
   .nav { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 5px 8px; border-radius: 7px; color: var(--dim); }
   .nav:hover { background: rgba(255,255,255,.05); color: var(--text); }
   .nav.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
-  .nav .k { margin-left: auto; font-size: 11px; color: var(--faint); }
-  .nav.l2 { padding-left: 26px; } .nav.l3 { padding-left: 42px; }
+  .nav.proj { color: var(--text); font-weight: 550; margin-top: 2px; }
+  .nav .k { margin-left: auto; font-size: 11px; color: var(--faint); font-weight: 500; }
+  .nav.l2 { padding-left: 28px; } .nav.l3 { padding-left: 44px; }
   .nav.add { color: var(--faint); }
   .sect { margin: 16px 8px 4px; font-size: 10.5px; letter-spacing: .08em; color: var(--faint); font-weight: 650; }
-  .chev { width: 10px; color: var(--faint); font-size: 9px; }
-  .ic { width: 14px; text-align: center; opacity: .8; }
+  .chev { width: 10px; color: var(--faint); font-size: 8px; }
+  .ic { width: 14px; text-align: center; opacity: .75; font-size: 12px; }
+  .dot { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  /* in Review and Lounge the sidebar only chooses the project */
+  body[data-tab=review] .only-home, body[data-tab=lounge] .only-home { display: none; }
+  body[data-tab=home] .not-home { display: none; }
 
   /* ---------- main ---------- */
-  main { overflow: auto; padding: 28px 32px 64px; }
-  .wrap { max-width: 1180px; margin: 0 auto; }
+  main { overflow: auto; min-width: 0; }
   .view { display: none; } .view.on { display: block; }
-  .head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 20px; }
+  .pad { padding: 28px 32px 72px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .head { display: flex; align-items: flex-end; gap: 12px; margin-bottom: 20px; }
   .crumb { color: var(--faint); font-size: 12px; margin-bottom: 4px; }
-  .head h1 { font-size: 26px; font-weight: 680; letter-spacing: -.01em; }
+  .head h1 { font-size: 26px; font-weight: 680; letter-spacing: -.015em; }
   .meta { display: flex; gap: 14px; align-items: center; color: var(--dim); margin-top: 6px; font-size: 12.5px; }
-  .people { display: flex; } .people .ava { margin-left: -6px; } .people .ava:first-child { margin-left: 0; }
-  .head .sp { flex: 1; }
-  .btn { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line-2); color: var(--dim); font-weight: 550; }
+  .people { display: flex; } .people .ava { margin-left: -6px; border: 2px solid var(--bg); box-sizing: content-box; } .people .ava:first-child { margin-left: 0; }
+  .btn { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line-2); color: var(--dim); font-weight: 550; white-space: nowrap; }
   .btn:hover { color: var(--text); background: var(--card-2); }
   .btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.ok { background: rgba(63,185,138,.16); border-color: rgba(63,185,138,.4); color: var(--green); }
 
-  .grid { display: grid; grid-template-columns: minmax(280px, 5fr) 7fr; gap: 14px; }
+  .grid { display: grid; grid-template-columns: minmax(270px, 5fr) 7fr; gap: 14px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; position: relative; }
   .card:hover { border-color: var(--line-2); }
   .card:hover .grip { opacity: 1; }
-  .grip { position: absolute; top: 12px; right: 12px; color: var(--faint); opacity: 0; letter-spacing: 1px; font-size: 12px; }
-  .card h3 { font-size: 12px; font-weight: 650; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; display: flex; gap: 8px; align-items: baseline; }
-  .card h3 small { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); font-size: 12px; }
+  .grip { position: absolute; top: 12px; right: 12px; color: var(--faint); opacity: 0; font-size: 12px; }
+  .card h3, .panel h3 { font-size: 11.5px; font-weight: 650; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; display: flex; gap: 8px; align-items: baseline; }
+  h3 small { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); font-size: 12px; }
   .stack { display: grid; gap: 14px; align-content: start; }
 
-  /* progress ring */
   .ring-row { display: flex; gap: 22px; align-items: center; }
-  .ring { width: 148px; height: 148px; flex: none; position: relative; }
+  .ring { width: 140px; height: 140px; flex: none; position: relative; }
   .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
   .ring .mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
   .ring .mid b { font-size: 30px; font-weight: 700; line-height: 1; }
@@ -78,123 +93,260 @@
   .legend div { display: flex; align-items: center; gap: 8px; color: var(--dim); }
   .legend i { width: 8px; height: 8px; border-radius: 2px; }
   .legend b { margin-left: auto; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
-
   .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .fact { background: var(--card-2); border-radius: 8px; padding: 10px 12px; }
   .fact span { color: var(--dim); font-size: 12px; display: block; }
-  .fact b { font-size: 18px; font-weight: 680; }
+  .fact b { font-size: 19px; font-weight: 680; }
   .fact em { font-style: normal; font-size: 12px; color: var(--amber); margin-left: 6px; }
 
-  .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .cols3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
   .row { display: flex; gap: 9px; padding: 8px 0; border-top: 1px solid var(--line); align-items: flex-start; }
   .row:first-of-type { border-top: 0; padding-top: 0; }
   .row .t { flex: 1; min-width: 0; }
   .row .t b { display: block; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .t span { color: var(--faint); font-size: 12px; }
   .box { width: 15px; height: 15px; border: 1.5px solid var(--faint); border-radius: 4px; margin-top: 2px; flex: none; }
-  .thumb { width: 44px; height: 28px; border-radius: 5px; flex: none; background: linear-gradient(135deg, #3a3558, #25213a); }
-  .pill { font-size: 11px; padding: 1px 7px; border-radius: 20px; white-space: nowrap; font-weight: 600; }
+  .box.x { background: var(--green); border-color: var(--green); }
+  .thumb { width: 46px; height: 28px; border-radius: 5px; flex: none; }
+  .g1 { background: linear-gradient(135deg, #51407a, #1f2a4d); } .g2 { background: linear-gradient(135deg, #7a4a52, #2a1d33); }
+  .g3 { background: linear-gradient(135deg, #2f6a6a, #1b2238); } .g4 { background: linear-gradient(135deg, #7a6a3a, #2b2030); }
+  .g5 { background: linear-gradient(135deg, #3d5a8a, #1c1830); } .g6 { background: linear-gradient(135deg, #6a3d7a, #171a30); }
+  .pill { font-size: 11px; padding: 1px 8px; border-radius: 20px; white-space: nowrap; font-weight: 600; }
   .p-amber { background: rgba(224,162,60,.15); color: var(--amber); }
   .p-green { background: rgba(63,185,138,.15); color: var(--green); }
   .p-red { background: rgba(229,99,111,.15); color: var(--red); }
   .p-acc { background: var(--accent-soft); color: var(--accent-text); }
-  .more { display: block; margin-top: 10px; color: var(--accent-text); font-size: 12px; text-align: left; }
-  .quick { display: flex; gap: 8px; margin-top: 10px; padding: 7px 9px; border: 1px dashed var(--line-2); border-radius: 7px; color: var(--faint); }
-
+  .p-blue { background: rgba(77,159,224,.15); color: var(--blue); }
+  .p-pink { background: rgba(210,103,164,.15); color: var(--pink); }
+  .p-grey { background: var(--card-3); color: var(--dim); }
+  .more { display: block; margin-top: 10px; color: var(--accent-text); font-size: 12px; }
+  .quick { margin-top: 10px; padding: 7px 9px; border: 1px dashed var(--line-2); border-radius: 7px; color: var(--faint); }
   .wide { margin-top: 14px; }
-  /* schedule strip */
-  .weeks { display: grid; grid-template-columns: 150px repeat(8, 1fr); color: var(--faint); font-size: 11px; margin-bottom: 6px; }
-  .lane { display: grid; grid-template-columns: 150px repeat(8, 1fr); align-items: center; height: 30px; border-top: 1px solid var(--line); position: relative; }
-  .lane > span { color: var(--dim); }
-  .bar { height: 14px; border-radius: 4px; background: var(--accent); opacity: .85; }
-  .bar.done { background: var(--green); } .bar.late { background: var(--amber); }
-  .today { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--red); left: calc(150px + (100% - 150px) * .44); }
-  .sched { position: relative; }
-  .sched .today::before { content: "Today"; position: absolute; top: -18px; left: -15px; font-size: 10.5px; color: var(--red); }
 
-  /* pages strip */
-  .pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  .weeks, .lane { display: grid; grid-template-columns: 140px repeat(8, 1fr); }
+  .weeks { color: var(--faint); font-size: 11px; margin-bottom: 6px; }
+  .lane { align-items: center; height: 30px; border-top: 1px solid var(--line); }
+  .lane > span { color: var(--dim); }
+  .bar { height: 14px; border-radius: 4px; background: var(--accent); }
+  .bar.done { background: var(--green); } .bar.late { background: var(--amber); }
+  .sched { position: relative; }
+  .today { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--red); left: calc(140px + (100% - 140px) * .44); }
+  .today::before { content: "Today"; position: absolute; top: -18px; left: -15px; font-size: 10.5px; color: var(--red); }
+
+  .pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
   .pg { background: var(--card-2); border-radius: 8px; padding: 12px; }
   .pg b { display: block; font-weight: 600; margin: 6px 0 2px; }
   .pg span { color: var(--faint); font-size: 12px; }
-  .pg.new { background: none; border: 1px dashed var(--line-2); color: var(--faint); display: grid; place-content: center; text-align: center; }
+  .pg.new { background: none; border: 1px dashed var(--line-2); color: var(--faint); display: grid; place-content: center; }
 
-  /* ordinary page */
+  /* ---------- pages ---------- */
   .doc { max-width: 820px; margin: 0 auto; }
-  .doc h1 { font-size: 30px; margin-bottom: 10px; }
+  .doc.full { max-width: none; }
+  .doc h1 { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 10px; }
   .doc p { color: var(--dim); font-size: 14.5px; line-height: 1.65; margin-bottom: 14px; }
   .doc h2 { font-size: 17px; margin: 26px 0 8px; }
   .blk { border: 1px solid var(--line); border-radius: var(--r); background: var(--card); margin: 12px 0 18px; overflow: hidden; }
-  .blk .bh { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--dim); font-size: 12px; }
-  .blk .bh b { color: var(--text); font-size: 13px; }
-  .blk .bh .sp { flex: 1; }
-  .seg { display: flex; background: var(--card-2); border-radius: 6px; padding: 2px; }
-  .seg span { padding: 2px 8px; border-radius: 4px; }
-  .seg .on { background: var(--accent-soft); color: var(--text); }
+  .bh { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--faint); font-size: 12px; }
+  .bh b { color: var(--text); font-size: 13px; }
+  .seg { display: flex; background: var(--card-2); border-radius: 7px; padding: 2px; color: var(--dim); }
+  .seg span { padding: 2px 9px; border-radius: 5px; }
+  .seg .on { background: var(--card-3); color: var(--text); font-weight: 550; }
+  .chip { border: 1px solid var(--line-2); border-radius: 20px; padding: 1px 9px; color: var(--dim); }
   table { width: 100%; border-collapse: collapse; }
   th { text-align: left; color: var(--faint); font-weight: 550; font-size: 12px; }
   th, td { padding: 8px 12px; border-top: 1px solid var(--line); }
   thead th { border-top: 0; }
+  tbody tr:hover { background: rgba(255,255,255,.025); }
+  td .who { display: inline-flex; gap: 6px; align-items: center; }
   .slash { color: var(--faint); font-size: 14px; }
-  .slash kbd { background: var(--card-2); border-radius: 4px; padding: 0 5px; font: inherit; color: var(--dim); }
+  kbd { background: var(--card-2); border-radius: 4px; padding: 0 5px; font: inherit; color: var(--dim); }
+  .callout { display: flex; gap: 12px; background: var(--accent-soft); border-radius: var(--r); padding: 12px 14px; margin: 12px 0 18px; color: var(--text); font-size: 14px; }
+  .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0 18px; }
+  .num { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+  .num span { color: var(--dim); font-size: 12px; display: block; } .num b { font-size: 24px; font-weight: 700; }
+  .check { display: flex; gap: 10px; align-items: center; padding: 4px 0; font-size: 14.5px; color: var(--dim); }
+  .check.done { color: var(--faint); text-decoration: line-through; }
+  .clip { display: flex; gap: 12px; align-items: center; border: 1px solid var(--line); background: var(--card); border-radius: var(--r); padding: 10px; margin: 12px 0 18px; }
+  .clip .thumb { width: 128px; height: 72px; border-radius: 7px; display: grid; place-items: center; color: rgba(255,255,255,.8); font-size: 20px; }
+  .clip b { display: block; font-size: 14px; } .clip span { color: var(--faint); font-size: 12px; }
+  .bars { display: flex; align-items: flex-end; gap: 14px; height: 120px; padding: 16px 16px 0; }
+  .bars div { flex: 1; background: var(--accent); border-radius: 4px 4px 0 0; position: relative; }
+  .bars div span { position: absolute; top: -18px; left: 0; right: 0; text-align: center; font-size: 11.5px; color: var(--dim); }
+  .bars-x { display: flex; gap: 14px; padding: 6px 16px 12px; color: var(--faint); font-size: 11.5px; text-align: center; border-top: 1px solid var(--line); }
+  .bars-x span { flex: 1; }
 
-  /* mock-up notes */
-  .note { margin-top: 22px; border-left: 2px solid var(--accent); padding: 4px 0 4px 12px; color: var(--dim); max-width: 760px; }
+  /* ---------- board ---------- */
+  .board { display: grid; grid-template-columns: repeat(4, minmax(230px, 1fr)); gap: 14px; align-items: start; overflow-x: auto; padding-bottom: 8px; }
+  .lane-col { background: rgba(255,255,255,.025); border-radius: 12px; padding: 10px; }
+  .lane-h { display: flex; align-items: center; gap: 8px; padding: 2px 4px 10px; font-weight: 600; }
+  .lane-h i { width: 8px; height: 8px; border-radius: 50%; }
+  .lane-h span { color: var(--faint); font-weight: 500; }
+  .lane-h .sp + span { font-size: 16px; }
+  .kc { background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 10px 11px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .kc:hover { border-color: var(--line-2); transform: translateY(-1px); transition: .12s; }
+  .kc .cover { height: 84px; border-radius: 6px; margin: -3px -4px 9px; }
+  .kc b { display: block; font-weight: 560; line-height: 1.35; }
+  .kc .tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; }
+  .kc .foot { display: flex; align-items: center; gap: 8px; margin-top: 9px; color: var(--faint); font-size: 12px; }
+  .kc.drag { border-color: var(--accent); box-shadow: 0 10px 26px rgba(0,0,0,.5); transform: rotate(1.5deg); }
+  .kadd { color: var(--faint); padding: 6px 6px 2px; display: block; }
+  .prog { height: 3px; background: var(--card-3); border-radius: 3px; margin-top: 9px; overflow: hidden; }
+  .prog i { display: block; height: 100%; background: var(--green); }
+
+  /* ---------- review ---------- */
+  #review.on { display: flex; flex-direction: column; height: 100%; }
+  .rv-top { display: flex; align-items: center; gap: 10px; padding: 10px 16px; }
+  .rv-top h2 { font-size: 15px; font-weight: 650; }
+  .rv-top select, .sel { background: var(--card-2); border: 1px solid var(--line); border-radius: 7px; padding: 4px 9px; color: var(--dim); font: inherit; }
+  .stage { flex: 1; min-height: 0; margin: 0 16px; border-radius: 12px; background: #000; display: grid; place-items: center; position: relative; overflow: hidden; }
+  .frame { height: 100%; max-width: 100%; aspect-ratio: 16 / 9; background: radial-gradient(120% 90% at 30% 20%, #5a4a86 0%, #232845 45%, #0c0b14 100%); position: relative; }
+  .frame::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40%; background: linear-gradient(transparent, rgba(0,0,0,.55)); }
+  .frame svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .pin { position: absolute; left: 61%; top: 33%; background: var(--amber); color: #1a1408; font-weight: 700; font-size: 11px; width: 20px; height: 20px; border-radius: 50% 50% 50% 2px; display: grid; place-items: center; z-index: 1; }
+  .tools { position: absolute; left: 12px; top: 12px; background: rgba(20,18,30,.8); border: 1px solid var(--line-2); border-radius: 9px; padding: 3px; display: grid; gap: 2px; z-index: 1; }
+  .transport { padding: 10px 16px 8px; }
+  .scrub { height: 6px; background: var(--card-3); border-radius: 6px; position: relative; }
+  .scrub .played { position: absolute; left: 0; top: 0; bottom: 0; width: 38%; background: var(--accent); border-radius: 6px; }
+  .scrub .knob { position: absolute; left: 38%; top: -4px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #fff; }
+  .scrub .mk { position: absolute; top: -9px; width: 6px; height: 6px; border-radius: 50%; margin-left: -3px; background: var(--amber); }
+  .scrub .mk.ok { background: var(--green); }
+  .ctrl { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--dim); }
+  .tc { font-variant-numeric: tabular-nums; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; color: var(--text); margin: 0 8px; }
+  .tc span { color: var(--faint); }
+  .strip { border-top: 1px solid var(--line); background: var(--side); padding: 10px 16px 12px; }
+  .strip-h { display: flex; align-items: center; gap: 8px; color: var(--faint); font-size: 12px; margin-bottom: 8px; }
+  .strip-h b { color: var(--dim); font-weight: 600; }
+  .film { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 2px; }
+  .cell { width: 132px; flex: none; }
+  .cell .im { height: 74px; border-radius: 7px; position: relative; border: 2px solid transparent; }
+  .cell.on .im { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .cell .im .st { position: absolute; left: 6px; top: 6px; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0,0,0,.4); }
+  .cell .im .cc { position: absolute; right: 5px; bottom: 5px; background: rgba(0,0,0,.6); border-radius: 5px; padding: 0 5px; font-size: 10.5px; }
+  .cell .im .vv { position: absolute; left: 5px; bottom: 5px; background: rgba(0,0,0,.6); border-radius: 5px; padding: 0 5px; font-size: 10.5px; color: var(--dim); }
+  .cell b { display: block; font-weight: 550; font-size: 12px; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cell.on b { color: var(--accent-text); }
+  .cell.up .im { border: 1px dashed var(--line-2); display: grid; place-items: center; color: var(--faint); }
+
+  /* ---------- lounge ---------- */
+  #lounge.on { display: flex; flex-direction: column; height: 100%; }
+  .ch-bar { display: flex; align-items: center; gap: 4px; padding: 10px 20px; border-bottom: 1px solid var(--line); }
+  .ch { padding: 4px 10px; border-radius: 7px; color: var(--dim); }
+  .ch.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
+  .msgs { flex: 1; overflow: auto; padding: 18px 20px; }
+  .msgs-in { max-width: 860px; margin: 0 auto; }
+  .day { text-align: center; color: var(--faint); font-size: 11.5px; margin: 6px 0 14px; display: flex; align-items: center; gap: 12px; }
+  .day::before, .day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .msg { display: flex; gap: 11px; padding: 7px 8px; border-radius: 9px; }
+  .msg:hover { background: rgba(255,255,255,.025); }
+  .msg .ava { width: 30px; height: 30px; font-size: 11px; margin-top: 2px; }
+  .msg .hd { display: flex; gap: 8px; align-items: baseline; }
+  .msg .hd b { font-weight: 620; } .msg .hd span { color: var(--faint); font-size: 11.5px; }
+  .msg p { font-size: 14px; line-height: 1.55; color: #d9d7e6; }
+  .mention { background: var(--accent-soft); color: var(--accent-text); border-radius: 4px; padding: 0 4px; font-weight: 550; }
+  .ref { display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--line-2); background: var(--card); border-radius: 9px; padding: 7px 11px 7px 8px; margin-top: 6px; }
+  .ref b { font-weight: 560; } .ref span { color: var(--faint); font-size: 12px; }
+  .react { display: inline-flex; gap: 5px; margin-top: 6px; }
+  .react span { background: var(--card-2); border: 1px solid var(--line); border-radius: 20px; padding: 0 8px; font-size: 12px; color: var(--dim); }
+  .composer { padding: 0 20px 18px; }
+  .composer > div { max-width: 860px; margin: 0 auto; border: 1px solid var(--line-2); background: var(--card); border-radius: 12px; padding: 11px 13px; color: var(--faint); display: flex; align-items: center; gap: 10px; }
+  .composer small { color: var(--faint); }
+
+  /* ---------- right panel (one component, three uses) ---------- */
+  .panel { background: var(--side); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .panel-h { display: flex; align-items: center; gap: 8px; padding: 12px 14px 10px; font-weight: 650; font-size: 13.5px; }
+  .panel-h span { color: var(--faint); font-weight: 500; font-size: 12px; }
+  .panel-tabs { display: flex; gap: 2px; padding: 0 10px 8px; border-bottom: 1px solid var(--line); }
+  .panel-tabs span { padding: 3px 9px; border-radius: 6px; color: var(--dim); font-size: 12px; }
+  .panel-tabs .on { background: var(--card-3); color: var(--text); font-weight: 550; }
+  .panel-b { flex: 1; overflow: auto; padding: 12px 14px; }
+  .pv { display: none; flex-direction: column; min-height: 0; flex: 1; }
+  body[data-tab=home] .pv.home, body[data-tab=review] .pv.review, body[data-tab=lounge] .pv.lounge { display: flex; }
+  .ev { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .ev:first-child { border-top: 0; padding-top: 0; }
+  .ev p { color: var(--dim); line-height: 1.45; } .ev p b { color: var(--text); font-weight: 580; }
+  .ev small { color: var(--faint); display: block; margin-top: 2px; }
+  .diff { margin-top: 5px; font-size: 12px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .when { color: var(--faint); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 650; margin: 14px 0 8px; }
+  .when:first-child { margin-top: 0; }
+  .cm { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px 11px; margin-bottom: 8px; }
+  .cm.on { border-color: var(--accent); background: rgba(109,93,240,.07); }
+  .cm .hd { display: flex; gap: 7px; align-items: center; margin-bottom: 5px; }
+  .cm .hd b { font-weight: 600; } .cm .hd .tcb { margin-left: auto; font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: var(--accent-text); background: var(--accent-soft); border-radius: 5px; padding: 0 6px; }
+  .cm p { color: #d9d7e6; line-height: 1.5; }
+  .cm .rep { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); display: flex; gap: 7px; }
+  .cm .rep p { color: var(--dim); }
+  .cm .act { display: flex; gap: 10px; margin-top: 7px; color: var(--faint); font-size: 12px; }
+  .cm.res { opacity: .55; }
+  .panel-f { padding: 10px 14px 14px; border-top: 1px solid var(--line); }
+  .panel-f div { border: 1px solid var(--line-2); background: var(--card); border-radius: 9px; padding: 9px 11px; color: var(--faint); }
+  .person { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .person .ava { position: relative; width: 28px; height: 28px; }
+  .person .ava::after { content: ""; position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--green); border: 2px solid var(--side); }
+  .person.off { opacity: .5; } .person.off .ava::after { background: var(--faint); }
+  .person b { font-weight: 560; display: block; } .person span { color: var(--faint); font-size: 12px; }
+
+  .note { margin-top: 22px; border-left: 2px solid var(--accent); padding: 4px 0 4px 12px; color: var(--dim); max-width: 780px; }
   .note b { color: var(--text); }
-  .mock { position: fixed; right: 14px; bottom: 12px; background: var(--card-2); border: 1px solid var(--line-2); border-radius: 20px; padding: 4px 12px; font-size: 11.5px; color: var(--dim); }
+  .mock { position: fixed; left: 12px; bottom: 10px; width: calc(var(--side-w) - 24px); background: var(--card-2); border: 1px solid var(--line-2); border-radius: 9px; padding: 7px 10px; font-size: 11.5px; color: var(--dim); }
 
-  @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } .cols { grid-template-columns: 1fr; } }
-  @media (max-width: 720px) { body { grid-template-columns: 1fr; } .side, .brand { display: none; } main { padding: 20px 16px 64px; } }
+  @media (max-width: 1250px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 1000px) { .cols3 { grid-template-columns: 1fr; } body { grid-template-columns: var(--side-w) minmax(0, 1fr) 0; } .panel { display: none; } }
+  @media (max-width: 720px) { body, body.no-panel { grid-template-columns: 0 minmax(0, 1fr) 0; } .side, .brand, .mock { display: none; } .top { grid-column: 1 / 4; } .pad { padding: 20px 16px 64px; } }
 </style>
 </head>
-<body>
+<body data-tab="home">
 
 <div class="brand">
   <svg viewBox="0 0 64 64"><rect x="4" y="22" width="23" height="26" rx="7" fill="#8b7cf8"/><rect x="37" y="22" width="23" height="26" rx="7" fill="#5a4de8"/><path d="M25 6h14a2 2 0 0 1 2 2v6.3a2 2 0 0 1-.7 1.5L34 21.3V57a2 2 0 0 1-4 0V21.3l-6.3-5.5a2 2 0 0 1-.7-1.5V8a2 2 0 0 1 2-2z" fill="#c4a5fb"/></svg>
   Cutline
 </div>
 <div class="top">
-  <button class="tab on">Home</button>
-  <button class="tab">Review</button>
-  <button class="tab">Lounge</button>
+  <button class="tab on" data-tab="home">Home</button>
+  <button class="tab" data-tab="review">Review <span class="badge">5</span></button>
+  <button class="tab" data-tab="lounge">Lounge <span class="badge">2</span></button>
+  <span class="ctx">in <b>Day Of Week</b></span>
   <span class="sp"></span>
-  <button class="icon-btn" title="Notifications">&#9993;</button>
-  <span class="ava a1">KT</span>
+  <button class="icon-btn" title="Notifications"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 7a4 4 0 0 1 8 0c0 3 1.5 4 1.5 4h-11S4 10 4 7zM6.5 13.5a1.5 1.5 0 0 0 3 0"/></svg></button>
+  <button class="icon-btn on" id="panelBtn" title="Show or hide the right panel"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M10 3v10"/></svg></button>
+  <span class="ava a1" style="margin-left:6px">KT</span>
 </div>
 
+<!-- ============ left sidebar: the same in every tab ============ -->
 <aside class="side">
   <button class="nav"><span class="ic">&#8981;</span>Search<span class="k">Ctrl+K</span></button>
 
-  <div class="sect">PERSONAL</div>
-  <button class="nav l2"><span class="ic">&#9750;</span>My dashboard</button>
-  <button class="nav l2"><span class="ic">&#9643;</span>Notes</button>
-  <button class="nav l2 add">+ New page</button>
+  <div class="only-home">
+    <div class="sect">PERSONAL</div>
+    <button class="nav l2"><span class="ic">&#9750;</span>My dashboard</button>
+    <button class="nav l2"><span class="ic">&#9643;</span>Notes</button>
+  </div>
 
   <div class="sect">PROJECTS</div>
-  <button class="nav on" data-view="dash"><span class="chev">&#9660;</span>Day Of Week</button>
-  <button class="nav l2" data-view="page"><span class="ic">&#9643;</span>Shot list</button>
-  <button class="nav l2"><span class="ic">&#9643;</span>Creative brief</button>
-  <button class="nav l2"><span class="ic">&#9643;</span>Edit notes</button>
-  <button class="nav l3"><span class="ic">&#9643;</span>Sound &amp; music</button>
-  <button class="nav l2 add">+ New page</button>
-  <button class="nav"><span class="chev">&#9654;</span>Spring Campaign</button>
-  <button class="nav"><span class="chev">&#9654;</span>Showreel 2027</button>
+  <button class="nav proj on" data-view="dash" id="projBtn"><span class="dot" style="background:#6d5df0"></span>Day Of Week
+    <span class="k not-home" data-count></span></button>
+  <div class="only-home">
+    <button class="nav l2" data-view="page"><span class="ic">&#9643;</span>Shot list</button>
+    <button class="nav l2" data-view="board"><span class="ic">&#9643;</span>Production board</button>
+    <button class="nav l2" data-view="brief"><span class="ic">&#9643;</span>Creative brief</button>
+    <button class="nav l3"><span class="ic">&#9643;</span>Sound &amp; music</button>
+    <button class="nav l2 add">+ New page</button>
+  </div>
+  <button class="nav proj"><span class="dot" style="background:#c2587a"></span>Spring Campaign<span class="k not-home">2</span></button>
+  <button class="nav proj"><span class="dot" style="background:#2f8f83"></span>Showreel 2027</button>
   <button class="nav add" style="margin-top:8px">+ New project</button>
 </aside>
 
 <main>
-<div class="wrap">
 
-<!-- ================= project dashboard ================= -->
-<section class="view on" id="dash">
+<!-- ================= HOME: project dashboard ================= -->
+<section class="view on pad" id="dash"><div class="wrap">
   <div class="head">
     <div>
       <div class="crumb">Projects</div>
       <h1>Day Of Week</h1>
       <div class="meta">
         <span class="people"><span class="ava a1">KT</span><span class="ava a2">RI</span><span class="ava a3">LA</span><span class="ava a4">+2</span></span>
-        <span>Delivery 12 Dec</span>
-        <span class="pill p-amber">26 days left</span>
+        <span>Delivery 12 Dec</span><span class="pill p-amber">26 days left</span>
       </div>
     </div>
     <span class="sp"></span>
@@ -203,16 +355,14 @@
   </div>
 
   <div class="grid">
-    <!-- left: the ring and the key numbers -->
     <div class="stack">
-      <div class="card">
-        <span class="grip">&#8942;&#8942;</span>
+      <div class="card"><span class="grip">&#8942;&#8942;</span>
         <h3>Progress <small>all tasks</small></h3>
         <div class="ring-row">
           <div class="ring">
             <svg viewBox="0 0 120 120">
               <circle cx="60" cy="60" r="50" fill="none" stroke="#2a2640" stroke-width="12"/>
-              <circle cx="60" cy="60" r="50" fill="none" stroke="#3fb98a" stroke-width="12" stroke-dasharray="182 314" stroke-linecap="butt"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#3fb98a" stroke-width="12" stroke-dasharray="182 314"/>
               <circle cx="60" cy="60" r="50" fill="none" stroke="#6d5df0" stroke-width="12" stroke-dasharray="72 314" stroke-dashoffset="-185"/>
               <circle cx="60" cy="60" r="50" fill="none" stroke="#e0a23c" stroke-width="12" stroke-dasharray="19 314" stroke-dashoffset="-260"/>
             </svg>
@@ -226,9 +376,7 @@
           </div>
         </div>
       </div>
-
-      <div class="card">
-        <span class="grip">&#8942;&#8942;</span>
+      <div class="card"><span class="grip">&#8942;&#8942;</span>
         <h3>At a glance</h3>
         <div class="facts">
           <div class="fact"><span>Open tasks</span><b>20</b><em>3 overdue</em></div>
@@ -239,44 +387,35 @@
       </div>
     </div>
 
-    <!-- right: three lists side by side -->
-    <div class="cols">
-      <div class="card">
-        <span class="grip">&#8942;&#8942;</span>
+    <div class="cols3">
+      <div class="card"><span class="grip">&#8942;&#8942;</span>
         <h3>My tasks</h3>
-        <div class="row"><span class="box"></span><div class="t"><b>Lock picture, act 2</b><span>Edit notes</span></div><span class="pill p-red">Yesterday</span></div>
-        <div class="row"><span class="box"></span><div class="t"><b>Grade pass on shots 010–040</b><span>Shot list</span></div><span class="pill p-amber">Today</span></div>
+        <div class="row"><span class="box"></span><div class="t"><b>Lock picture, act 2</b><span>Production board</span></div><span class="pill p-red">Yesterday</span></div>
+        <div class="row"><span class="box"></span><div class="t"><b>Grade pass, shots 010–040</b><span>Shot list</span></div><span class="pill p-amber">Today</span></div>
         <div class="row"><span class="box"></span><div class="t"><b>Send music cue sheet</b><span>Sound &amp; music</span></div><span class="pill p-acc">Thu</span></div>
         <div class="row"><span class="box"></span><div class="t"><b>Subtitles, Norwegian</b><span>Shot list</span></div><span class="pill p-acc">24 Nov</span></div>
         <div class="quick">+ Add a task</div>
         <button class="more">All 7 &rarr;</button>
       </div>
-
-      <div class="card">
-        <span class="grip">&#8942;&#8942;</span>
+      <div class="card"><span class="grip">&#8942;&#8942;</span>
         <h3>In review</h3>
-        <div class="row"><span class="thumb"></span><div class="t"><b>shot_010_v3</b><span>4 new comments</span></div></div>
-        <div class="row"><span class="thumb"></span><div class="t"><b>teaser_cut_v2</b><span>Rita approved</span></div><span class="pill p-green">OK</span></div>
-        <div class="row"><span class="thumb"></span><div class="t"><b>shot_032_v1</b><span>Uploaded 2 h ago</span></div><span class="pill p-acc">New</span></div>
-        <div class="row"><span class="thumb"></span><div class="t"><b>titles_v4</b><span>1 new comment</span></div></div>
-        <button class="more">Open Review &rarr;</button>
+        <div class="row"><span class="thumb g1"></span><div class="t"><b>shot_010_v3</b><span>4 new comments</span></div></div>
+        <div class="row"><span class="thumb g2"></span><div class="t"><b>teaser_cut_v2</b><span>Rita approved</span></div><span class="pill p-green">OK</span></div>
+        <div class="row"><span class="thumb g3"></span><div class="t"><b>shot_032_v1</b><span>Uploaded 2 h ago</span></div><span class="pill p-acc">New</span></div>
+        <div class="row"><span class="thumb g4"></span><div class="t"><b>titles_v4</b><span>1 new comment</span></div></div>
+        <button class="more" data-tab="review">Open Review &rarr;</button>
       </div>
-
-      <div class="card">
-        <span class="grip">&#8942;&#8942;</span>
-        <h3>Latest</h3>
-        <div class="row"><span class="ava a2">RI</span><div class="t"><b>Rita in Lounge</b><span>&ldquo;Can we move the grade to Friday?&rdquo;</span></div></div>
-        <div class="row"><span class="ava a3">LA</span><div class="t"><b>Lars finished a task</b><span>Conform reel 1 &middot; 1 h ago</span></div></div>
-        <div class="row"><span class="ava a1">KT</span><div class="t"><b>You edited Creative brief</b><span>3 h ago</span></div></div>
-        <div class="row"><span class="ava a2">RI</span><div class="t"><b>Rita mentioned you</b><span>Edit notes &middot; yesterday</span></div></div>
-        <button class="more">Open Lounge &rarr;</button>
+      <div class="card"><span class="grip">&#8942;&#8942;</span>
+        <h3>Lounge</h3>
+        <div class="row"><span class="ava a2">RI</span><div class="t"><b>Rita</b><span>Can we move the grade to Friday?</span></div></div>
+        <div class="row"><span class="ava a3">LA</span><div class="t"><b>Lars</b><span>Reel 1 is conformed, have a look</span></div></div>
+        <div class="row"><span class="ava a5">MO</span><div class="t"><b>Mona</b><span>Music licence came through</span></div></div>
+        <button class="more" data-tab="lounge">Open Lounge &rarr;</button>
       </div>
     </div>
   </div>
 
-  <!-- full width: schedule -->
-  <div class="card wide">
-    <span class="grip">&#8942;&#8942;</span>
+  <div class="card wide"><span class="grip">&#8942;&#8942;</span>
     <h3>Schedule <small>milestones from the task database</small></h3>
     <div class="sched">
       <div class="weeks"><span></span><span>20 Oct</span><span>27 Oct</span><span>3 Nov</span><span>10 Nov</span><span>17 Nov</span><span>24 Nov</span><span>1 Dec</span><span>8 Dec</span></div>
@@ -289,72 +428,277 @@
     </div>
   </div>
 
-  <!-- full width: pages -->
-  <div class="card wide">
-    <span class="grip">&#8942;&#8942;</span>
+  <div class="card wide"><span class="grip">&#8942;&#8942;</span>
     <h3>Pages</h3>
     <div class="pages">
-      <div class="pg"><span>&#9643;</span><b>Shot list</b><span>Table &middot; 42 rows &middot; edited today</span></div>
-      <div class="pg"><span>&#9643;</span><b>Creative brief</b><span>Text &middot; edited 3 h ago</span></div>
-      <div class="pg"><span>&#9643;</span><b>Edit notes</b><span>Text + list &middot; 1 sub-page</span></div>
+      <div class="pg"><span>&#9643;</span><b>Shot list</b><span>Table &middot; 42 rows</span></div>
+      <div class="pg"><span>&#9643;</span><b>Production board</b><span>Board &middot; 48 tasks</span></div>
+      <div class="pg"><span>&#9643;</span><b>Creative brief</b><span>Text &middot; 1 sub-page</span></div>
       <div class="pg new">+ New page</div>
     </div>
   </div>
 
-  <div class="note">
-    <b>How it hangs together.</b> This dashboard is the project's own front page, built from the same blocks as any other page.
-    <b>Edit dashboard</b> lets you move, remove or add boxes. There is no fixed &ldquo;Tasks&rdquo; page: tasks live in the project's
-    database, and every box here (and every table or list on a page) is a window onto it.
+  <div class="note"><b>How it hangs together.</b> The dashboard is the project's front page, built from the same blocks as any page.
+    There is no fixed Tasks page: tasks live in the project's database and every box, table, list and board is a window onto it.</div>
+</div></section>
+
+<!-- ================= HOME: page with text, table and list ================= -->
+<section class="view pad" id="page"><div class="doc">
+  <div class="crumb">Day Of Week</div>
+  <h1>Shot list</h1>
+  <p>Free text sits between the blocks. Write the plan for the week here, then drop in a table or a list that reads from the project's tasks.</p>
+  <div class="blk">
+    <div class="bh"><b>Shots</b><span class="chip">Type is Shot</span><span class="chip">+ Filter</span><span class="sp"></span><div class="seg"><span class="on">Table</span><span>List</span><span>Board</span></div></div>
+    <table>
+      <thead><tr><th>Name</th><th>Status</th><th>Assignee</th><th>Due</th><th>Clip</th></tr></thead>
+      <tbody>
+        <tr><td>shot_010</td><td><span class="pill p-green">Done</span></td><td><span class="who"><span class="ava sm a3">LA</span>Lars</span></td><td>14 Nov</td><td><span class="thumb g1" style="display:block;width:38px;height:22px"></span></td></tr>
+        <tr><td>shot_020</td><td><span class="pill p-acc">In progress</span></td><td><span class="who"><span class="ava sm a2">RI</span>Rita</span></td><td>18 Nov</td><td><span class="thumb g3" style="display:block;width:38px;height:22px"></span></td></tr>
+        <tr><td>shot_032</td><td><span class="pill p-amber">Overdue</span></td><td><span class="who"><span class="ava sm a1">KT</span>Kristian</span></td><td>15 Nov</td><td><span class="thumb g5" style="display:block;width:38px;height:22px"></span></td></tr>
+        <tr><td>shot_040</td><td><span class="pill p-grey">Not started</span></td><td><span class="who"><span class="ava sm a5">MO</span>Mona</span></td><td>21 Nov</td><td></td></tr>
+        <tr><td style="color:var(--faint)">+ New row</td><td></td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h2>Open questions</h2>
+  <p>The same tasks shown again, filtered another way. Change one in either place and both update.</p>
+  <div class="blk">
+    <div class="bh"><b>Mine this week</b><span class="chip">Assignee is me</span><span class="sp"></span><div class="seg"><span>Table</span><span class="on">List</span><span>Board</span></div></div>
+    <div style="padding:10px 12px">
+      <div class="row"><span class="box"></span><div class="t"><b>shot_032</b><span>Due 15 Nov</span></div><span class="pill p-amber">Overdue</span></div>
+      <div class="row"><span class="box"></span><div class="t"><b>Grade pass, shots 010–040</b><span>Due today</span></div></div>
+    </div>
+  </div>
+  <p class="slash">Type <kbd>/</kbd> for a table, list, board, chart, number or clip</p>
+</div></section>
+
+<!-- ================= HOME: board ================= -->
+<section class="view pad" id="board"><div class="doc full">
+  <div class="head">
+    <div><div class="crumb">Day Of Week</div><h1 style="font-size:26px">Production board</h1></div>
+    <span class="sp"></span>
+    <span class="chip">Group: Status</span><span class="chip">Assignee: anyone</span><span class="chip">+ Filter</span>
+    <div class="seg"><span>Table</span><span>List</span><span class="on">Board</span></div>
+    <button class="btn pri">New task</button>
+  </div>
+  <div class="board">
+    <div class="lane-col">
+      <div class="lane-h"><i style="background:var(--faint)"></i>Not started <span>6</span><span class="sp"></span><span>+</span></div>
+      <div class="kc"><b>Subtitles, Norwegian</b><div class="tags"><span class="pill p-blue">Delivery</span></div><div class="foot"><span class="ava sm a1">KT</span><span class="sp"></span>24 Nov</div></div>
+      <div class="kc"><b>Poster and key art</b><div class="tags"><span class="pill p-pink">Design</span></div><div class="foot"><span class="ava sm a5">MO</span><span class="sp"></span>28 Nov</div></div>
+      <div class="kc"><b>Export masters, ProRes + H.264</b><div class="tags"><span class="pill p-blue">Delivery</span></div><div class="foot"><span class="ava sm a3">LA</span><span class="sp"></span>10 Dec</div></div>
+      <span class="kadd">+ Add a task</span>
+    </div>
+    <div class="lane-col">
+      <div class="lane-h"><i style="background:var(--accent)"></i>In progress <span>11</span><span class="sp"></span><span>+</span></div>
+      <div class="kc"><div class="cover g1"></div><b>Grade pass, shots 010–040</b><div class="tags"><span class="pill p-acc">Grade</span><span class="pill p-amber">Today</span></div><div class="prog"><i style="width:60%"></i></div><div class="foot"><span class="ava sm a1">KT</span>3 / 5 subtasks<span class="sp"></span>&#128172; 4</div></div>
+      <div class="kc drag"><b>Lock picture, act 2</b><div class="tags"><span class="pill p-grey">Edit</span><span class="pill p-red">Overdue</span></div><div class="foot"><span class="ava sm a1">KT</span><span class="sp"></span>15 Nov</div></div>
+      <div class="kc"><b>Music cue sheet</b><div class="tags"><span class="pill p-green">Sound</span></div><div class="foot"><span class="ava sm a5">MO</span><span class="sp"></span>Thu</div></div>
+      <span class="kadd">+ Add a task</span>
+    </div>
+    <div class="lane-col">
+      <div class="lane-h"><i style="background:var(--amber)"></i>In review <span>3</span><span class="sp"></span><span>+</span></div>
+      <div class="kc"><div class="cover g2"></div><b>Teaser cut v2</b><div class="tags"><span class="pill p-grey">Edit</span></div><div class="foot"><span class="ava sm a2">RI</span>&#9654; teaser_cut_v2<span class="sp"></span>&#128172; 7</div></div>
+      <div class="kc"><div class="cover g4"></div><b>Titles and end credits</b><div class="tags"><span class="pill p-pink">Design</span></div><div class="foot"><span class="ava sm a3">LA</span>&#9654; titles_v4<span class="sp"></span>&#128172; 1</div></div>
+      <span class="kadd">+ Add a task</span>
+    </div>
+    <div class="lane-col">
+      <div class="lane-h"><i style="background:var(--green)"></i>Done <span>28</span><span class="sp"></span><span>+</span></div>
+      <div class="kc" style="opacity:.7"><b>Conform reel 1</b><div class="tags"><span class="pill p-grey">Edit</span></div><div class="foot"><span class="ava sm a3">LA</span><span class="sp"></span>14 Nov</div></div>
+      <div class="kc" style="opacity:.7"><b>Offline edit, all acts</b><div class="tags"><span class="pill p-grey">Edit</span></div><div class="foot"><span class="ava sm a2">RI</span><span class="sp"></span>7 Nov</div></div>
+      <span class="kadd">Show 26 more</span>
+    </div>
+  </div>
+  <div class="note">A task linked to a clip shows its frame as the cover, and the clip name opens it in Review. The card being dragged is tilted with a lifted shadow.</div>
+</div></section>
+
+<!-- ================= HOME: a mixed page ================= -->
+<section class="view pad" id="brief"><div class="doc">
+  <div class="crumb">Day Of Week</div>
+  <h1>Creative brief</h1>
+  <p>A short film in seven chapters, one for each day. Every chapter has its own colour and its own sound, and they meet in the last minute.</p>
+  <div class="callout"><span>&#128161;</span><div><b>Delivery is 12 December.</b> Picture lock has slipped two days; grade and mix still fit if we lock by Wednesday.</div></div>
+  <div class="nums">
+    <div class="num"><span>Tasks done</span><b>28 <small style="font-size:13px;color:var(--faint);font-weight:500">of 48</small></b></div>
+    <div class="num"><span>Shots approved</span><b>19</b></div>
+    <div class="num"><span>Days left</span><b>26</b></div>
+  </div>
+  <h2>Reference</h2>
+  <div class="clip"><span class="thumb g6">&#9654;</span><div><b>teaser_cut_v2</b><span>0:42 &middot; 7 comments &middot; approved by Rita &middot; opens in Review</span></div></div>
+  <h2>Before the grade</h2>
+  <div class="check done"><span class="box x"></span>Conform all reels</div>
+  <div class="check"><span class="box"></span>Lock picture, act 2 <span class="mention">@Kristian</span></div>
+  <div class="check"><span class="box"></span>Deliver VFX shots 032 and 040</div>
+  <h2>Work per person</h2>
+  <div class="blk">
+    <div class="bh"><b>Open tasks</b><span class="chip">Status is not Done</span><span class="sp"></span><div class="seg"><span class="on">Chart</span><span>Table</span></div></div>
+    <div class="bars"><div style="height:88%"><span>7</span></div><div style="height:63%"><span>5</span></div><div style="height:50%"><span>4</span></div><div style="height:38%"><span>3</span></div><div style="height:13%;background:var(--card-3)"><span>1</span></div></div>
+    <div class="bars-x"><span>Kristian</span><span>Rita</span><span>Lars</span><span>Mona</span><span>Nobody</span></div>
+  </div>
+</div></section>
+
+<!-- ================= REVIEW ================= -->
+<section class="view" id="review">
+  <div class="rv-top">
+    <h2>shot_010</h2>
+    <span class="sel">v3 &#9662;</span>
+    <span class="pill p-amber">Needs changes</span>
+    <span style="color:var(--faint)">1920&times;1080 &middot; 25 fps &middot; 0:42</span>
+    <span class="sp"></span>
+    <button class="btn">Compare with v2</button>
+    <button class="btn">Share</button>
+    <button class="btn ok">&#10003; Approve</button>
+  </div>
+  <div class="stage">
+    <div class="tools">
+      <button class="icon-btn on" title="Draw">&#9998;</button>
+      <button class="icon-btn" title="Arrow">&#8599;</button>
+      <button class="icon-btn" title="Box">&#9633;</button>
+      <button class="icon-btn" title="Text">T</button>
+    </div>
+    <div class="frame">
+      <span class="pin">2</span>
+      <svg viewBox="0 0 160 90" fill="none" stroke="#e0a23c" stroke-width=".9" stroke-linecap="round"><ellipse cx="108" cy="42" rx="17" ry="11" transform="rotate(-8 108 42)"/><path d="M84 62c6-3 10-7 13-12m0 0-5 1m5-1 1 5"/></svg>
+    </div>
+  </div>
+  <div class="transport">
+    <div class="scrub"><div class="played"></div><span class="mk ok" style="left:12%"></span><span class="mk" style="left:38%"></span><span class="mk" style="left:57%"></span><span class="mk" style="left:81%"></span><div class="knob"></div></div>
+    <div class="ctrl">
+      <button class="icon-btn">&#9198;</button><button class="icon-btn" style="background:var(--card-3);color:var(--text)">&#9654;</button><button class="icon-btn">&#9197;</button>
+      <span class="tc">00:00:16:04 <span>/ 00:00:42:00</span></span>
+      <span class="sp"></span>
+      <span class="sel">1&times;</span><span class="sel">Full quality</span>
+      <button class="icon-btn" title="Loop">&#8635;</button><button class="icon-btn" title="Full screen">&#9974;</button>
+    </div>
+  </div>
+  <div class="strip">
+    <div class="strip-h"><b>Day Of Week</b> 14 clips <span class="chip">All</span><span class="chip">Needs my review 5</span><span class="chip">Approved</span><span class="sp"></span><span>Sort: newest</span></div>
+    <div class="film">
+      <div class="cell on"><div class="im g1"><span class="st" style="background:var(--amber)"></span><span class="vv">v3</span><span class="cc">&#128172; 4</span></div><b>shot_010</b></div>
+      <div class="cell"><div class="im g2"><span class="st" style="background:var(--green)"></span><span class="vv">v2</span><span class="cc">&#128172; 7</span></div><b>teaser_cut</b></div>
+      <div class="cell"><div class="im g3"><span class="st" style="background:var(--accent)"></span><span class="vv">v1</span></div><b>shot_032</b></div>
+      <div class="cell"><div class="im g4"><span class="st" style="background:var(--amber)"></span><span class="vv">v4</span><span class="cc">&#128172; 1</span></div><b>titles</b></div>
+      <div class="cell"><div class="im g5"><span class="st" style="background:var(--green)"></span><span class="vv">v2</span></div><b>shot_020</b></div>
+      <div class="cell"><div class="im g6"><span class="st" style="background:var(--accent)"></span><span class="vv">v1</span></div><b>shot_040</b></div>
+      <div class="cell"><div class="im g3"><span class="st" style="background:var(--green)"></span><span class="vv">v5</span><span class="cc">&#128172; 2</span></div><b>end_credits</b></div>
+      <div class="cell up"><div class="im">+ Upload</div></div>
+    </div>
   </div>
 </section>
 
-<!-- ================= an ordinary page ================= -->
-<section class="view" id="page">
-  <div class="doc">
-    <div class="crumb">Day Of Week</div>
-    <h1>Shot list</h1>
-    <p>Free text sits between the blocks. Write the plan for the week here, then drop in a table or a list that reads from the project's tasks.</p>
-
-    <div class="blk">
-      <div class="bh"><b>Shots</b><span>tasks where Type = Shot</span><span class="sp"></span><div class="seg"><span class="on">Table</span><span>List</span><span>Board</span></div></div>
-      <table>
-        <thead><tr><th>Name</th><th>Status</th><th>Assignee</th><th>Due</th></tr></thead>
-        <tbody>
-          <tr><td>shot_010</td><td><span class="pill p-green">Done</span></td><td>Lars</td><td>14 Nov</td></tr>
-          <tr><td>shot_020</td><td><span class="pill p-acc">In progress</span></td><td>Rita</td><td>18 Nov</td></tr>
-          <tr><td>shot_032</td><td><span class="pill p-amber">Overdue</span></td><td>Kristian</td><td>15 Nov</td></tr>
-          <tr><td style="color:var(--faint)">+ New row</td><td></td><td></td><td></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h2>Open questions</h2>
-    <p>The same tasks can be shown again further down, filtered another way. Change one in either place and both update.</p>
-
-    <div class="blk">
-      <div class="bh"><b>Mine this week</b><span>tasks where Assignee = me</span><span class="sp"></span><div class="seg"><span>Table</span><span class="on">List</span><span>Board</span></div></div>
-      <div style="padding:10px 12px">
-        <div class="row"><span class="box"></span><div class="t"><b>shot_032</b><span>Due 15 Nov</span></div><span class="pill p-amber">Overdue</span></div>
-        <div class="row"><span class="box"></span><div class="t"><b>Grade pass on shots 010–040</b><span>Due today</span></div></div>
-      </div>
-    </div>
-
-    <p class="slash">Type <kbd>/</kbd> for a table, list, board, chart, number or clip</p>
+<!-- ================= LOUNGE ================= -->
+<section class="view" id="lounge">
+  <div class="ch-bar">
+    <span class="ch on"># general</span><span class="ch"># edit</span><span class="ch"># sound <span class="badge">2</span></span><span class="ch" style="color:var(--faint)">+ Channel</span>
+    <span class="sp"></span><span style="color:var(--faint)">5 people in Day Of Week</span>
   </div>
+  <div class="msgs"><div class="msgs-in">
+    <div class="day">Today</div>
+    <div class="msg"><span class="ava a2">RI</span><div><div class="hd"><b>Rita</b><span>09:12</span></div>
+      <p>Morning! <span class="mention">@Kristian</span> can we move the grade to Friday? Picture lock on act 2 is not there yet.</p>
+      <div class="ref"><span class="box"></span><div><b>Lock picture, act 2</b><br><span>Task &middot; Kristian &middot; due yesterday</span></div><span class="pill p-red">Overdue</span></div>
+    </div></div>
+    <div class="msg"><span class="ava a1">KT</span><div><div class="hd"><b>Kristian</b><span>09:20</span></div>
+      <p>Friday works. I lock tonight, the only open thing is the cut in shot 010.</p>
+      <div class="ref"><span class="thumb g1"></span><div><b>shot_010 v3</b><br><span>Clip &middot; 4 open comments &middot; opens in Review</span></div></div>
+      <div><span class="react"><span>&#128077; 2</span><span>&#127916; 1</span></span></div>
+    </div></div>
+    <div class="msg"><span class="ava a3">LA</span><div><div class="hd"><b>Lars</b><span>10:03</span></div>
+      <p>Reel 1 is conformed and uploaded, have a look when you can.</p>
+    </div></div>
+    <div class="msg"><span class="ava a5">MO</span><div><div class="hd"><b>Mona</b><span>10:41</span></div>
+      <p>Music licence came through. I've put the details on <span class="mention">Sound &amp; music</span>.</p>
+    </div></div>
+  </div></div>
+  <div class="composer"><div>Message # general<span class="sp"></span><small><kbd>@</kbd> person &nbsp; <kbd>#</kbd> task, clip or page</small></div></div>
 </section>
 
-</div>
 </main>
 
-<div class="mock">Mock-up, placeholder data. Click “Day Of Week” or “Shot list” in the sidebar.</div>
+<!-- ============ right panel: one container, three contents ============ -->
+<aside class="panel">
+  <!-- Home: what changed, for me -->
+  <div class="pv home">
+    <div class="panel-h">Activity <span>for you</span></div>
+    <div class="panel-tabs"><span class="on">For me</span><span>This project</span><span>This page</span></div>
+    <div class="panel-b">
+      <div class="when">Today</div>
+      <div class="ev"><span class="ava a2">RI</span><div><p><b>Rita</b> assigned you <b>Subtitles, Norwegian</b></p><small>Day Of Week &middot; 20 min ago</small></div></div>
+      <div class="ev"><span class="ava a3">LA</span><div><p><b>Lars</b> changed <b>Grade pass, shots 010–040</b></p><div class="diff"><span class="pill p-grey">Due 18 Nov</span>&rarr;<span class="pill p-amber">Due today</span></div><small>Day Of Week &middot; 1 h ago</small></div></div>
+      <div class="ev"><span class="ava a2">RI</span><div><p><b>Rita</b> mentioned you on <b>Edit notes</b></p><small>Day Of Week &middot; 2 h ago</small></div></div>
+      <div class="ev"><span class="ava a5">MO</span><div><p><b>Mona</b> edited <b>Creative brief</b></p><small>Day Of Week &middot; 3 h ago</small></div></div>
+      <div class="when">Yesterday</div>
+      <div class="ev"><span class="ava a3">LA</span><div><p><b>Lars</b> finished <b>Conform reel 1</b></p><div class="diff"><span class="pill p-acc">In progress</span>&rarr;<span class="pill p-green">Done</span></div><small>Day Of Week</small></div></div>
+      <div class="ev"><span class="ava a2">RI</span><div><p><b>Rita</b> approved <b>teaser_cut v2</b></p><small>Spring Campaign</small></div></div>
+    </div>
+  </div>
+  <!-- Review: comments -->
+  <div class="pv review">
+    <div class="panel-h">Comments <span>4 open</span></div>
+    <div class="panel-tabs"><span class="on">Open</span><span>Resolved 3</span><span>All versions</span></div>
+    <div class="panel-b">
+      <div class="cm res"><div class="hd"><span class="ava sm a3">LA</span><b>Lars</b><span class="tcb">00:05:02</span></div><p>Flicker in the window, fixed in v3.</p></div>
+      <div class="cm on"><div class="hd"><span class="ava sm a2">RI</span><b>Rita</b><span class="tcb">00:16:04</span></div><p>The lamp pulls the eye away from her face. Can we bring it down, or crop tighter?</p>
+        <div class="rep"><span class="ava sm a1">KT</span><p>Agree, I'll take it down in the grade.</p></div>
+        <div class="act"><span>Reply</span><span>Resolve</span><span>Make a task</span></div></div>
+      <div class="cm"><div class="hd"><span class="ava sm a5">MO</span><b>Mona</b><span class="tcb">00:24:00</span></div><p>Music comes in two frames late here.</p><div class="act"><span>Reply</span><span>Resolve</span><span>Make a task</span></div></div>
+      <div class="cm"><div class="hd"><span class="ava sm a2">RI</span><b>Rita</b><span class="tcb">00:34:11</span></div><p>Love this cut. Hold the last frame a beat longer?</p><div class="act"><span>Reply</span><span>Resolve</span><span>Make a task</span></div></div>
+    </div>
+    <div class="panel-f"><div>Comment at 00:16:04 &hellip;</div></div>
+  </div>
+  <!-- Lounge: people -->
+  <div class="pv lounge">
+    <div class="panel-h">People <span>3 online</span></div>
+    <div class="panel-tabs"><span class="on">People</span><span>Pinned</span><span>Files</span></div>
+    <div class="panel-b">
+      <div class="when">Online</div>
+      <div class="person"><span class="ava a1">KT</span><div><b>Kristian</b><span>Admin &middot; in Review, shot_010</span></div></div>
+      <div class="person"><span class="ava a2">RI</span><div><b>Rita</b><span>Director &middot; on Edit notes</span></div></div>
+      <div class="person"><span class="ava a3">LA</span><div><b>Lars</b><span>Editor</span></div></div>
+      <div class="when">Away</div>
+      <div class="person off"><span class="ava a5">MO</span><div><b>Mona</b><span>Sound &middot; seen 1 h ago</span></div></div>
+      <div class="person off"><span class="ava a4">EV</span><div><b>Eva</b><span>Client &middot; Review and Lounge only</span></div></div>
+    </div>
+  </div>
+</aside>
+
+<div class="mock">Mock-up with placeholder data. Try the three tabs, the pages in the sidebar and the panel button top right.</div>
 
 <script>
-  document.querySelectorAll('[data-view]').forEach(function (b) {
+  var body = document.body, homeView = 'dash', panelOn = { home: true, review: true, lounge: true };
+  var counts = { review: '5', lounge: '2' };
+  function show(id) {
+    document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('on', v.id === id); });
+  }
+  function setTab(tab) {
+    body.dataset.tab = tab;
+    document.querySelectorAll('.top .tab').forEach(function (t) { t.classList.toggle('on', t.dataset.tab === tab); });
+    show(tab === 'home' ? homeView : tab);
+    document.querySelectorAll('[data-count]').forEach(function (c) { c.textContent = counts[tab] || ''; });
+    if (tab !== 'home') mark(document.getElementById('projBtn'));
+    else mark(document.querySelector('.side [data-view="' + homeView + '"]'));
+    panel();
+  }
+  function mark(btn) {
+    document.querySelectorAll('.side .nav').forEach(function (n) { n.classList.remove('on'); });
+    if (btn) btn.classList.add('on');
+  }
+  function panel() {
+    var on = panelOn[body.dataset.tab];
+    body.classList.toggle('no-panel', !on);
+    document.getElementById('panelBtn').classList.toggle('on', on);
+  }
+  document.querySelectorAll('[data-tab]').forEach(function (b) {
+    if (b !== body) b.addEventListener('click', function () { setTab(b.dataset.tab); });
+  });
+  document.querySelectorAll('.side [data-view]').forEach(function (b) {
     b.addEventListener('click', function () {
-      document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('on', v.id === b.dataset.view); });
-      document.querySelectorAll('.side .nav').forEach(function (n) { n.classList.remove('on'); });
-      b.classList.add('on');
+      if (body.dataset.tab !== 'home') return;   // in Review and Lounge the project stays, only the content follows the tab
+      homeView = b.dataset.view; show(homeView); mark(b);
     });
+  });
+  document.getElementById('panelBtn').addEventListener('click', function () {
+    panelOn[body.dataset.tab] = !panelOn[body.dataset.tab]; panel();
   });
 </script>
 </body>
