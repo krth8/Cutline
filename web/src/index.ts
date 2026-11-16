@@ -7,6 +7,8 @@ import { installViewSource } from './tables';
 import './tables/routeViews'; // full-page routes of views and the Tasks tab
 import { installBeforePrint } from './export'; // Ctrl+P on a page prints it like "Print / Save as PDF"
 import { mountSearch } from './search'; // the command palette (Ctrl+K), mounted in a root of its own
+import { ProjectsView } from './shell/ProjectsView';
+import { registerRouteView } from './shell/registry';
 
 export const version = '0.1.0';
 
@@ -29,6 +31,7 @@ declare global {
 }
 
 installViewSource();
+registerRouteView('projects', ProjectsView); // the Projects grid
 window.CutlinePages = api;
 // The bundle is deferred, so the legacy page may have been waiting for it (static/js/features/routes.js)
 window.dispatchEvent(new CustomEvent('cutline:pages-ready'));

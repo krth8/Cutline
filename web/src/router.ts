@@ -25,8 +25,10 @@ export type Route =
   | ({ kind: 'projectView'; projectId: string; viewId: string } & WithTask)
   | ({ kind: 'meView'; viewId: string } & WithTask)
   | ({ kind: 'review'; projectId: string; clip?: string; v?: string; session?: string } & WithTask)
-  /** The Lounge (team chat), a legacy view shown beside the sidebar. */
-  | ({ kind: 'lounge' } & WithTask)
+  /** The Lounge (team chat), a legacy view. With a project it opens that project's room (the Lounge tab). */
+  | ({ kind: 'lounge'; projectId?: string } & WithTask)
+  /** The grid of every project: where a project is chosen. */
+  | ({ kind: 'projects' } & WithTask)
   /** A path that is none of the above (e.g. /dev/ui). Carries the original path + query. */
   | { kind: 'notFound'; path: string };
 
@@ -64,6 +66,7 @@ export function parseRoute(url: string): Route {
   // "/" and "/home" both mean Home; Home is always written as "/home"
   if (seg.length === 0 || (seg.length === 1 && seg[0] === 'home')) return withTask({ kind: 'home' as const });
   if (seg.length === 1 && seg[0] === 'lounge') return withTask({ kind: 'lounge' as const });
+  if (seg.length === 1 && seg[0] === 'projects') return withTask({ kind: 'projects' as const });
   if (seg[0] === 'me') {
     if (seg.length === 1) return withTask({ kind: 'me' as const });
     if (seg.length === 3 && seg[1] === 'page') return withTask({ kind: 'mePage' as const, pageId: seg[2]! });
@@ -77,6 +80,7 @@ export function parseRoute(url: string): Route {
       return withTask({ kind: 'projectPage' as const, projectId, pageId: seg[3]! });
     }
     if (seg.length === 3 && seg[2] === 'tasks') return withTask({ kind: 'projectTasks' as const, projectId });
+    if (seg.length === 3 && seg[2] === 'lounge') return withTask({ kind: 'lounge' as const, projectId });
     if (seg.length === 4 && seg[2] === 'view') {
       return withTask({ kind: 'projectView' as const, projectId, viewId: seg[3]! });
     }
@@ -125,7 +129,10 @@ export function buildRoute(route: Route): string {
       path = `/me/view/${enc(route.viewId)}`;
       break;
     case 'lounge':
-      path = '/lounge';
+      path = route.projectId ? `/p/${enc(route.projectId)}/lounge` : '/lounge';
+      break;
+    case 'projects':
+      path = '/projects';
       break;
     case 'review':
       path = `/p/${enc(route.projectId)}/review`;
@@ -154,6 +161,8 @@ export function routeProjectId(route: Route): string | null {
     case 'projectView':
     case 'review':
       return route.projectId;
+    case 'lounge':
+      return route.projectId ?? null;
     default:
       return null;
   }

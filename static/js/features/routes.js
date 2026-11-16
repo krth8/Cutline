@@ -1,10 +1,11 @@
 /**
- * Routes - the URL decides which view is shown (PLAN.md 5.3). There are no top tabs any more: the
- * sidebar (React bundle, mounted in #clNavHost) is the navigation, and switchTab() only swaps the view
- * in the content area.
+ * Routes - the URL decides which view is shown (PLAN.md 5.3). The navigation is in the React bundle: the
+ * sidebar (#clNavHost) and, inside a project, the tabs of the header (#clTabsHost). switchTab() only swaps
+ * the view in the content area.
  *
- *   /                          opens the route the user was last on (localStorage.lastRoute) or Home
- *   /lounge                    Lounge (team chat)
+ *   /                          opens the route the user was last on (localStorage.lastRoute) or the project grid
+ *   /projects                  the grid of every project (the React bundle mounts in #viewPages)
+ *   /lounge, /p/<id>/lounge    Lounge (team chat), on that project's room
  *   /home                      Home: the user's home page (Pages tab; the React bundle mounts in #viewPages)
  *   /p/<id>/review[?session=][&clip=<name>[&v=<n>][&frame=<n>]]
  *                              Review tab with that project loaded, on that clip version and frame
@@ -66,6 +67,7 @@ const Routes = (function () {
         if (segments.length === 0) return { tab: null };
         if (segments.length === 1 && segments[0] === 'home') return { tab: 'pages', home: true };
         if (segments.length === 1 && segments[0] === 'lounge') return { tab: 'lounge' };
+        if (segments.length === 1 && segments[0] === 'projects') return { tab: 'pages' };
         if (segments[0] === 'me') {
             if (segments.length === 1 || (segments.length === 3 && segments[1] === 'page')) return { tab: 'pages' };
             if (segments.length === 3 && segments[1] === 'view') return { tab: 'pages' };
@@ -73,6 +75,7 @@ const Routes = (function () {
             const projectId = segments[1];
             if (segments.length === 3 && segments[2] === 'review') return { tab: 'review', projectId };
             if (segments.length === 3 && segments[2] === 'pages') return { tab: 'pages', projectId };
+            if (segments.length === 3 && segments[2] === 'lounge') return { tab: 'lounge', projectId };
             if (segments.length === 4 && segments[2] === 'page') return { tab: 'pages', projectId };
             if (segments.length === 4 && segments[2] === 'view') return { tab: 'pages', projectId };
             if (segments.length === 3 && segments[2] === 'tasks') return legacyTasks() ? { tab: 'projects', projectId } : { tab: 'pages', projectId };
@@ -148,7 +151,7 @@ const Routes = (function () {
             if (pagesAtHome()) return '/home'; // the Pages tab was last showing Home
             return pid ? `/p/${encodeURIComponent(pid)}/pages` : '/home';
         }
-        if (tab === 'lounge') return location.pathname === '/lounge' ? null : '/lounge';
+        if (tab === 'lounge') return route && route.tab === 'lounge' ? null : '/lounge';
         // The old task list (Projects tab) and Docs have no URL of their own: they live at "/"
         return location.pathname === '/' ? null : '/';
     }
@@ -373,6 +376,10 @@ const Routes = (function () {
         if (AppState.isShareLinkGuest || !AppState.authToken) return;
         refreshChrome();
         refreshTasksToggle();
+        // The Lounge tab of a project shows that project's room only; the room list is for the general Lounge
+        const layout = document.getElementById('clLayout');
+        const here = current();
+        if (layout) layout.classList.toggle('lounge-in-project', !!(here && here.tab === 'lounge' && here.projectId));
         hideDocsTab();
         rewriteLegacyLink();
 
@@ -390,8 +397,8 @@ const Routes = (function () {
             window.currentTasksProjectId = route.projectId;
             switchTab('projects', { history: 'none' });
         } else if (route) {
-            // "/": the route the user was last on, or Home
-            history.replaceState(null, '', lastRouteTarget() || '/home');
+            // "/": the route the user was last on, or the project grid
+            history.replaceState(null, '', lastRouteTarget() || '/projects');
             await apply(options);
         }
     }
@@ -451,7 +458,7 @@ const Routes = (function () {
     window.addEventListener('popstate', onNavigate);
     window.addEventListener('cutline:navigate', onNavigate);
 
-    return { parse, apply, goHome, sync, afterSwitch, refreshChrome, legacyTasks, openTasks, toggleLegacyTasks, refreshTasksToggle, docsMoved, setDocsMoved, reviewUrl, isDeepLink, remember, restore };
+    return { parse, current, apply, goHome, sync, afterSwitch, refreshChrome, legacyTasks, openTasks, toggleLegacyTasks, refreshTasksToggle, docsMoved, setDocsMoved, reviewUrl, isDeepLink, remember, restore };
 })();
 
 window.Routes = Routes;

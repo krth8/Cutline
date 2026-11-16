@@ -1,12 +1,15 @@
 /**
- * The persistent sidebar, mounted once into the legacy page's #clNavHost for every logged-in user.
+ * The persistent navigation, mounted once into the legacy page's #clNavHost for every logged-in user: the
+ * sidebar, and the open project's tabs in the header (#clTabsHost).
  * It follows the URL (also when the legacy page changes it), collapses to a narrow strip on wide
  * screens and is a drawer on phone widths. The legacy menu button toggles `nav-open` on #clLayout.
  */
 import { useEffect, useState, type MouseEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { getPlatform } from '../platform';
 import { useRoute } from '../router';
 import { readCollapsed, writeCollapsed } from './navState';
+import { ProjectTabs } from './ProjectTabs';
 import { Sidebar } from './Sidebar';
 
 const NARROW_QUERY = '(max-width: 800px)';
@@ -57,6 +60,8 @@ export function NavApp() {
   }, []);
 
   if (!user) return null;
+  // The project's tabs live in the legacy header
+  const tabsHost = document.getElementById('clTabsHost');
   const toggle = () => {
     setCollapsed((c) => {
       writeCollapsed(!c);
@@ -70,6 +75,7 @@ export function NavApp() {
   return (
     <div className="cl-navapp" onClick={onClick}>
       <Sidebar route={route} collapsed={effectiveCollapsed} onToggle={toggle} drawer={narrow} />
+      {tabsHost ? createPortal(<ProjectTabs route={route} />, tabsHost) : null}
     </div>
   );
 }

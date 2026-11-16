@@ -765,4 +765,5 @@ Risks:
 | H4 | done | main | Merged. Migration 020 (`templates`; 019 is unused). `api/pageclone.py` holds the copy rules for duplicate, templates and project setup copy. Template files on disk are not garbage-collected. A copy is capped at 500 pages. |
 | H5 | done | main | Merged. Markdown or zip per page, CSV per view (`POST /api/tables/{ref}/export` for unsaved view state). PDF is browser print with `print.css`; no server renderer. |
 | H6 to H10 | not started | | |
-| N1 to N5 | done | main | Design consolidation, outside the original plan: one sidebar navigation on every screen (project tabs removed), quiet embedded views, page typography, a single-column task panel, and all colours and spacing as tokens in `static/css/theme.css` (see `docs/THEME.md`). The light theme is a draft. |
+| N1 to N5 | done | main | Design consolidation, outside the original plan: a sidebar on every screen, quiet embedded views, page typography, a single-column task panel, and all colours and spacing as tokens in `static/css/theme.css` (see `docs/THEME.md`). The light theme is a draft. |
+| N6 | done | main | Projects first: `/projects` is the landing grid; inside a project the header has the tabs Review, Tasks, Pages and Lounge (`web/src/shell/ProjectTabs.tsx`, `/p/<id>/lounge`) and the sidebar shows that project's pages only. |

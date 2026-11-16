@@ -38,6 +38,8 @@ function placeholderFor(route: Route): { title: string; detail?: string } {
       return { title: `${projectName(route.projectId)}: Review`, detail: 'Opening the review...' };
     case 'lounge':
       return { title: 'Lounge', detail: 'Opening the Lounge...' };
+    case 'projects':
+      return { title: 'Projects' };
     case 'notFound':
       return { title: 'Not found', detail: route.path };
   }

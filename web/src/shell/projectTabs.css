@@ -1,0 +1,46 @@
+/* The open project and its tabs, in the header (#clTabsHost) */
+.cl-tabs-host { display: flex; align-items: stretch; flex: 1 1 auto; min-width: 0; height: 100%; }
+
+.cl-ptabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-width: 0;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+.cl-ptabs__back { flex: none; color: var(--text-muted); text-decoration: none; padding: var(--space-1) var(--space-1-5); border-radius: var(--radius-sm); }
+.cl-ptabs__back:hover { background: var(--bg-hover); color: var(--text); }
+.cl-ptabs__sep { flex: none; color: var(--text-muted); }
+.cl-ptabs__name { min-width: 0; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: var(--font-weight-semibold); }
+.cl-ptabs__more {
+  flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--radius-xs);
+  background: transparent; color: var(--text-muted); cursor: pointer;
+}
+.cl-ptabs__more:hover { background: var(--bg-hover); color: var(--text); }
+
+.cl-ptabs__tabs { display: flex; align-items: stretch; gap: var(--space-0-5); height: 100%; margin-left: var(--space-4); }
+.cl-ptabs__tab {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: inset 0 -2px 0 transparent;
+}
+.cl-ptabs__tab:hover { color: var(--text); background: var(--bg-hover); }
+.cl-ptabs__tab.is-active { color: var(--text); font-weight: var(--font-weight-semibold); box-shadow: inset 0 -2px 0 var(--accent); }
+.cl-ptabs__back:focus-visible,
+.cl-ptabs__more:focus-visible,
+.cl-ptabs__tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Phone width: the tabs keep one line and scroll sideways; the trail goes, the sidebar names the project */
+@media (max-width: 800px) {
+  .cl-ptabs { overflow-x: auto; scrollbar-width: none; }
+  .cl-ptabs__back, .cl-ptabs__sep, .cl-ptabs__name, .cl-ptabs__more { display: none; }
+  .cl-ptabs__tabs { margin-left: 0; }
+  .cl-ptabs__tab { padding: 0 var(--space-2); }
+}

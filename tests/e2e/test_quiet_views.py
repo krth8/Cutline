@@ -34,7 +34,7 @@ def scene(server, new_page):
         server.grant_access(project, uid)
         server.create_task(project, f"{name} task")
     page = new_page(name="quin")
-    login(page, server.base_url, "quin")
+    login(page, server.base_url, "quin", goto="/home")
     page.wait_for_url("**/home", timeout=15000)
     page.wait_for_selector(f"{BLOCK}[data-state=ready]", timeout=20000)
     page.wait_for_selector(f"{BLOCK} [data-testid=list-new]", timeout=20000)

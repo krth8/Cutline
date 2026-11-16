@@ -275,6 +275,8 @@ def test_viewer_sees_the_tree_without_edit_affordances(scene, server, new_page):
 def test_personal_pages_are_private(scene, server, new_page):
     ana, ben = scene["ana"], scene["ben"]
     # ana creates a personal page through the UI
+    # inside a project the sidebar shows that project only: the personal space is reached from outside it
+    ana.locator(".cl-sidebar").get_by_role("link", name="All projects", exact=True).click()
     ana.locator(".cl-sidebar").get_by_role("link", name="Personal", exact=True).click()
     expect(ana.locator("[data-testid=space-overview]")).to_contain_text("Personal space")
     ana.locator("[data-testid=space-overview]").get_by_role("button", name="Create the first page").click()
@@ -285,6 +287,7 @@ def test_personal_pages_are_private(scene, server, new_page):
     diary = ana.evaluate("location.pathname.split('/').pop()")
 
     # ben has no such page, and neither can he open it
+    ben.locator(".cl-sidebar").get_by_role("link", name="All projects", exact=True).click()
     ben.locator(".cl-sidebar").get_by_role("link", name="Personal", exact=True).click()
     expect(ben.locator("[data-testid=space-overview]")).to_contain_text("No pages yet.")
     assert ben.locator(".cl-sidebar").get_by_role("treeitem", name="Diary").count() == 0

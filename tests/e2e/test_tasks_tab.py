@@ -64,8 +64,8 @@ def test_the_tab_shows_the_projects_tasks_as_a_table_inside_the_shell(server, sc
     # The columns of the old list, in its order
     headers = page.evaluate("() => [...document.querySelectorAll('[data-testid=table-header] [data-col]')].map(h => h.dataset.col)")
     assert headers == ["name", "status", "priority", "assignees", "dueDate", "stage"]
-    # The sidebar lists Tasks once, as the project's entry (highlighted here); the Tasks page is not in the page tree
-    nav_tasks = page.locator("[data-testid=cl-sidebar] [data-testid=nav-tasks]")
+    # Tasks is a tab of the project (highlighted here); the Tasks page is not in the page tree
+    nav_tasks = page.locator("[data-testid=project-tabs] [data-testid=tab-tasks]")
     expect(nav_tasks).to_have_count(1)
     assert nav_tasks.get_attribute("aria-current") == "page"
     assert page.locator("[data-testid=cl-sidebar] [role=treeitem][aria-label=Tasks]").count() == 0
@@ -174,8 +174,8 @@ def test_the_sidebar_opens_a_projects_tasks_on_the_new_list_by_default(server, s
     page = new_page(name="editor-projects")
     login(page, server.base_url, "editor")
     page.wait_for_selector("[data-testid=cl-sidebar]", timeout=10000)
-    page.locator(f"[data-project-id='{scene['project']}'] .cl-nav__projectname").click()
-    page.click("[data-testid=nav-tasks]")
+    page.click(f"[data-testid=project-card][data-project-id='{scene['project']}']")
+    page.click("[data-testid=project-tabs] [data-testid=tab-tasks]")
     page.wait_for_selector(f"{TAB} [data-testid=table-layout]", timeout=20000)
     assert page.url.endswith(f"/p/{scene['project']}/tasks")
 

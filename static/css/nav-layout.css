@@ -28,6 +28,9 @@
 .cl-layout.has-nav:not(.nav-collapsed) .header-global .logo { display: none; }
 .cl-layout.has-nav .header-global { gap: 8px; }
 
+/* The Lounge tab of a project: just that project's room */
+.cl-layout.lounge-in-project .lounge-sidebar { display: none; }
+
 /* Old task list (localStorage.legacyTasks): the sidebar picks the project, so its own list and grid go */
 .cl-layout.has-nav .projects-sidebar,
 .cl-layout.has-nav #projectsBackBtn { display: none; }

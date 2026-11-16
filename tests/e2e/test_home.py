@@ -74,7 +74,9 @@ def scene(server):
 
 def test_a_new_user_lands_on_the_dashboard_with_their_tasks_and_numbers(scene, server, new_page):
     ana = new_page(name="ana")
-    login(ana, server.base_url, "ana")  # the bare "/" with nothing saved
+    login(ana, server.base_url, "ana")  # the bare "/" with nothing saved: the Projects grid
+    ana.wait_for_url("**/projects", timeout=15000)
+    ana.click("[data-testid=nav-home]")
     ana.wait_for_url("**/home", timeout=15000)
     expect(ana.locator("[data-testid=page-view]")).to_be_visible(timeout=15000)
     expect(ana.locator(".cl-page__title")).to_have_value("My dashboard")
@@ -169,7 +171,7 @@ def test_deep_links_and_project_links_still_open_what_they_opened(scene, server,
     # ... or Home when nothing (usable) is remembered
     ben.evaluate("localStorage.setItem('lastRoute', '/p/gone/review')")
     ben.goto(server.base_url + "/")
-    ben.wait_for_url("**/home", timeout=15000)
+    ben.wait_for_url("**/projects", timeout=15000)
 
     # Home in the sidebar opens the dashboard
     ben.goto(f"{server.base_url}/me")

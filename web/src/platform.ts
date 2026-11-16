@@ -25,7 +25,7 @@ export interface Platform {
   toast(kind: 'info' | 'success' | 'error', message: string, opts?: ToastOptions): void;
   confirm(message: string, opts?: { danger?: boolean; confirmLabel?: string }): Promise<boolean>;
   navigate(route: string): void;
-  projects(): Array<{ id: string; name: string; canTasks: boolean; isOwner: boolean; clipCount?: number }>;
+  projects(): Array<{ id: string; name: string; canTasks: boolean; isOwner: boolean; clipCount?: number; coverImage?: string }>;
   statuses(): Array<{ id: string; name: string; color: string }>;
   members(projectId: string): Promise<Array<{ id: string; username: string; profileImage?: string }>>;
   /** End the login (the "Log out" command). Optional so existing fakes keep compiling. */
@@ -66,7 +66,7 @@ export const PROJECTS_CHANGED_EVENT = 'cutline:projects-changed';
 interface LegacyGlobals {
   AppState?: {
     adminUser?: { id?: string; username?: string; role?: string; isAdmin?: boolean; profileImage?: string | null } | null;
-    projects?: Array<{ id: string; name: string; canTasks?: boolean; isOwner?: boolean; clipCount?: number }>;
+    projects?: Array<{ id: string; name: string; canTasks?: boolean; isOwner?: boolean; clipCount?: number; coverImage?: string | null }>;
     statuses?: Array<{ id: string; name: string; color: string }>;
     isAdmin?: boolean;
   };
@@ -221,6 +221,7 @@ export function createLegacyPlatform(): Platform {
         canTasks: p.canTasks ?? admin,
         isOwner: p.isOwner ?? admin,
         ...(typeof p.clipCount === 'number' ? { clipCount: p.clipCount } : {}),
+        ...(p.coverImage ? { coverImage: p.coverImage } : {}),
       }));
     },
 
