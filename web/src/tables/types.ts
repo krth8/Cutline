@@ -48,6 +48,7 @@ export interface Query {
   filter?: Filter;
   sort?: Array<{ column: string; dir: 'asc' | 'desc' }>;
   groupBy?: string; // column key
+  groupBucket?: 'day' | 'week' | 'month'; // date groupBy only: one group per day, week (its Monday) or month ("YYYY-MM")
   summaries?: Record<
     string,
     'count' | 'countEmpty' | 'countFilled' | 'sum' | 'avg' | 'min' | 'max' | 'percentChecked'

@@ -9,6 +9,7 @@ import { FileNode } from './file';
 import { INLINE_IMAGE_TYPES } from './pageFiles';
 import './viewBlock'; // the view block (its node lives in this chunk, its content in the main bundle)
 import './summary'; // the summary block and the inline number (same split as the view block)
+import './chart'; // the chart block: bar, line, donut over a view (same split)
 import './clipEmbed'; // the clip block (same split)
 import './mention'; // the mention chip and the @ menu (S5)
 import './pageList'; // the list of recently changed pages (S4)

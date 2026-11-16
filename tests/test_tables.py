@@ -221,6 +221,19 @@ def test_query_groups_and_summaries_over_http(table, admin, project):
     assert body["summaries"] == {"name": 3, "dueDate": 3}
 
 
+def test_query_groups_dates_by_week_and_month_over_http(table, admin, project):
+    t = table(admin, f"tasks:{project}")
+    for name, due in [("a", "2030-01-14"), ("b", "2030-01-18"), ("c", "2030-02-04"), ("d", None)]:
+        t.create({"name": name, "dueDate": due})
+    week = t.query({"groupBy": "dueDate", "groupBucket": "week", "limit": 0}).json()
+    assert [(g["key"], g["count"]) for g in week["groups"]] == [("2030-01-14", 2), ("2030-02-04", 1), (None, 1)]
+    assert week["rows"] == [] and week["total"] == 4
+    month = t.query({"groupBy": "dueDate", "groupBucket": "month"}).json()
+    assert [(g["key"], g["count"]) for g in month["groups"]] == [("2030-01", 2), ("2030-02", 1), (None, 1)]
+    bad = t.query({"groupBy": "priority", "groupBucket": "week"})
+    assert bad.status_code == 400 and "date column" in bad.json()["detail"]
+
+
 def test_at_me_over_http(table, admin, editor, project):
     t = table(editor, f"tasks:{project}")
     t.create({"name": "Mine", "assignees": [editor["user"]["id"]]})

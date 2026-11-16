@@ -508,3 +508,36 @@ def test_the_engine_does_not_modify_its_input():
     before = [r["id"] for r in rows]
     q({"sort": [{"column": "points", "dir": "desc"}], "groupBy": "tags"}, rows=rows)
     assert [r["id"] for r in rows] == before
+
+
+# ---------------------------------------------------------------- date buckets (groupBucket)
+
+def test_group_by_date_bucket_week_uses_the_monday_and_keeps_summaries():
+    res = q({"groupBy": "due", "groupBucket": "week", "summaries": {"points": "sum"}})
+    # 2030-06-10 (Mon) and 2030-06-15 (Sat) share a week; 2030-06-20 is in the next one; one row has no date
+    assert [(g["key"], g["count"], g["summaries"]["points"]) for g in res["groups"]] == [
+        ("2030-06-10", 2, 13), ("2030-06-17", 1, 7), (None, 1, 0)]
+    assert res["total"] == 4
+
+
+def test_group_by_date_bucket_month_and_day():
+    month = q({"groupBy": "due", "groupBucket": "month"})
+    assert [(g["key"], g["count"]) for g in month["groups"]] == [("2030-06", 3), (None, 1)]
+    day = q({"groupBy": "due", "groupBucket": "day"})
+    assert [g["key"] for g in day["groups"]] == ["2030-06-10", "2030-06-15", "2030-06-20", None]
+    assert [g["key"] for g in q({"groupBy": "due"})["groups"]] == [g["key"] for g in day["groups"]]
+
+
+def test_group_bucket_months_sort_across_years():
+    rows = [row("a", due="2031-01-02"), row("b", due="2030-12-31"), row("c", due="2030-02-01")]
+    res = q({"groupBy": "due", "groupBucket": "month"}, rows=rows)
+    assert [g["key"] for g in res["groups"]] == ["2030-02", "2030-12", "2031-01"]
+
+
+def test_group_bucket_needs_a_date_group_column_and_a_known_bucket():
+    with pytest.raises(QueryError, match="date column"):
+        q({"groupBy": "status", "groupBucket": "week"})
+    with pytest.raises(QueryError, match="date column"):
+        q({"groupBucket": "week"})
+    with pytest.raises(QueryError, match="one of"):
+        q({"groupBy": "due", "groupBucket": "year"})
