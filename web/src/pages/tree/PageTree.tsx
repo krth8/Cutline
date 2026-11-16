@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEven
 import type { SpaceKey } from '../../api/pageTree';
 import { navigate } from '../../router';
 import type { SidebarSectionProps } from '../../shell/registry';
+import { pageExportItems } from '../../export';
 import { Button, cx, Menu, type MenuItem } from '../../ui';
 import { setHomePage, useHomePageId } from '../home/homeStore';
 import { ArchivedDialog } from './ArchivedList';
@@ -230,6 +231,7 @@ export function PageTree({ space, route }: SidebarSectionProps) {
     items.push({ id: 'move', label: 'Move to...', onSelect: () => setMoving({ from: key, id }) });
     // Any personal page can be Home
     if (key === 'me' && id !== homeId) items.push({ id: 'set-home', label: 'Set as home', onSelect: () => void setHomePage(id) });
+    items.push(...pageExportItems(id));
     items.push({ type: 'separator' }, { id: 'archive', label: 'Archive', danger: true, onSelect: () => void store.archive(id) });
     return items;
   }

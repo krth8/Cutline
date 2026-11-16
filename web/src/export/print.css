@@ -1,0 +1,106 @@
+/*
+ * Print / Save as PDF of a page. Everything is under `html.cl-print-page`, which print mode (print.ts) sets while a
+ * page is on screen, so printing any other screen is not changed. The legacy page's own chrome (sidebar column,
+ * global header, grid sidebars) is hidden here too, so main.css stays untouched.
+ */
+.cl-print-table { display: none; }
+
+@media print {
+  @page { margin: 16mm; }
+
+  /* Legacy chrome and the app shell */
+  html.cl-print-page .cl-nav-host,
+  html.cl-print-page .cl-nav-backdrop,
+  html.cl-print-page .header-global,
+  html.cl-print-page .sidebar-left,
+  html.cl-print-page .sidebar-right,
+  html.cl-print-page .clip-bin,
+  html.cl-print-page .context-toolbar,
+  html.cl-print-page .projects-sidebar,
+  html.cl-print-page .toast-container,
+  html.cl-print-page .cl-sidebar,
+  html.cl-print-page .cl-palette,
+  html.cl-print-page .cl-task-panel {
+    display: none !important;
+  }
+
+  /* One column, normal flow, no inner scrolling */
+  html.cl-print-page,
+  html.cl-print-page body,
+  html.cl-print-page .cl-layout,
+  html.cl-print-page .app,
+  html.cl-print-page .main,
+  html.cl-print-page .view-pages,
+  html.cl-print-page .cl-shell,
+  html.cl-print-page .cl-main {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: var(--bg-dark) !important;
+    color: var(--text) !important;
+  }
+
+  /* Page: full width; no bars, handles, carets, status, toolbars */
+  html.cl-print-page .cl-page { max-width: none !important; width: 100% !important; }
+  html.cl-print-page .cl-page__bar,
+  html.cl-print-page .cl-page__status,
+  html.cl-print-page .cl-page__banner,
+  html.cl-print-page .cl-page__icon-add,
+  html.cl-print-page .cl-handle,
+  html.cl-print-page .cl-toolbar,
+  html.cl-print-page .cl-slash,
+  html.cl-print-page .cl-caret,
+  html.cl-print-page .ProseMirror-yjs-cursor,
+  html.cl-print-page .cl-backlinks,
+  html.cl-print-page .cl-viewblock__resize,
+  html.cl-print-page .cl-viewbar,
+  html.cl-print-page .cl-viewhead__count,
+  html.cl-print-page .cl-file__download {
+    display: none !important;
+  }
+  html.cl-print-page .cl-page__title { border: 0 !important; }
+  html.cl-print-page .cl-page__body { min-height: 0 !important; }
+
+  /* Views: the live (virtualised) layout is replaced by a static table of up to 500 rows */
+  html.cl-print-page .cl-viewshell[data-view-id] + .cl-print-table { display: block; }
+  html.cl-print-page .cl-viewshell:has(+ .cl-print-table) { display: none !important; }
+  html.cl-print-page .cl-viewblock { height: auto !important; max-height: none !important; overflow: visible !important; }
+  html.cl-print-page .cl-print-table table { width: 100%; border-collapse: collapse; font-size: var(--font-size-xs); }
+  html.cl-print-page .cl-print-table th,
+  html.cl-print-page .cl-print-table td {
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+  }
+  html.cl-print-page .cl-print-table th { font-weight: var(--font-weight-semibold, 600); }
+  html.cl-print-page .cl-print-table thead { display: table-header-group; }
+  html.cl-print-page .cl-print-table tr { break-inside: avoid; }
+  html.cl-print-page .cl-print-table p { margin: var(--space-1) 0 0; color: var(--text-muted); font-size: var(--font-size-xs); }
+
+  /* Page breaks */
+  html.cl-print-page .ProseMirror h1,
+  html.cl-print-page .ProseMirror h2,
+  html.cl-print-page .ProseMirror h3 { break-after: avoid; }
+  html.cl-print-page .ProseMirror img,
+  html.cl-print-page .ProseMirror figure,
+  html.cl-print-page .ProseMirror pre,
+  html.cl-print-page .ProseMirror blockquote,
+  html.cl-print-page .cl-image,
+  html.cl-print-page .cl-chart,
+  html.cl-print-page .cl-file { break-inside: avoid; }
+  html.cl-print-page .ProseMirror img { max-width: 100%; height: auto; }
+
+  /* Links show where they go (external ones only) */
+  html.cl-print-page .ProseMirror a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    color: var(--text-muted);
+    font-size: 0.85em;
+    word-break: break-all;
+  }
+}
