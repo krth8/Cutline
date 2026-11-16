@@ -127,7 +127,7 @@ export function PageTree({ space, route }: SidebarSectionProps) {
   const menuAnchor = useRef<HTMLElement | null>(null);
   const rowEls = useRef(new Map<string, HTMLElement>());
 
-  const rows = useMemo(() => visibleRows(model, expanded.ids), [model, expanded.ids]);
+  const rows = useMemo(() => visibleRows(model, expanded.ids, key !== 'me'), [model, expanded.ids, key]);
 
   // The open page's ancestors are expanded (once per page and parent, so collapsing one by hand sticks)
   const expandedFor = useRef('');

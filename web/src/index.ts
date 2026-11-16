@@ -1,4 +1,4 @@
-import { mountApp, unmountApp } from './app';
+import { mountApp, mountNav, unmountApp, unmountNav } from './app';
 import { getPlatform } from './platform';
 import './pages/tree/register'; // sidebar tree and page views for the shell
 import './pages/home/register'; // the Home route (S4)
@@ -13,10 +13,13 @@ export interface CutlinePagesApi {
   /** Render the Pages app into `element` (the route is read from the URL). Calling it again is harmless. */
   mount(element: Element, route?: string): void;
   unmount(element: Element): void;
+  /** Render the sidebar into `element` (the legacy page does this once for every logged-in user). */
+  mountNav(element: Element): void;
+  unmountNav(element: Element): void;
   version: string;
 }
 
-const api: CutlinePagesApi = { mount: mountApp, unmount: unmountApp, version };
+const api: CutlinePagesApi = { mount: mountApp, unmount: unmountApp, mountNav, unmountNav, version };
 
 declare global {
   interface Window {
@@ -36,13 +39,13 @@ window.dispatchEvent(new CustomEvent('cutline:pages-ready'));
 function mountDevUiWhenReady(): void {
   const path = window.location.pathname;
   const devFull = path.startsWith('/dev/view/') || path.startsWith('/dev/page/');
-  if (path !== '/dev/ui' && !devFull) return;
+  if (path !== '/dev/ui' && path !== '/dev/theme' && !devFull) return;
   const started = Date.now();
   const timer = setInterval(() => {
     const user = getPlatform().user();
     if (user) {
       clearInterval(timer);
-      if (!devFull && user.role !== 'admin') return; // /dev/ui is for admins; /dev/view and /dev/page for any user
+      if (!devFull && user.role !== 'admin') return; // /dev/ui and /dev/theme are for admins; /dev/view and /dev/page for any user
       const host = document.createElement('div');
       host.className = 'cl-fullscreen';
       host.id = 'cl-dev-ui';

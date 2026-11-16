@@ -3,6 +3,7 @@ import { getPlatform } from '../platform';
 import { navigate } from '../router';
 import { Button, Dialog, Input } from '../ui';
 import { getClips, getProjectClips, linkClip, unlinkClip, type LinkedClip, type ProjectClip } from './api';
+import { Section } from './Section';
 import { useTaskPart } from './useTaskPart';
 
 const versionLabel = (n: number) => `v${String(n).padStart(2, '0')}`;
@@ -118,35 +119,31 @@ export function Clips({ taskId, projectId, canEdit }: { taskId: string; projectI
   }
 
   return (
-    <section className="cl-task__section" aria-label="Linked clips" data-testid="task-clips">
-      <div className="cl-task__headrow">
-        <h3 className="cl-task__heading">
-          Linked clips <span className="cl-task__count">({items.length})</span>
-        </h3>
-        {canEdit ? (
-          <button type="button" className="cl-task__link" onClick={() => setPicking(true)}>
-            + Link clip
-          </button>
-        ) : null}
-      </div>
-      {items.length === 0 ? <div className="cl-task__empty">No clips linked</div> : null}
-      <ul className="cl-clips">
-        {items.map((clip) => (
-          <li key={clip.id} className="cl-clip" data-clip-id={clip.id}>
-            <button type="button" className="cl-clip__open" onClick={() => open(clip)} title="Open in the review tab">
-              {clip.thumbnail ? <img className="cl-clip__thumb" src={`/thumbnail/${clip.thumbnail}`} alt="" /> : <span className="cl-clip__thumb" aria-hidden="true" />}
-              <span className="cl-clip__name">{clip.baseName}</span>
-              <span className="cl-clip__version">{versionLabel(clip.activeVersion)}</span>
-            </button>
-            {canEdit ? (
-              <button type="button" className="cl-task__iconbtn" aria-label={`Unlink ${clip.baseName}`} title="Unlink" onClick={() => void unlink(clip)}>
-                &times;
+    <>
+      <Section
+        title="Linked clips"
+        count={items.length}
+        testId="task-clips"
+        {...(canEdit ? { addLabel: 'Link clip', onAdd: () => setPicking(true) } : {})}
+      >
+        <ul className="cl-clips">
+          {items.map((clip) => (
+            <li key={clip.id} className="cl-clip" data-clip-id={clip.id}>
+              <button type="button" className="cl-clip__open" onClick={() => open(clip)} title="Open in the review tab">
+                {clip.thumbnail ? <img className="cl-clip__thumb" src={`/thumbnail/${clip.thumbnail}`} alt="" /> : <span className="cl-clip__thumb" aria-hidden="true" />}
+                <span className="cl-clip__name">{clip.baseName}</span>
+                <span className="cl-clip__version">{versionLabel(clip.activeVersion)}</span>
               </button>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+              {canEdit ? (
+                <button type="button" className="cl-task__iconbtn" aria-label={`Unlink ${clip.baseName}`} title="Unlink" onClick={() => void unlink(clip)}>
+                  &times;
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </Section>
       {picking ? <ClipPicker projectId={projectId} linked={items} onClose={() => setPicking(false)} onConfirm={(a, b) => void apply(a, b)} /> : null}
-    </section>
+    </>
   );
 }

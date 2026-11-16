@@ -8,7 +8,7 @@ import { getPlatform } from '../platform';
 import { listPages } from '../api/pageTree';
 import { requestJson } from '../api/http';
 import { createView } from '../api/views';
-import { buildRoute, navigate } from '../router';
+import { navigate } from '../router';
 import { registerRouteView, type RouteViewProps } from '../shell/registry';
 import { ViewShell } from './ViewShell';
 import './toolbar/toolbar.css';
@@ -92,23 +92,19 @@ export function TasksTab({ projectId }: { projectId: string }) {
       </div>
     );
   }
-  const pageHref = buildRoute({ kind: 'projectPage', projectId, pageId: state.pageId });
   return (
     <div className="cl-viewpage" data-testid="tasks-tab">
-      <div className="cl-viewpage__links">
-        <a
-          href={pageHref}
-          data-testid="tasks-open-page"
-          onClick={(e) => {
-            if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
-            e.preventDefault();
-            navigate({ kind: 'projectPage', projectId, pageId: state.pageId });
-          }}
-        >
-          Open as page
-        </a>
-      </div>
-      <ViewShell viewId={state.viewId} />
+      <ViewShell
+        viewId={state.viewId}
+        menuItems={[
+          {
+            id: 'open-page',
+            label: 'Open as page',
+            testId: 'tasks-open-page',
+            onSelect: () => navigate({ kind: 'projectPage', projectId, pageId: state.pageId }),
+          },
+        ]}
+      />
     </div>
   );
 }

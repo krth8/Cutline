@@ -1,9 +1,8 @@
 import { useCallback, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { updateView } from '../../../../api/views';
 import { getPlatform } from '../../../../platform';
 import { buildRoute, viewRoute } from '../../../../router';
 import { ViewShell } from '../../../../tables/ViewShell';
-import { Button, Input } from '../../../../ui';
+import { Button } from '../../../../ui';
 import { clampHeight, MAX_HEIGHT, MIN_HEIGHT, type PageContext } from './model';
 import { confirmAndDeleteViewOf, createViewOnTable } from './viewApi';
 import { useViewAccess } from './useViewAccess';
@@ -85,36 +84,17 @@ export function ViewBlockContent(props: ViewBlockContentProps) {
     const view = access.view;
     body = (
       <>
-        <header className="cl-viewblock__head">
-          <Input
-            key={view.name}
-            className="cl-viewblock__name"
-            aria-label="View name"
-            data-testid="viewblock-name"
-            defaultValue={view.name}
-            readOnly={view.canEdit === false}
-            onCommit={(name) => {
-              const next = name.trim();
-              if (next && next !== view.name) {
-                updateView(viewId, { name: next }).catch((e: unknown) =>
-                  getPlatform().toast('error', e instanceof Error ? e.message : 'Could not rename the view'),
-                );
-              }
-            }}
-          />
-          <a
-            className="cl-viewblock__open"
-            href={buildRoute(viewRoute(view.tableRef, viewId))}
-            target="_blank"
-            rel="noopener"
-            data-testid="viewblock-open"
-          >
-            Open full page
-          </a>
-          {removeButton}
-        </header>
         <ResizableBody height={height} editable={editable} onResize={(h) => setAttrs({ height: h })}>
-          <ViewShell viewId={viewId} className="cl-viewblock__shell" />
+          <ViewShell
+            viewId={viewId}
+            variant="embedded"
+            editable={editable && view.canEdit !== false}
+            className="cl-viewblock__shell"
+            menuItems={[
+              { id: 'open', label: 'Open full page', testId: 'viewblock-open', href: buildRoute(viewRoute(view.tableRef, viewId)), onSelect: () => {} },
+              ...(editable ? [{ type: 'separator' as const }, { id: 'remove', label: 'Remove block', testId: 'viewblock-remove', danger: true, onSelect: () => void remove() }] : []),
+            ]}
+          />
         </ResizableBody>
       </>
     );

@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { getPlatform } from '../../../platform';
 import { ColorDot, cx } from '../../../ui';
-import { projectsForCreate } from '../../store';
+import { ProjectSelect, useAddProject, useFocusWithin } from '../../addProject';
 import type { LayoutProps, Row, View } from '../../types';
 import { doneModel } from '../list/listHelpers';
 import { fromDayIndex, toDayIndex, todayString } from './dates';
@@ -509,7 +509,7 @@ function GanttBody({ schema, view, result, loading, actions, cfg }: LayoutProps 
                   {renderListCell(item)}
                 </div>
               ))}
-              {items.length === 0 && !loading && <p className="cl-gantt__empty">No rows</p>}
+              {items.length === 0 && !loading && <p className="cl-gantt__empty">{view.tableRef.startsWith("tasks:") ? "No tasks yet" : "No rows yet"}</p>}
             </div>
             <div className="cl-gantt__timeline" style={{ width: tlWidth, height: bodyHeight }} data-testid="gantt-timeline">
               {weekends.map((w) => (
@@ -541,9 +541,9 @@ function GanttBody({ schema, view, result, loading, actions, cfg }: LayoutProps 
 /** A title input in the toolbar: adds a row without dates (it lands in "Unscheduled"). */
 function QuickAdd({ schema, view, actions }: Pick<LayoutProps, 'schema' | 'view' | 'actions'>) {
   const [title, setTitle] = useState('');
-  const [projectId, setProjectId] = useState('');
   const everything = view.tableRef === 'tasks:*';
-  const projects = everything ? projectsForCreate() : [];
+  const add = useAddProject(view.id, view.tableRef);
+  const focus = useFocusWithin();
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -551,7 +551,7 @@ function QuickAdd({ schema, view, actions }: Pick<LayoutProps, 'schema' | 'view'
     if (!text) return;
     let opts: { projectId: string } | undefined;
     if (everything) {
-      const chosen = projectId || projects[0]?.id;
+      const chosen = add.projectId;
       if (!chosen) {
         getPlatform().toast('error', 'You have no project to add a task to');
         return;
@@ -563,7 +563,7 @@ function QuickAdd({ schema, view, actions }: Pick<LayoutProps, 'schema' | 'view'
   }
 
   return (
-    <form className="cl-gantt__add" onSubmit={submit} data-testid="gantt-add-form">
+    <form className="cl-gantt__add" onSubmit={submit} data-testid="gantt-add-form" {...focus.bind}>
       <input
         className="cl-gantt__add-input"
         aria-label="New row"
@@ -572,15 +572,7 @@ function QuickAdd({ schema, view, actions }: Pick<LayoutProps, 'schema' | 'view'
         data-testid="gantt-add-input"
         onChange={(e) => setTitle(e.target.value)}
       />
-      {projects.length > 1 && (
-        <select aria-label="Project" value={projectId || projects[0]!.id} onChange={(e) => setProjectId(e.target.value)}>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      )}
+      {focus.active && <ProjectSelect add={add} className="cl-gantt__add-project" />}
     </form>
   );
 }

@@ -6,7 +6,7 @@
  * covers what the bundle needs: the shell, the page views and links.
  */
 import { useMemo, useSyncExternalStore } from 'react';
-import { getPlatform, NAVIGATE_EVENT } from './platform';
+import { getPlatform, NAVIGATE_EVENT, URL_CHANGED_EVENT } from './platform';
 
 /** Optional on every route: the task panel opens over the current route. */
 interface WithTask {
@@ -25,6 +25,8 @@ export type Route =
   | ({ kind: 'projectView'; projectId: string; viewId: string } & WithTask)
   | ({ kind: 'meView'; viewId: string } & WithTask)
   | ({ kind: 'review'; projectId: string; clip?: string; v?: string; session?: string } & WithTask)
+  /** The Lounge (team chat), a legacy view shown beside the sidebar. */
+  | ({ kind: 'lounge' } & WithTask)
   /** A path that is none of the above (e.g. /dev/ui). Carries the original path + query. */
   | { kind: 'notFound'; path: string };
 
@@ -61,6 +63,7 @@ export function parseRoute(url: string): Route {
 
   // "/" and "/home" both mean Home; Home is always written as "/home"
   if (seg.length === 0 || (seg.length === 1 && seg[0] === 'home')) return withTask({ kind: 'home' as const });
+  if (seg.length === 1 && seg[0] === 'lounge') return withTask({ kind: 'lounge' as const });
   if (seg[0] === 'me') {
     if (seg.length === 1) return withTask({ kind: 'me' as const });
     if (seg.length === 3 && seg[1] === 'page') return withTask({ kind: 'mePage' as const, pageId: seg[2]! });
@@ -121,6 +124,9 @@ export function buildRoute(route: Route): string {
     case 'meView':
       path = `/me/view/${enc(route.viewId)}`;
       break;
+    case 'lounge':
+      path = '/lounge';
+      break;
     case 'review':
       path = `/p/${enc(route.projectId)}/review`;
       if (route.clip) query.set('clip', route.clip);
@@ -161,9 +167,11 @@ export function navigate(route: Route): void {
 function subscribe(listener: () => void): () => void {
   window.addEventListener('popstate', listener);
   window.addEventListener(NAVIGATE_EVENT, listener);
+  window.addEventListener(URL_CHANGED_EVENT, listener);
   return () => {
     window.removeEventListener('popstate', listener);
     window.removeEventListener(NAVIGATE_EVENT, listener);
+    window.removeEventListener(URL_CHANGED_EVENT, listener);
   };
 }
 

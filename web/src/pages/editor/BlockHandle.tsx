@@ -7,6 +7,12 @@ import { Menu, type MenuItem } from '../../ui';
 import { BLOCK_KINDS, setBlockKind } from './blocks';
 
 /**
+ * A constant: the drag handle re-registers its ProseMirror plugin whenever this object changes, and every
+ * re-registration re-creates all plugin views (it used to close an open slash menu while typing).
+ */
+const HANDLE_POSITION = { placement: 'left-start', strategy: 'absolute' } as const;
+
+/**
  * The handle beside the hovered top-level block: drag it to reorder; click it for
  * delete, duplicate and turn into.
  */
@@ -20,6 +26,23 @@ export function BlockHandle({ editor }: { editor: Editor }) {
     const tr = editor.state.tr;
     const sel = TextSelection.between(tr.doc.resolve(pos + 1), tr.doc.resolve(pos + node.nodeSize - 1));
     editor.view.dispatch(tr.setSelection(sel));
+  }
+
+  /** Open the slash menu on this block: in place when it is an empty paragraph, else on a new line below it. */
+  function openSlash() {
+    const t = target.current;
+    if (!t) return;
+    const { node, pos } = t;
+    const empty = node.type.name === 'paragraph' && node.content.size === 0;
+    if (empty) editor.chain().focus().setTextSelection(pos + 1).insertContent('/').run();
+    else {
+      const at = pos + node.nodeSize;
+      editor
+        .chain()
+        .insertContentAt(at, { type: 'paragraph', content: [{ type: 'text', text: '/' }] })
+        .focus(at + 2)
+        .run();
+    }
   }
 
   function items(): MenuItem[] {
@@ -60,8 +83,17 @@ export function BlockHandle({ editor }: { editor: Editor }) {
         onNodeChange={({ node, pos }) => {
           target.current = node ? { node, pos } : null;
         }}
-        computePositionConfig={{ placement: 'left-start', strategy: 'absolute' }}
+        computePositionConfig={HANDLE_POSITION}
       >
+        <button
+          type="button"
+          className="cl-handle__add"
+          aria-label="Add a block below"
+          title="Add a block below"
+          onClick={openSlash}
+        >
+          +
+        </button>
         <button
           ref={button}
           type="button"

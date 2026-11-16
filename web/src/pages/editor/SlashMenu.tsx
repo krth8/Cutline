@@ -17,9 +17,10 @@ export function SlashMenu({ store }: { store: SlashStore }) {
       setPlace({ left: 8, top: 8 });
       return;
     }
-    const menuHeight = Math.min(320, listRef.current?.offsetHeight || 320);
+    const menuHeight = Math.min(340, listRef.current?.offsetHeight || 340);
     const below = state.rect.bottom + 6;
-    const fitsBelow = below + menuHeight < window.innerHeight || state.rect.top < menuHeight + 12;
+    // Flip above the caret when there is no room below but room above
+    const fitsBelow = below + menuHeight < window.innerHeight - 8 || state.rect.top - menuHeight - 12 < 0;
     setPlace({
       left: Math.max(8, Math.min(state.rect.left, window.innerWidth - 300)),
       top: fitsBelow ? below : state.rect.top - menuHeight - 6,

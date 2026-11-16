@@ -14,7 +14,8 @@ import { getPlatform } from '../../../platform';
 import * as tablesApi from '../../../api/tables';
 import { cx } from '../../../ui';
 import { getCell, isColumnEditable } from '../../cells';
-import { projectsForCreate, refreshTable } from '../../store';
+import { refreshTable } from '../../store';
+import { useAddProject } from '../../addProject';
 import type { Column, LayoutProps, Row } from '../../types';
 import { orderedColumns } from '../../viewColumns';
 import { AddRow } from './AddRow';
@@ -98,7 +99,6 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
   const [sel, setSel] = useState<Selection>(EMPTY_SELECTION);
   const [drop, setDrop] = useState<{ id: string; side: 'before' | 'after' } | null>(null);
   const [addFocus, setAddFocus] = useState<string | null>(null);
-  const [project, setProject] = useState('');
   const [colForm, setColForm] = useState<{ mode: ColumnFormMode; column?: Column } | null>(null);
   const [moving, setMoving] = useState<Row | null>(null);
   const dragIds = useRef<string[] | null>(null);
@@ -108,8 +108,8 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
   const nested = schema.capabilities.hierarchy && query.parentId === null;
   const sorted = (query.sort?.length ?? 0) > 0;
   const canCreate = schema.capabilities.create;
-  const projects = useMemo(() => (isAll ? projectsForCreate() : []), [isAll, schema]);
-  const projectId = project || projects[0]?.id || '';
+  const add = useAddProject(view.id, view.tableRef);
+  const projectId = add.projectId;
 
   const cols = useMemo(() => gridColumns(schema, view.config, liveWidths), [schema, view.config, liveWidths]);
   const colKeys = useMemo(() => cols.map((c) => c.column.key), [cols]);
@@ -133,7 +133,8 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
   const rowsInOrder = useMemo(() => items.flatMap((i) => (i.kind === 'row' ? [i.row] : [])), [items]);
   const itemIndex = useMemo(() => new Map(items.map((it, i) => [it.id, i])), [items]);
 
-  const bodyViewport = Math.max(ROW_HEIGHT, clientHeight - HEADER_HEIGHT - FOOTER_HEIGHT);
+  const hasSummaries = Object.keys(query.summaries ?? {}).length > 0;
+  const bodyViewport = Math.max(ROW_HEIGHT, clientHeight - HEADER_HEIGHT - (hasSummaries ? FOOTER_HEIGHT : 0));
   const win = virtualWindow(items.length, ROW_HEIGHT, scrollTop, bodyViewport);
 
   // The latest values for handlers that must keep their identity
@@ -633,7 +634,7 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
             key={item.id}
             testId="table-quick-add"
             placeholder="Add new row..."
-            {...(isAll ? { projects, project: projectId, onProject: setProject } : {})}
+            {...(isAll ? { add } : {})}
             onSubmit={createTop}
           />
         );
@@ -642,7 +643,7 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
 
   return (
     <div
-      className="cl-table"
+      className={cx('cl-table', sel.ids.size > 0 && 'has-selection')}
       data-testid="table-layout"
       style={style}
       aria-busy={loading || undefined}
@@ -697,6 +698,21 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
             {items.slice(win.start, win.end).map((item, i) => renderItem(item, win.start + i))}
           </div>
         </div>
+        {!loading && result.rows.length === 0 && !filtered && (
+          <div className="cl-table__empty cl-table__empty--blank" data-testid="table-empty">
+            <span>{view.tableRef.startsWith('tasks:') ? 'No tasks yet' : 'No rows yet'}</span>
+            {canCreate && (
+              <button
+                type="button"
+                className="cl-btn cl-btn--secondary cl-btn--sm"
+                data-testid="table-empty-new"
+                onClick={() => scroller.current?.querySelector<HTMLInputElement>('[data-testid=table-quick-add]')?.focus()}
+              >
+                {view.tableRef.startsWith('tasks:') ? 'New task' : 'New row'}
+              </button>
+            )}
+          </div>
+        )}
         {!loading && result.rows.length === 0 && filtered && (
           <div className="cl-table__empty" data-testid="table-empty-filtered">
             <span>{view.tableRef.startsWith('tasks:') ? 'No tasks match the filters' : 'No rows match the filters'}</span>
@@ -705,14 +721,16 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
             </button>
           </div>
         )}
-        <div className="cl-table__footer" role="row" data-testid="table-footer">
-          <div className="cl-table__lead" />
-          {cols.map((c) => (
-            <div key={c.column.key} className="cl-table__summary" data-col={c.column.key} data-testid="table-summary">
-              {formatSummary(summaries[c.column.key], result.summaries?.[c.column.key])}
-            </div>
-          ))}
-        </div>
+        {hasSummaries && (
+          <div className="cl-table__footer" role="row" data-testid="table-footer">
+            <div className="cl-table__lead" />
+            {cols.map((c) => (
+              <div key={c.column.key} className="cl-table__summary" data-col={c.column.key} data-testid="table-summary">
+                {formatSummary(summaries[c.column.key], result.summaries?.[c.column.key])}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       {colForm && (
         <ColumnForm
@@ -737,31 +755,10 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
           onClose={() => setMoving(null)}
         />
       )}
-      <div className="cl-table__status">
-        <span data-testid="table-count">
-          {result.total} {result.total === 1 ? 'row' : 'rows'}
-        </span>
-        {loading && <span>Loading...</span>}
-        {!loading && result.rows.length === 0 && !filtered && <span data-testid="table-empty">No rows.</span>}
-        <span className="cl-table__spacer" />
-        {schema.capabilities.hierarchy && (
-          <label className="cl-table__nest">
-            <input
-              type="checkbox"
-              data-testid="table-nest"
-              checked={nested}
-              onChange={(e) => {
-                const next = { ...query };
-                if (e.target.checked) next.parentId = null;
-                else delete next.parentId;
-                setExpanded(EMPTY_SET);
-                actions.updateConfig({ query: next });
-              }}
-            />
-            Nest subtasks
-          </label>
-        )}
-      </div>
+      <span className="cl-table__sr" role="status" data-testid="table-count">
+        {result.total} {result.total === 1 ? 'row' : 'rows'}
+      </span>
+      {loading && <div className="cl-table__status">Loading...</div>}
     </div>
   );
 }

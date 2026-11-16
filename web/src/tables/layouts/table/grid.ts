@@ -7,7 +7,7 @@ import { orderedColumns, type ViewColumn } from '../../viewColumns';
 import type { Column, QueryResult, Row, TableSchema, View } from '../../types';
 
 export const ROW_HEIGHT = 34;
-export const LEAD_WIDTH = 64;
+export const LEAD_WIDTH = 44;
 export const MIN_COLUMN_WIDTH = 60;
 export const MAX_COLUMN_WIDTH = 800;
 

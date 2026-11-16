@@ -65,6 +65,13 @@ def scene(server, new_page):
     return {"admin": admin, "bob": bob, "project": project, "page": page_id, "state": {}}
 
 
+
+def set_layout(page, name):
+    """Choose a layout from the dropdown of the embedded view (the strip shows on hover)."""
+    page.locator(f"{BLOCK} [data-testid=layout-switch]").hover()
+    page.click(f"{BLOCK} [data-testid=layout-switch]")
+    page.click(f"[data-testid=layout-{name}]")
+
 def test_a_table_is_created_in_the_page_with_the_slash_menu(scene, server):
     admin, bob = scene["admin"], scene["bob"]
     admin.click(PROSE)
@@ -136,7 +143,7 @@ def test_rows_are_added_and_edited_and_the_other_person_sees_them_live(scene, se
 
 def test_the_view_switches_to_a_board_grouped_by_the_select_column(scene, server):
     admin, bob = scene["admin"], scene["bob"]
-    admin.click(f"{BLOCK} [data-testid=layout-board]")
+    set_layout(admin, "board")
     admin.wait_for_selector(f"{BLOCK} [data-testid=board-layout]", timeout=10000)
     lanes = lambda p: p.evaluate(f"""() => [...document.querySelectorAll('{BLOCK} [data-testid=board-lane]')].map(l => ({{
         title: l.dataset.laneLabel, cards: [...l.querySelectorAll('.cl-board__card-title')].map(c => c.innerText.trim())}}))""")
@@ -152,7 +159,7 @@ def test_the_view_switches_to_a_board_grouped_by_the_select_column(scene, server
     server.api(f"/api/tables/{ref}/rows/{b['id']}", {"values": {scene["state"]["stage"]: scene["state"]["options"]["Done"]}}, method="PATCH")
     wait_for(lambda: {l["title"]: l["cards"] for l in lanes(bob)}.get("Done") == ["Shot B"])
     # back to the table for the next steps
-    admin.click(f"{BLOCK} [data-testid=layout-table]")
+    set_layout(admin, "table")
     admin.wait_for_selector(f"{BLOCK} [data-testid=table-layout]", timeout=10000)
 
 
@@ -161,12 +168,12 @@ def test_other_layouts_cope_with_a_table_that_has_no_date_or_status_column(scene
     errors = []
     admin.on("pageerror", lambda e: errors.append(str(e)))
     for layout, marker in (("list", "list-layout"), ("calendar", "calendar-layout"), ("gantt", "gantt-layout")):
-        admin.click(f"{BLOCK} [data-testid=layout-{layout}]")
+        set_layout(admin, layout)
         admin.wait_for_selector(f"{BLOCK} [data-testid={marker}]", timeout=10000)
         admin.wait_for_timeout(300)
         assert admin.locator(f"{BLOCK}[data-state=ready]").count() == 1
     assert errors == []
-    admin.click(f"{BLOCK} [data-testid=layout-table]")
+    set_layout(admin, "table")
     admin.wait_for_selector(f"{BLOCK} [data-testid=table-layout]", timeout=10000)
 
 
@@ -195,6 +202,7 @@ def test_a_row_opens_in_the_row_panel(scene, server):
     assert "row=tbl_" in admin.url
     admin.wait_for_function("() => [...document.querySelectorAll('[data-testid=row-panel] input')].some(i => i.value === 'Shot A')",
                             timeout=10000)
+    admin.click("[data-testid=row-panel] .cl-props__more")  # empty properties are collapsed until asked for
     props = admin.inner_text("[data-testid=row-panel] [data-testid=task-properties]")
     assert "Notes" in props and "Stage" in props
     admin.keyboard.press("Escape")

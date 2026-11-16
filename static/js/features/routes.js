@@ -1,8 +1,10 @@
 /**
- * Routes - the URL decides which top tab is shown (PLAN.md 5.3).
+ * Routes - the URL decides which view is shown (PLAN.md 5.3). There are no top tabs any more: the
+ * sidebar (React bundle, mounted in #clNavHost) is the navigation, and switchTab() only swaps the view
+ * in the content area.
  *
- *   /                          legacy behaviour: the last tab (Projects, Docs, Lounge, ...); with no saved
- *                              tab at all (a first visit) it opens Home
+ *   /                          opens the route the user was last on (localStorage.lastRoute) or Home
+ *   /lounge                    Lounge (team chat)
  *   /home                      Home: the user's home page (Pages tab; the React bundle mounts in #viewPages)
  *   /p/<id>/review[?session=][&clip=<name>[&v=<n>][&frame=<n>]]
  *                              Review tab with that project loaded, on that clip version and frame
@@ -20,6 +22,18 @@
  * call Routes.apply() so the URL updates the tab. Share-link guests (/s/<id>)
  * never get here: they keep their single-project view.
  */
+// The sidebar follows the URL, also when this legacy code changes it: tell the bundle after every history write
+(function () {
+    ['pushState', 'replaceState'].forEach(function (name) {
+        const original = history[name];
+        history[name] = function () {
+            const result = original.apply(this, arguments);
+            window.dispatchEvent(new CustomEvent('cutline:url-changed'));
+            return result;
+        };
+    });
+})();
+
 const Routes = (function () {
     const PENDING_KEY = 'pendingRoute';
     const ROOT_TABS = ['projects', 'review', 'docs', 'lounge'];
@@ -51,6 +65,7 @@ const Routes = (function () {
         if (segments.some(s => s === null)) return null;
         if (segments.length === 0) return { tab: null };
         if (segments.length === 1 && segments[0] === 'home') return { tab: 'pages', home: true };
+        if (segments.length === 1 && segments[0] === 'lounge') return { tab: 'lounge' };
         if (segments[0] === 'me') {
             if (segments.length === 1 || (segments.length === 3 && segments[1] === 'page')) return { tab: 'pages' };
             if (segments.length === 3 && segments[1] === 'view') return { tab: 'pages' };
@@ -131,9 +146,10 @@ const Routes = (function () {
         if (tab === 'pages') {
             if (route && route.tab === 'pages') return null;
             if (pagesAtHome()) return '/home'; // the Pages tab was last showing Home
-            return pid ? `/p/${encodeURIComponent(pid)}/pages` : '/me';
+            return pid ? `/p/${encodeURIComponent(pid)}/pages` : '/home';
         }
-        // Projects, Docs and Lounge have no URL of their own: they live at "/"
+        if (tab === 'lounge') return location.pathname === '/lounge' ? null : '/lounge';
+        // The old task list (Projects tab) and Docs have no URL of their own: they live at "/"
         return location.pathname === '/' ? null : '/';
     }
 
@@ -194,24 +210,40 @@ const Routes = (function () {
         else unmountPages();
     }
 
-    /** The Pages tab is for logged-in users; share-link guests never see it. */
-    function refreshPagesTab() {
-        const tab = document.getElementById('mainTabPages');
-        if (!tab) return;
+    // ============ Sidebar (React bundle) ============
+
+    let navMounted = false;
+    let waitingForNav = false;
+
+    /** Mount the sidebar into #clNavHost, once. */
+    function mountNav() {
+        const host = document.getElementById('clNavHost');
+        if (!host || navMounted) return;
+        if (window.CutlinePages && window.CutlinePages.mountNav) {
+            window.CutlinePages.mountNav(host);
+            navMounted = true;
+        } else if (!waitingForNav) {
+            waitingForNav = true;
+            window.addEventListener('cutline:pages-ready', () => {
+                waitingForNav = false;
+                mountNav();
+            }, { once: true });
+        }
+    }
+
+    /** The sidebar and the header search are for logged-in users; share-link guests never get them. */
+    function refreshChrome() {
         const show = !!AppState.adminUser && !AppState.isShareLinkGuest;
-        const home = document.getElementById('mainTabHome');
-        if (home) home.classList.toggle('hidden', !show);
-        // The search button of the top bar (the palette is in the bundle)
+        const layout = document.getElementById('clLayout');
+        if (layout) layout.classList.toggle('has-nav', show);
+        // The search button of the header (the palette is in the bundle)
         const search = document.getElementById('searchBtn');
         if (search) {
             search.classList.toggle('hidden', !show);
             const key = document.getElementById('searchBtnKey');
             if (key && /Mac|iPhone|iPad/.test(navigator.platform)) key.textContent = '⌘K';
         }
-        if (tab.classList.contains('hidden') === show) {
-            tab.classList.toggle('hidden', !show);
-            if (typeof updateTabIndicator === 'function') updateTabIndicator();
-        }
+        if (show) mountNav();
     }
 
     // ============ Tasks tab on the new table (T13) ============
@@ -339,33 +371,52 @@ const Routes = (function () {
     async function apply(options) {
         const initial = !!(options && options.initial);
         if (AppState.isShareLinkGuest || !AppState.authToken) return;
-        refreshPagesTab();
+        refreshChrome();
         refreshTasksToggle();
         hideDocsTab();
         rewriteLegacyLink();
 
         const route = current();
+        if (route && route.tab) rememberLastRoute();
         if (route && route.tab === 'review') {
             await openReview(route.projectId);
         } else if (route && route.tab === 'pages') {
             rememberPagesAtHome(!!route.home);
             switchTab('pages', { history: 'none' });
+        } else if (route && route.tab === 'lounge') {
+            switchTab('lounge', { history: 'none' });
         } else if (route && route.tab === 'projects') {
             // /p/<id>/tasks with the old list switched on: the Projects tab on that project
             window.currentTasksProjectId = route.projectId;
             switchTab('projects', { history: 'none' });
         } else if (route) {
-            // "/": keep today's behaviour. Back/forward restore the tab of that history entry.
-            let tab = history.state && history.state.tab;
-            if (!tab && !initial) tab = localStorage.getItem('activeTab');
-            if (tab === 'docs' && docsMoved()) tab = 'pages';
-            if (tab && ROOT_TABS.includes(tab)) switchTab(tab, { history: 'none' });
-            else if (initial && !tab && !localStorage.getItem('activeTab')) {
-                // A bare "/" with nothing saved (first visit): Home
-                rememberPagesAtHome(true);
-                history.replaceState(null, '', '/home');
-                switchTab('pages', { history: 'none' });
-            } else if (!initial) switchTab('projects', { history: 'none' });
+            // "/": the route the user was last on, or Home
+            history.replaceState(null, '', lastRouteTarget() || '/home');
+            await apply(options);
+        }
+    }
+
+    // ============ The last route ============
+
+    const LAST_ROUTE_KEY = 'lastRoute';
+
+    function rememberLastRoute() {
+        try {
+            localStorage.setItem(LAST_ROUTE_KEY, location.pathname);
+        } catch (e) {}
+    }
+
+    /** The path stored by rememberLastRoute() if it still makes sense (known route, project still listed), else null. */
+    function lastRouteTarget() {
+        try {
+            const path = localStorage.getItem(LAST_ROUTE_KEY);
+            if (!path || !path.startsWith('/') || path.startsWith('//')) return null;
+            const route = parse(path, '');
+            if (!route || !route.tab) return null;
+            if (route.projectId && !(AppState.projects || []).some(p => p.id === route.projectId)) return null;
+            return path;
+        } catch (e) {
+            return null;
         }
     }
 
@@ -400,7 +451,7 @@ const Routes = (function () {
     window.addEventListener('popstate', onNavigate);
     window.addEventListener('cutline:navigate', onNavigate);
 
-    return { parse, apply, goHome, sync, afterSwitch, refreshPagesTab, legacyTasks, openTasks, toggleLegacyTasks, refreshTasksToggle, docsMoved, setDocsMoved, reviewUrl, isDeepLink, remember, restore };
+    return { parse, apply, goHome, sync, afterSwitch, refreshChrome, legacyTasks, openTasks, toggleLegacyTasks, refreshTasksToggle, docsMoved, setDocsMoved, reviewUrl, isDeepLink, remember, restore };
 })();
 
 window.Routes = Routes;

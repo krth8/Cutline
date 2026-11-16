@@ -2,6 +2,8 @@ import { act, fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { filterSlashItems } from './filter';
 import { BASE_SLASH_ITEMS } from './baseSlash';
+import { Plugin } from '@tiptap/pm/state';
+import { slashItemsFor } from './extensions/slash';
 import { mountEditor, outline, pressKey, setContent, typeText } from './testing/helpers';
 
 const titles = (query: string) => filterSlashItems(BASE_SLASH_ITEMS, query).map((i) => i.title);
@@ -152,6 +154,55 @@ describe('slash menu', () => {
       const out = outline(m.editor.getJSON());
       expect(out.startsWith(want.replace(/\(\)$/, '')), `${title}: ${out}`).toBe(true);
     }
+    m.unmount();
+  });
+});
+
+describe('slash menu while other plugins come and go', () => {
+  it('stays open and lists items when a plugin is registered and removed (the block handle does this)', async () => {
+    const m = await openMenu('hea');
+    const before = screen.getAllByRole('option').length;
+    expect(before).toBeGreaterThan(0);
+    await act(async () => {
+      m.editor.registerPlugin(new Plugin({}));
+    });
+    expect(screen.getByRole('listbox')).toBeTruthy();
+    expect(screen.getAllByRole('option')).toHaveLength(before);
+    await act(async () => typeText(m.editor, 'd'));
+    expect(screen.getByRole('listbox')).toBeTruthy();
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+    m.unmount();
+  });
+
+  it('still closes for real when the query is left', async () => {
+    const m = await openMenu('hea');
+    await act(async () => {
+      m.editor.registerPlugin(new Plugin({}));
+      m.editor.commands.setTextSelection(1);
+    });
+    expect(screen.queryByRole('listbox')).toBeNull();
+    m.unmount();
+  });
+
+  it('puts the groups in order of use: Basic, Lists, Media, Views ...', () => {
+    const groups = [...new Set(slashItemsFor('').map((i) => i.group))];
+    expect(groups.slice(0, 2)).toEqual(['Basic', 'Lists']);
+    const rank = ['Basic', 'Lists', 'Media', 'Views', 'Numbers', 'Extras', 'Advanced'];
+    const known = groups.filter((g) => rank.includes(g));
+    expect(known).toEqual([...known].sort((a, b) => rank.indexOf(a) - rank.indexOf(b)));
+  });
+
+  it('ArrowDown wraps from the last item to the first', async () => {
+    const m = await openMenu();
+    const n = screen.getAllByRole('option').length;
+    await act(async () => {
+      pressKey(m.editor, 'ArrowUp');
+    });
+    await act(async () => {
+      pressKey(m.editor, 'ArrowDown');
+    });
+    expect(screen.getAllByRole('option')[0]!.getAttribute('aria-selected')).toBe('true');
+    expect(n).toBeGreaterThan(1);
     m.unmount();
   });
 });

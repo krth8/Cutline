@@ -1,8 +1,10 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { DevUi } from './devUi';
+import { DevTheme } from './devTheme';
 import { CollabEditor } from './pages/sync';
 import { getPlatform } from './platform';
 import { useRoute } from './router';
+import { NavApp } from './shell/NavApp';
 import { Shell } from './shell/Shell';
 import { RowPanelHost, TaskPanelHost } from './task';
 import { DevView } from './tables/DevView';
@@ -23,6 +25,7 @@ function AppView() {
   const route = useRoute();
   const user = getPlatform().user();
   if (route.kind === 'notFound' && route.path.split('?')[0] === '/dev/ui' && user?.role === 'admin') return <DevUi />;
+  if (route.kind === 'notFound' && route.path.split('?')[0] === '/dev/theme' && user?.role === 'admin') return <DevTheme />;
   // Dev-only: /dev/page/<pageId> shows just the collaborative editor, for any logged-in user (browser tests)
   const devPage = route.kind === 'notFound' ? /^\/dev\/page\/([^/?#]+)$/.exec(route.path.split('?')[0] ?? '') : null;
   if (devPage && user) return <CollabEditor key={devPage[1]} pageId={decodeURIComponent(devPage[1]!)} autoFocus />;
@@ -52,4 +55,21 @@ export function mountApp(element: Element, _route?: string): void {
 export function unmountApp(element: Element): void {
   roots.get(element)?.unmount();
   roots.delete(element);
+}
+
+const navRoots = new WeakMap<Element, Root>();
+
+/** Render the sidebar (the app's whole navigation) into `element`; it stays mounted on every screen. */
+export function mountNav(element: Element): void {
+  let root = navRoots.get(element);
+  if (!root) {
+    root = createRoot(element);
+    navRoots.set(element, root);
+  }
+  root.render(<NavApp />);
+}
+
+export function unmountNav(element: Element): void {
+  navRoots.get(element)?.unmount();
+  navRoots.delete(element);
 }

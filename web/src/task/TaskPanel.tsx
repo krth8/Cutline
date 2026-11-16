@@ -1,22 +1,26 @@
-import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useMemo, useState } from 'react';
 import { ApiError } from '../api/http';
 import * as tablesApi from '../api/tables';
 import { HistoryDialog } from '../pages/history';
-import { CollabEditor } from '../pages/sync';
+import { CollabEditor, SyncStatus, type PageStatus } from '../pages/sync';
+import { Backlinks } from '../pages/backlinks';
 import { getPlatform } from '../platform';
 import { closeTask, openTask, useTaskId } from '../router';
+import { doneModel } from '../tables/layouts/list/listHelpers';
 import { deleteRows, updateRow, useRow, useTableSchema } from '../tables/store';
-import type { Column, Row } from '../tables/types';
-import { useEscape } from '../ui/hooks';
-import { Backlinks } from '../pages/backlinks';
+import type { MenuItem } from '../ui';
 import { Checklist } from './Checklist';
 import { Clips } from './Clips';
-import { Comments } from './Comments';
+import { Activity, Composer, useComments } from './Comments';
+import { DoneToggle, PanelHeader, Title } from './PanelHeader';
+import { PanelShell, PanelSkeleton, Unavailable } from './PanelShell';
 import { Properties } from './Properties';
 import { Subtasks } from './Subtasks';
 import { getTaskPage } from './api';
 import './task.css';
+
+// Shared with the row panel
+export { Title, Unavailable };
 
 const isGone = (e: Error | null) => e instanceof ApiError && (e.status === 403 || e.status === 404);
 
@@ -42,10 +46,11 @@ function useLocate(taskId: string): { located: Located; retry: () => void } {
   return { located: current, retry: () => setAttempt((n) => n + 1) };
 }
 
-/** The task page (created on first use) in the collaborative editor; the old description is imported by the editor. */
-function Body({ taskId, canEdit }: { taskId: string; canEdit: boolean }) {
-  const [page, setPage] = useState<{ id: string; for: string } | 'failed' | null>(null);
-  const [historyOpen, setHistoryOpen] = useState(false);
+type PageState = { id: string; for: string } | 'failed' | null;
+
+/** The task page (created on first use); the old description is imported by the editor. */
+function useTaskPage(taskId: string): PageState {
+  const [page, setPage] = useState<PageState>(null);
   useEffect(() => {
     let cancelled = false;
     setPage(null);
@@ -57,20 +62,19 @@ function Body({ taskId, canEdit }: { taskId: string; canEdit: boolean }) {
       cancelled = true;
     };
   }, [taskId]);
+  return page;
+}
+
+/** The description: the task page in the collaborative editor, directly under the properties. */
+function Body({ taskId, page, canEdit, onStatus }: { taskId: string; page: PageState; canEdit: boolean; onStatus: (s: PageStatus) => void }) {
   return (
-    <section className="cl-task__section cl-task__body" aria-label="Description" data-testid="task-body">
+    <section className="cl-task__body" aria-label="Description" data-testid="task-body">
       {page === 'failed' ? (
         <p className="cl-task__empty">The description could not be loaded.</p>
       ) : page && page.for === taskId ? (
-        <>
-          <CollabEditor key={page.id} pageId={page.id} readOnly={!canEdit} placeholder="Add a description, or type / for blocks" />
-          <button type="button" className="cl-task__history" onClick={() => setHistoryOpen(true)}>
-            History
-          </button>
-          {historyOpen ? <HistoryDialog open pageId={page.id} canEdit={canEdit} onClose={() => setHistoryOpen(false)} /> : null}
-        </>
+        <CollabEditor key={page.id} pageId={page.id} readOnly={!canEdit} hideStatusBar onSync={(info) => onStatus(info.status)} placeholder="Add a description, or type / for blocks" />
       ) : (
-        <p className="cl-task__empty">Loading...</p>
+        <div className="cl-skel cl-skel--line" aria-busy="true" />
       )}
     </section>
   );
@@ -86,95 +90,39 @@ function Ancestors({ tableRef, parentId, depth = 0 }: { tableRef: string; parent
       <button type="button" className="cl-task__crumb" onClick={() => openTask(row.id)} title={String(row.values.name ?? '')}>
         {String(row.values.name ?? 'Untitled')}
       </button>
-      <span className="cl-task__crumbsep" aria-hidden="true">
-        /
-      </span>
     </>
   );
 }
 
-/** The editable title of a row (shared with the row panel of custom tables). */
-export function Title({ row, canEdit, onSave, label = 'Task name' }: { row: Row; canEdit: boolean; onSave: (name: string) => void; label?: string }) {
-  const name = String(row.values.name ?? '');
-  const [draft, setDraft] = useState(name);
-  const focused = useRef(false);
-  useEffect(() => {
-    if (!focused.current) setDraft(name);
-  }, [name]);
-  function finish() {
-    focused.current = false;
-    const text = draft.trim();
-    if (!text) setDraft(name);
-    else if (text !== name) onSave(text);
-  }
+/** The trail above the title: the project, then the parent tasks. */
+function Crumbs({ tableRef, parentId, projectName }: { tableRef: string; parentId: string | null | undefined; projectName: string | undefined }) {
   return (
-    <input
-      className="cl-task__title"
-      aria-label={label}
-      placeholder={label}
-      value={draft}
-      readOnly={!canEdit}
-      onFocus={() => (focused.current = true)}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={finish}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-        else if (e.key === 'Escape') {
-          setDraft(name);
-          focused.current = false;
-          (e.target as HTMLInputElement).blur();
-        }
-      }}
-    />
-  );
-}
-
-/** What a task shows about its creation. The server keeps no change log yet, so this is the whole activity. */
-function Activity({ columns, row }: { columns: Column[]; row: Row }) {
-  const who = row.values.createdBy as string | null | undefined;
-  const label = columns.find((c) => c.key === 'createdBy')?.options?.find((o) => o.value === who)?.label;
-  const created = row.values.createdAt as string | null | undefined;
-  const when = created ? new Date(created) : null;
-  if (!who && !when) return null;
-  return (
-    <section className="cl-task__section" aria-label="Activity" data-testid="task-activity">
-      <h3 className="cl-task__heading">Activity</h3>
-      <p className="cl-task__activity">
-        Created{label ? ` by ${label}` : ''}
-        {when && !Number.isNaN(when.getTime()) ? ` on ${when.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
-      </p>
-    </section>
-  );
-}
-
-export function Unavailable({ message, onClose, onRetry }: { message: string; onClose: () => void; onRetry?: () => void }) {
-  return (
-    <div className="cl-task__state" data-testid="task-unavailable">
-      <p>{message}</p>
-      <div className="cl-task__statebtns">
-        {onRetry ? (
-          <button type="button" className="cl-task__link" onClick={onRetry}>
-            Try again
-          </button>
-        ) : null}
-        <button type="button" className="cl-task__link" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    </div>
+    <nav className="cl-task__trail" aria-label="Parent tasks">
+      {projectName ? <span className="cl-task__crumb is-static">{projectName}</span> : null}
+      {parentId ? <Ancestors tableRef={tableRef} parentId={parentId} /> : null}
+    </nav>
   );
 }
 
 function TaskContent({ taskId, tableRef }: { taskId: string; tableRef: string }) {
   const platform = getPlatform();
-  const { row, loading, error } = useRow(tableRef, taskId);
+  const { row, error } = useRow(tableRef, taskId);
   const { schema } = useTableSchema(tableRef);
+  const page = useTaskPage(taskId);
+  const comments = useComments(taskId);
+  const [status, setStatus] = useState<PageStatus | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const projectId = tableRef.replace(/^tasks:/, '');
+  const projectName = platform.projects().find((p) => p.id === projectId)?.name;
+  const done = useMemo(() => {
+    const model = schema ? doneModel(schema) : undefined;
+    return model && model.column.type === 'status' ? model : undefined;
+  }, [schema]);
 
   if (isGone(error)) return <Unavailable message="This task is not available" onClose={closeTask} />;
   if (!row || !schema) {
     if (error) return <Unavailable message="Could not load this task" onClose={closeTask} />;
-    return <div className="cl-task__state">{loading || !schema ? 'Loading...' : null}</div>;
+    return <PanelSkeleton label="Loading task" />;
   }
 
   const save = (values: Record<string, unknown>) => {
@@ -193,92 +141,58 @@ function TaskContent({ taskId, tableRef }: { taskId: string; tableRef: string })
     await deleteRows(tableRef, [taskId]);
   }
 
+  const pageReady = page && page !== 'failed' && page.for === taskId ? page : null;
+  const menu: MenuItem[] = [
+    { id: 'history', label: 'History', disabled: !pageReady, onSelect: () => setHistoryOpen(true) },
+    ...(row.canEdit && schema.capabilities.delete
+      ? ([{ type: 'separator' }, { id: 'delete', label: 'Delete task', danger: true, onSelect: () => void remove() }] as MenuItem[])
+      : []),
+  ];
+
   return (
     <>
-      <header className="cl-task__header">
-        <div className="cl-task__top">
-          <nav className="cl-task__crumbs" aria-label="Parent tasks" hidden={!row.parentId}>
-            {row.parentId ? <Ancestors tableRef={tableRef} parentId={row.parentId} /> : null}
-          </nav>
-        </div>
-        <div className="cl-task__titlerow">
-          <Title row={row} canEdit={row.canEdit} onSave={(name) => save({ name })} />
-          {row.canEdit && schema.capabilities.delete ? (
-            <button type="button" className="cl-task__iconbtn cl-task__danger" aria-label="Delete task" title="Delete task" onClick={() => void remove()}>
-              &#128465;
-            </button>
-          ) : null}
-          <button type="button" className="cl-task__iconbtn" aria-label="Close task" title="Close (Esc)" onClick={closeTask}>
-            &times;
-          </button>
-        </div>
-      </header>
+      <PanelHeader
+        crumbs={<Crumbs tableRef={tableRef} parentId={row.parentId} projectName={projectName} />}
+        done={done ? <DoneToggle model={done} row={row} onChange={(key, value) => save({ [key]: value })} /> : null}
+        title={<Title row={row} canEdit={row.canEdit} onSave={(name) => save({ name })} />}
+        status={pageReady && status ? <SyncStatus status={status} quiet /> : null}
+        menu={menu}
+        closeLabel="Close task"
+      />
       <div className="cl-task__scroll">
         <div className="cl-task__main">
           <Properties columns={schema.columns} row={row} onChange={(key, value) => save({ [key]: value })} />
-          <Body taskId={taskId} canEdit={row.canEdit} />
-          <Clips taskId={taskId} projectId={projectId} canEdit={row.canEdit} />
-          <Subtasks tableRef={tableRef} taskId={taskId} count={row.childCount ?? 0} />
+          <Body taskId={taskId} page={page} canEdit={row.canEdit} onStatus={setStatus} />
+          <Subtasks tableRef={tableRef} taskId={taskId} count={row.childCount ?? 0} canAdd={row.canEdit && schema.capabilities.create} />
           <Checklist taskId={taskId} canEdit={row.canEdit} />
+          <Clips taskId={taskId} projectId={projectId} canEdit={row.canEdit} />
           <Backlinks kind="task" id={taskId} />
-        </div>
-        <div className="cl-task__side">
-          <Comments taskId={taskId} />
-          <Activity columns={schema.columns} row={row} />
+          <Activity state={comments} />
         </div>
       </div>
+      <Composer state={comments} />
+      {historyOpen && pageReady ? <HistoryDialog open pageId={pageReady.id} canEdit={row.canEdit} onClose={() => setHistoryOpen(false)} /> : null}
     </>
   );
 }
 
 function Panel({ taskId }: { taskId: string }) {
   const { located, retry } = useLocate(taskId);
-  const swallowEscape = useRef(false);
-
-  // Escape closes the panel, unless it was meant for a field or an open editor: that first Escape only leaves it.
-  // useEscape keeps the order with popovers and dialogs (the innermost layer gets the key).
-  useEscape(true, () => {
-    if (swallowEscape.current) {
-      swallowEscape.current = false;
-      const active = document.activeElement as HTMLElement | null;
-      if (active && active.matches('input, textarea, select, [contenteditable]')) active.blur();
-      return;
-    }
-    closeTask();
-  });
 
   let body;
   if (located.state === 'ready') body = <TaskContent key={located.id} taskId={located.id} tableRef={located.ref} />;
   else if (located.state === 'gone') body = <Unavailable message="This task is not available" onClose={closeTask} />;
-  else if (located.state === 'failed') {
-    body = <Unavailable message="Could not load this task" onClose={closeTask} onRetry={retry} />;
-  } else body = <div className="cl-task__state">Loading...</div>;
+  else if (located.state === 'failed') body = <Unavailable message="Could not load this task" onClose={closeTask} onRetry={retry} />;
+  else body = <PanelSkeleton label="Loading task" />;
 
-  return createPortal(
-    <>
-      <div className="cl-task__scrim" data-testid="task-scrim" onMouseDown={closeTask} />
-      <aside
-        className="cl-task"
-        role="dialog"
-        aria-label="Task"
-        aria-modal="false"
-        data-testid="task-panel"
-        data-task-id={taskId}
-        onKeyDownCapture={(e) => {
-          if (e.key !== 'Escape') return;
-          const target = e.target as HTMLElement;
-          swallowEscape.current = !!target.closest('.is-editing, input, textarea, select, [contenteditable]');
-          setTimeout(() => (swallowEscape.current = false), 0);
-        }}
-      >
-        {body}
-      </aside>
-    </>,
-    document.body,
+  return (
+    <PanelShell label="Task" testId="task-panel" idAttr="data-task-id" rowId={taskId} onClose={closeTask}>
+      {body}
+    </PanelShell>
   );
 }
 
-/** The side panel: shown over whatever route is open while the URL has `?task=<id>`. */
+/** The side panel: shown beside whatever route is open while the URL has `?task=<id>`. */
 export function TaskPanelHost() {
   const taskId = useTaskId();
   if (!taskId || !getPlatform().user()) return null;
