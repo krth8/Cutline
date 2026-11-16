@@ -7,7 +7,8 @@
   background: transparent;
 }
 /* A block that is selected in the editor gets a thin outline */
-.ProseMirror-selectednode > .cl-viewblock { outline: 1px solid var(--accent); outline-offset: 4px; }
+.cl-editor__prose .ProseMirror-selectednode:has(.cl-viewblock, .cl-chart) { outline: none; }
+.ProseMirror-selectednode .cl-viewblock { outline: 1px solid var(--cl-border-strong); outline-offset: 6px; border-radius: var(--radius-sm); }
 
 /* The view area; with a fixed height it scrolls inside */
 .cl-viewblock__bodywrap { position: relative; }

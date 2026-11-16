@@ -1,6 +1,7 @@
 import { createRoot, type Root } from 'react-dom/client';
 import { registerBuiltinCommands } from './builtins';
 import { registerTemplateCommands, TemplatesHost } from '../pages/templates';
+import { ExportHost } from '../export';
 import { PaletteHost } from './PaletteHost';
 
 let root: Root | null = null;
@@ -21,6 +22,7 @@ export function mountSearch(): void {
     <>
       <PaletteHost />
       <TemplatesHost />
+      <ExportHost />
     </>,
   );
 }

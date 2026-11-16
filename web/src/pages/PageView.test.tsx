@@ -1,3 +1,4 @@
+import { ExportHost } from '../export';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -287,11 +288,20 @@ describe('export menu', () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
       hrefs.push(this.getAttribute('href') ?? '');
     });
-    render(<PageView route={route} />);
+    render(
+      <>
+        <PageView route={route} />
+        <ExportHost />
+      </>,
+    );
     await user.click(await screen.findByRole('button', { name: 'Page menu' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Export as Markdown' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Export...' }));
+    await user.click(screen.getByRole('button', { name: /^Markdown\.?This page/ }));
+    await waitFor(() => expect(hrefs).toHaveLength(1));
     await user.click(screen.getByRole('button', { name: 'Page menu' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Export as Markdown with sub-pages' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Export...' }));
+    await user.click(screen.getByRole('button', { name: /^Markdown with sub-pages/ }));
+    await waitFor(() => expect(hrefs).toHaveLength(2));
     expect(hrefs).toEqual(['/api/pages/P2/export?format=md', '/api/pages/P2/export?format=md&subpages=1']);
     click.mockRestore();
   });
@@ -301,9 +311,15 @@ describe('export menu', () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {
       expect(document.documentElement.classList.contains('cl-print-page')).toBe(true);
     });
-    render(<PageView route={route} />);
+    render(
+      <>
+        <PageView route={route} />
+        <ExportHost />
+      </>,
+    );
     await user.click(await screen.findByRole('button', { name: 'Page menu' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Print / Save as PDF' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Export...' }));
+    await user.click(screen.getByRole('button', { name: /^Print \/ Save as PDF/ }));
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
     window.dispatchEvent(new Event('afterprint'));
     expect(document.documentElement.classList.contains('cl-print-page')).toBe(false);
@@ -316,7 +332,7 @@ describe('read-only', () => {
     current = infoOf(tree[2]!, { canEdit: false });
   });
 
-  it('shows a plain heading, no icon picker and only History and Copy link in the menu', async () => {
+  it('shows a plain heading, no icon picker and only History, Export and Copy link in the menu', async () => {
     const user = userEvent.setup();
     render(<PageView route={route} />);
     expect(await screen.findByRole('heading', { name: 'Budget' })).toBeTruthy();
@@ -325,9 +341,7 @@ describe('read-only', () => {
     await user.click(screen.getByRole('button', { name: 'Page menu' }));
     expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual([
       'History',
-      'Export as Markdown',
-      'Export as Markdown with sub-pages',
-      'Print / Save as PDF',
+      'Export...',
       'Copy link',
     ]);
   });

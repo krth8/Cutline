@@ -301,14 +301,16 @@ describe('task panel', () => {
     await waitFor(() => expect(backend.calls.some((c) => c.method === 'PATCH' && c.body.values.status === 'todo')).toBe(true));
   });
 
-  it('shows sections without items as a heading only', async () => {
+  it('shows sections without items as a small add button, and no empty Activity', async () => {
     goto('/p/p1/pages?task=sub1');
     render(<TaskPanelHost />);
     await screen.findByDisplayValue('Child task');
-    for (const id of ['task-subtasks', 'task-checklist', 'task-clips', 'task-comments']) {
+    for (const id of ['task-subtasks', 'task-checklist', 'task-clips']) {
       const section = await screen.findByTestId(id);
+      expect(section.classList.contains('is-empty')).toBe(true);
       expect(section.querySelector('.cl-sec__body')).toBeNull();
     }
+    expect(screen.queryByTestId('task-comments')).toBeNull();
     expect(screen.queryByText('No comments yet')).toBeNull();
     expect(screen.queryByText('No clips linked')).toBeNull();
     // The add action is still there, and opens the add row

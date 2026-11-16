@@ -61,7 +61,8 @@ def test_markdown_download_from_the_page_menu(scene):
     # the server reads the saved document (typing is flushed by the export itself, no waiting for the snapshot)
     open_page_menu(page)
     with page.expect_download() as info:
-        page.get_by_role("menuitem", name="Export as Markdown", exact=True).click()
+        page.get_by_role("menuitem", name="Export...").click()
+        page.click("[data-testid=export-md]")
     download = info.value
     assert download.suggested_filename == "Export me.zip"
     archive = zipfile.ZipFile(download.path())
@@ -84,7 +85,8 @@ def test_a_page_without_files_downloads_a_plain_md(scene, server):
     page.wait_for_selector('.cl-sync-status[data-status="synced"]', timeout=20000)
     open_page_menu(page)
     with page.expect_download() as info:
-        page.get_by_role("menuitem", name="Export as Markdown", exact=True).click()
+        page.get_by_role("menuitem", name="Export...").click()
+        page.click("[data-testid=export-md]")
     assert info.value.suggested_filename == "Plain page.md"
     assert open(info.value.path(), encoding="utf-8").read() == "# Plain page\n\nOnly text\n"
 
@@ -113,7 +115,8 @@ def test_print_state_hides_the_chrome_and_keeps_the_content(scene, server):
     # the browser's print dialog cannot be driven: window.print is replaced by a recorder, so the page stays in its print state
     page.evaluate("() => { window.__printed = 0; window.print = () => { window.__printed++; }; }")
     open_page_menu(page)
-    page.get_by_role("menuitem", name="Print / Save as PDF").click()
+    page.get_by_role("menuitem", name="Export...").click()
+    page.click("[data-testid=export-print]")
     page.wait_for_function("() => window.__printed === 1")
     page.wait_for_selector(".cl-print-table tbody tr", state="attached")
     page.emulate_media(media="print")

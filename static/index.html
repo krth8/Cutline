@@ -52,7 +52,7 @@
     <!-- Login Overlay (shown when not authenticated) -->
     <div class="upload-overlay login-overlay" id="loginOverlay">
         <div class="upload-box login-box">
-            <img src="/static/logo.png" alt="Cutline" class="login-logo">
+            <div class="cl-brand cl-brand--lg login-logo"><img src="/static/logo-mark.svg" alt=""><span>Cutline</span></div>
             <p>Sign in to continue</p>
 
             <div class="login-form" onclick="event.stopPropagation()">
@@ -767,7 +767,7 @@
                 <svg class="icon"><use href="/static/icons.svg#icon-list"/></svg>
             </button>
             <div class="logo" onclick="goHome()" style="cursor: pointer;" title="Home">
-                <img src="/static/logo.png" alt="Cutline" class="logo-img">
+                <span class="cl-brand"><img src="/static/logo-mark.svg" alt=""><span>Cutline</span></span>
             </div>
             <!-- The open project and its tabs (Review, Tasks, Pages, Lounge): filled by the React bundle -->
             <div class="cl-tabs-host" id="clTabsHost"></div>

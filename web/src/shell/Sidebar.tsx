@@ -175,7 +175,8 @@ export function Sidebar({
                 navigate({ kind: 'projects' });
               }}
             >
-              <img src="/static/logo.png" alt="" />
+              <img src="/static/logo-mark.svg" alt="" />
+              <span className="cl-sidebar__word">Cutline</span>
             </a>
             {drawer ? null : (
               <Button

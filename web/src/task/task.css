@@ -20,7 +20,7 @@
 }
 .cl-task {
   position: fixed;
-  top: 0;
+  top: var(--header-global-height, 0px); /* the header (search, notifications, the user) stays reachable */
   right: 0;
   bottom: 0;
   z-index: var(--z-task-panel-sheet);
@@ -135,6 +135,16 @@ button.cl-task__crumb:hover { color: var(--text); text-decoration: underline; }
 }
 .cl-sec__add:hover { background: var(--bg-hover); color: var(--text); }
 .cl-sec__body { margin-top: 4px; }
+/* Nothing in it yet: a small button, side by side with the other empty ones */
+.cl-sec.is-empty { display: inline-block; margin: var(--cl-task-gap) var(--space-1-5) 0 0; }
+.cl-sec.is-empty + .cl-sec.is-empty { margin-top: var(--cl-task-gap); }
+.cl-sec__chip {
+  display: inline-flex; align-items: center; gap: var(--space-1); height: var(--control-height-sm); padding: 0 var(--space-2);
+  background: none; border: 1px solid var(--border-medium); border-radius: var(--radius-full);
+  color: var(--text-secondary); font: inherit; font-size: var(--cl-task-small); cursor: pointer;
+}
+.cl-sec__chip:hover { background: var(--bg-hover); color: var(--text); }
+.cl-sec__chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Subtasks */
 .cl-subtasks, .cl-clips, .cl-clippicker, .cl-comments, .cl-checklist { list-style: none; margin: 0; padding: 0; }

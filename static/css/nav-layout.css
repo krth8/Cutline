@@ -28,6 +28,12 @@
 .cl-layout.has-nav:not(.nav-collapsed) .header-global .logo { display: none; }
 .cl-layout.has-nav .header-global { gap: 8px; }
 
+/* The brand: the SVG mark and the name as text, so the name follows the theme */
+.cl-brand { display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+.cl-brand img { width: 24px; height: 24px; display: block; }
+.cl-brand--lg { gap: 14px; font-size: 34px; letter-spacing: -0.02em; height: auto; }
+.cl-brand--lg img { width: 56px; height: 56px; }
+
 /* The Lounge tab of a project: just that project's room */
 .cl-layout.lounge-in-project .lounge-sidebar { display: none; }
 

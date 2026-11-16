@@ -17,13 +17,25 @@ export interface SectionProps {
 }
 
 /**
- * A quiet heading with a count and an add action on the heading line. With no items it is just that line;
- * with items the heading folds the list away and back.
+ * A quiet heading with a count and an add action on the heading line; the heading folds the list away and
+ * back. With no items it is a small button that adds the first one.
  */
 export function Section({ title, count, testId, addLabel, onAdd, forceOpen, countText, children }: SectionProps) {
   const [folded, setFolded] = useState(false);
   const hasContent = count > 0 || !!forceOpen;
   const open = hasContent && !folded;
+  // Nothing in it yet: no heading line at all. With an add action it is one small button; without one it is not shown.
+  if (!hasContent) {
+    if (!onAdd) return null;
+    return (
+      <section className="cl-sec is-empty" aria-label={title} data-testid={testId}>
+        <button type="button" className="cl-sec__chip" aria-label={addLabel ?? `Add to ${title}`} onClick={onAdd}>
+          <span aria-hidden="true">+</span>
+          <h3 className="cl-sec__title">{title}</h3>
+        </button>
+      </section>
+    );
+  }
   return (
     <section className={cx('cl-sec', open && 'is-open')} aria-label={title} data-testid={testId}>
       <div className="cl-sec__head">

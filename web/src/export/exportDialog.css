@@ -1,0 +1,11 @@
+/* The "Export page" dialog: one button per choice */
+.cl-export { display: flex; flex-direction: column; gap: var(--space-2); min-width: min(380px, 80vw); }
+.cl-export__choice {
+  display: flex; flex-direction: column; gap: var(--space-0-5); padding: var(--space-2-5) var(--space-3);
+  text-align: left; font: inherit; color: var(--text); cursor: pointer;
+  background: var(--cl-surface-field); border: 1px solid var(--border-medium); border-radius: var(--radius-md);
+}
+.cl-export__choice:hover { border-color: var(--accent); background: var(--bg-hover); }
+.cl-export__choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cl-export__choice strong { font-weight: var(--font-weight-semibold); }
+.cl-export__choice span { color: var(--text-muted); font-size: var(--font-size-sm); }
