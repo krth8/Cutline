@@ -4357,6 +4357,7 @@ function openNotificationsPanel() {
     if (!panel) return;
 
     notificationsPanelOpen = true;
+    if (window.Push) window.Push.refresh();
     panel.classList.remove('hidden');
 
     // Animate in

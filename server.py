@@ -1454,6 +1454,19 @@ async def dev_view_page(view_id: str):
     return index_response()
 
 
+# The installable web app: the manifest, and the service worker that shows push notifications. The worker is
+# served from the root so its scope is the whole app.
+@app.get("/manifest.webmanifest")
+async def web_manifest():
+    return FileResponse("static/manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+async def service_worker():
+    return FileResponse("static/sw.js", media_type="text/javascript",
+                        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"})
+
+
 # Routes of the Pages app (PLAN.md 5.3). The page itself decides what to show from the URL.
 @app.get("/home")
 @app.get("/lounge")

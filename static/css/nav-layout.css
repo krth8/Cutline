@@ -34,6 +34,9 @@
 .cl-brand--lg { gap: 14px; font-size: 34px; letter-spacing: -0.02em; height: auto; }
 .cl-brand--lg img { width: 56px; height: 56px; }
 
+/* The notifications panel: turning push on for this device */
+.notifications-footer { padding: 10px 16px; border-top: 1px solid var(--border); text-align: center; }
+
 /* The Lounge tab of a project: just that project's room */
 .cl-layout.lounge-in-project .lounge-sidebar { display: none; }
 

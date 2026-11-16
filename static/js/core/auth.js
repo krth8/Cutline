@@ -162,6 +162,8 @@ const Auth = (function () {
             }
             return;
         }
+        // This browser stops getting the user's push notifications (while the login still works)
+        if (window.Push) await window.Push.forget();
         // Other tabs follow at once (storage event), before the server starts closing connections
         store(AUTH_KEY, null);
         try {

@@ -247,6 +247,7 @@ const Routes = (function () {
             if (key && /Mac|iPhone|iPad/.test(navigator.platform)) key.textContent = '⌘K';
         }
         if (show) mountNav();
+        if (show && window.Push) window.Push.sync();
     }
 
     // ============ Tasks tab on the new table (T13) ============

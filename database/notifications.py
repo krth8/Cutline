@@ -9,6 +9,10 @@ from .engine import execute, fetchone, fetchall
 from .utils import get_db
 
 
+# Called with every new notification (api/push.py sends it on as a push message). A listener must not raise.
+listeners: list = []
+
+
 def db_create_notification(user_id: str, notification_type: str, title: str,
                           message: str = None, project_id: str = None, link: str = None) -> dict:
     """Create a new notification for a user."""
@@ -21,7 +25,7 @@ def db_create_notification(user_id: str, notification_type: str, title: str,
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (notification_id, user_id, notification_type, title, message, project_id, created_at, link))
 
-    return {
+    notification = {
         "id": notification_id,
         "userId": user_id,
         "type": notification_type,
@@ -32,6 +36,12 @@ def db_create_notification(user_id: str, notification_type: str, title: str,
         "isRead": False,
         "createdAt": created_at
     }
+    for listener in listeners:
+        try:
+            listener(notification)
+        except Exception as e:
+            print(f"Notification listener failed: {e}")
+    return notification
 
 
 def db_list_notifications(user_id: str, limit: int = 50) -> List[dict]:

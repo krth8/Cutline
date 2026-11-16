@@ -9,6 +9,10 @@
     <link rel="icon" href="/favicon.ico" sizes="48x48">
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Cutline">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Theme: applied before the stylesheets load so the first paint is already in the right theme.
          localStorage "theme" holds the choice: dark (default, also when nothing is stored), system, light or custom.
@@ -791,6 +795,10 @@
                         <div class="notifications-list" id="notificationsList">
                             <div class="notifications-empty">No notifications</div>
                         </div>
+                        <!-- Push to this browser or installed app (static/js/features/push.js) -->
+                        <div class="notifications-footer">
+                            <button class="btn-link" id="pushToggleBtn" aria-pressed="false" onclick="Push.toggle()">Notify me on this device</button>
+                        </div>
                     </div>
                 </div>
 
@@ -1201,7 +1209,7 @@
     <script src="/static/js/core/state.js?v=2"></script>
     <script src="/static/js/core/utils.js?v=1"></script>
     <script src="/static/js/core/api.js?v=4"></script>
-    <script src="/static/js/core/auth.js?v=2"></script>
+    <script src="/static/js/core/auth.js?v=3"></script>
     <script src="/static/js/core/live.js?v=2"></script>
     <!-- Core infrastructure (new) -->
     <script src="/static/js/core/PropertyRegistry.js?v=9"></script>
@@ -1242,11 +1250,12 @@
     <script src="/static/js/modules/lounge/LoungeModule.js?v=6"></script>
     <!-- Feature modules -->
     <script src="/static/js/features/settingsUI.js?v=2"></script>
-    <script src="/static/js/features/routes.js?v=5"></script>
+    <script src="/static/js/features/routes.js?v=6"></script>
     <script src="/static/js/features/navigation.js?v=21"></script>
     <script src="/static/js/features/usersAdmin.js?v=1"></script>
+    <script src="/static/js/features/push.js?v=1"></script>
     <!-- Main application -->
-    <script src="/static/js/app.js?v=80"></script>
+    <script src="/static/js/app.js?v=81"></script>
     <script src="/static/js/video-player.js?v=31"></script>
     <script src="/static/js/websocket.js?v=23"></script>
     <script src="/static/js/html-review.js?v=2"></script>
