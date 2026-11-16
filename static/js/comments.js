@@ -65,7 +65,8 @@ function setupCommentSubmit() {
         }
     });
     input?.addEventListener('input', () => CommentTags.onInput(input));
-    input?.addEventListener('blur', () => setTimeout(() => CommentTags.close(), 150));
+    // Closing waits a moment so a click in the list lands first; coming straight back to the box keeps it open
+    input?.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== input) CommentTags.close(); }, 150));
 }
 
 // Track reply state
@@ -1423,16 +1424,21 @@ const CommentTags = (() => {
     const TAG = /(^|[^\w@])@([\w.\-]{1,80})/g;
     let members = null, membersFor = null, list = null, matches = [], active = 0, range = null;
 
-    async function load() {
+    /** The people of the open project: asked for once per project (one request, however fast the typing). */
+    function load() {
         const projectId = AppState.projectId;
-        if (!projectId || AppState.isShareLinkGuest) return [];
+        if (!projectId || AppState.isShareLinkGuest) return Promise.resolve([]);
         if (members && membersFor === projectId) return members;
-        try {
-            const res = await fetch(`/api/projects/${projectId}/members`);
-            members = res.ok ? ((await res.json()).members || []) : [];
-        } catch (e) { members = []; }
         membersFor = projectId;
-        return members;
+        const request = fetch(`/api/projects/${projectId}/members`)
+            .then(res => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+            .then(body => body.members || [])
+            .catch(() => {
+                if (members === request) members = null; // try again at the next @
+                return [];
+            });
+        members = request;
+        return request;
     }
 
     function render(text) {
