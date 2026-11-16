@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cutline mock-up: project home</title>
+<style>
+  :root {
+    --bg: #0f0c14; --side: #181628; --card: #1b1829; --card-2: #221f33;
+    --line: rgba(255,255,255,.07); --line-2: rgba(255,255,255,.12);
+    --text: #ecebf5; --dim: #a09db5; --faint: #6f6c85;
+    --accent: #6d5df0; --accent-soft: rgba(109,93,240,.16); --accent-text: #a99ffb;
+    --green: #3fb98a; --amber: #e0a23c; --red: #e5636f;
+    --r: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.45 Inter, "Segoe UI", system-ui, sans-serif; display: grid; grid-template-columns: 232px 1fr; grid-template-rows: 40px 1fr; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  h1, h2, h3, p { margin: 0; }
+
+  /* ---------- header ---------- */
+  .brand { background: var(--side); display: flex; align-items: center; gap: 8px; padding: 0 12px; font-weight: 650; font-size: 14px; border-bottom: 1px solid var(--line); }
+  .brand svg { width: 20px; height: 20px; }
+  .top { display: flex; align-items: center; border-bottom: 1px solid var(--line); padding: 0 16px; gap: 4px; }
+  .tab { height: 40px; padding: 0 12px; color: var(--dim); border-bottom: 2px solid transparent; font-weight: 500; }
+  .tab:hover { color: var(--text); }
+  .tab.on { color: var(--text); border-bottom-color: var(--accent); }
+  .top .sp { flex: 1; }
+  .ava { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; border: 2px solid var(--bg); }
+  .a1 { background: #6d5df0; } .a2 { background: #c2587a; } .a3 { background: #2f8f83; } .a4 { background: #b0792b; }
+  .icon-btn { width: 28px; height: 28px; border-radius: 7px; color: var(--dim); }
+  .icon-btn:hover { background: var(--card-2); color: var(--text); }
+
+  /* ---------- sidebar ---------- */
+  .side { background: var(--side); border-right: 1px solid var(--line); padding: 8px; overflow: auto; }
+  .nav { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 5px 8px; border-radius: 7px; color: var(--dim); }
+  .nav:hover { background: rgba(255,255,255,.05); color: var(--text); }
+  .nav.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
+  .nav .k { margin-left: auto; font-size: 11px; color: var(--faint); }
+  .nav.l2 { padding-left: 26px; } .nav.l3 { padding-left: 42px; }
+  .nav.add { color: var(--faint); }
+  .sect { margin: 16px 8px 4px; font-size: 10.5px; letter-spacing: .08em; color: var(--faint); font-weight: 650; }
+  .chev { width: 10px; color: var(--faint); font-size: 9px; }
+  .ic { width: 14px; text-align: center; opacity: .8; }
+
+  /* ---------- main ---------- */
+  main { overflow: auto; padding: 28px 32px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .view { display: none; } .view.on { display: block; }
+  .head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 20px; }
+  .crumb { color: var(--faint); font-size: 12px; margin-bottom: 4px; }
+  .head h1 { font-size: 26px; font-weight: 680; letter-spacing: -.01em; }
+  .meta { display: flex; gap: 14px; align-items: center; color: var(--dim); margin-top: 6px; font-size: 12.5px; }
+  .people { display: flex; } .people .ava { margin-left: -6px; } .people .ava:first-child { margin-left: 0; }
+  .head .sp { flex: 1; }
+  .btn { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line-2); color: var(--dim); font-weight: 550; }
+  .btn:hover { color: var(--text); background: var(--card-2); }
+  .btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .grid { display: grid; grid-template-columns: minmax(280px, 5fr) 7fr; gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; position: relative; }
+  .card:hover { border-color: var(--line-2); }
+  .card:hover .grip { opacity: 1; }
+  .grip { position: absolute; top: 12px; right: 12px; color: var(--faint); opacity: 0; letter-spacing: 1px; font-size: 12px; }
+  .card h3 { font-size: 12px; font-weight: 650; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; display: flex; gap: 8px; align-items: baseline; }
+  .card h3 small { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); font-size: 12px; }
+  .stack { display: grid; gap: 14px; align-content: start; }
+
+  /* progress ring */
+  .ring-row { display: flex; gap: 22px; align-items: center; }
+  .ring { width: 148px; height: 148px; flex: none; position: relative; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring .mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+  .ring .mid b { font-size: 30px; font-weight: 700; line-height: 1; }
+  .ring .mid span { color: var(--dim); font-size: 12px; }
+  .legend { display: grid; gap: 8px; flex: 1; }
+  .legend div { display: flex; align-items: center; gap: 8px; color: var(--dim); }
+  .legend i { width: 8px; height: 8px; border-radius: 2px; }
+  .legend b { margin-left: auto; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .fact { background: var(--card-2); border-radius: 8px; padding: 10px 12px; }
+  .fact span { color: var(--dim); font-size: 12px; display: block; }
+  .fact b { font-size: 18px; font-weight: 680; }
+  .fact em { font-style: normal; font-size: 12px; color: var(--amber); margin-left: 6px; }
+
+  .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .row { display: flex; gap: 9px; padding: 8px 0; border-top: 1px solid var(--line); align-items: flex-start; }
+  .row:first-of-type { border-top: 0; padding-top: 0; }
+  .row .t { flex: 1; min-width: 0; }
+  .row .t b { display: block; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .t span { color: var(--faint); font-size: 12px; }
+  .box { width: 15px; height: 15px; border: 1.5px solid var(--faint); border-radius: 4px; margin-top: 2px; flex: none; }
+  .thumb { width: 44px; height: 28px; border-radius: 5px; flex: none; background: linear-gradient(135deg, #3a3558, #25213a); }
+  .pill { font-size: 11px; padding: 1px 7px; border-radius: 20px; white-space: nowrap; font-weight: 600; }
+  .p-amber { background: rgba(224,162,60,.15); color: var(--amber); }
+  .p-green { background: rgba(63,185,138,.15); color: var(--green); }
+  .p-red { background: rgba(229,99,111,.15); color: var(--red); }
+  .p-acc { background: var(--accent-soft); color: var(--accent-text); }
+  .more { display: block; margin-top: 10px; color: var(--accent-text); font-size: 12px; text-align: left; }
+  .quick { display: flex; gap: 8px; margin-top: 10px; padding: 7px 9px; border: 1px dashed var(--line-2); border-radius: 7px; color: var(--faint); }
+
+  .wide { margin-top: 14px; }
+  /* schedule strip */
+  .weeks { display: grid; grid-template-columns: 150px repeat(8, 1fr); color: var(--faint); font-size: 11px; margin-bottom: 6px; }
+  .lane { display: grid; grid-template-columns: 150px repeat(8, 1fr); align-items: center; height: 30px; border-top: 1px solid var(--line); position: relative; }
+  .lane > span { color: var(--dim); }
+  .bar { height: 14px; border-radius: 4px; background: var(--accent); opacity: .85; }
+  .bar.done { background: var(--green); } .bar.late { background: var(--amber); }
+  .today { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--red); left: calc(150px + (100% - 150px) * .44); }
+  .sched { position: relative; }
+  .sched .today::before { content: "Today"; position: absolute; top: -18px; left: -15px; font-size: 10.5px; color: var(--red); }
+
+  /* pages strip */
+  .pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  .pg { background: var(--card-2); border-radius: 8px; padding: 12px; }
+  .pg b { display: block; font-weight: 600; margin: 6px 0 2px; }
+  .pg span { color: var(--faint); font-size: 12px; }
+  .pg.new { background: none; border: 1px dashed var(--line-2); color: var(--faint); display: grid; place-content: center; text-align: center; }
+
+  /* ordinary page */
+  .doc { max-width: 820px; margin: 0 auto; }
+  .doc h1 { font-size: 30px; margin-bottom: 10px; }
+  .doc p { color: var(--dim); font-size: 14.5px; line-height: 1.65; margin-bottom: 14px; }
+  .doc h2 { font-size: 17px; margin: 26px 0 8px; }
+  .blk { border: 1px solid var(--line); border-radius: var(--r); background: var(--card); margin: 12px 0 18px; overflow: hidden; }
+  .blk .bh { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--dim); font-size: 12px; }
+  .blk .bh b { color: var(--text); font-size: 13px; }
+  .blk .bh .sp { flex: 1; }
+  .seg { display: flex; background: var(--card-2); border-radius: 6px; padding: 2px; }
+  .seg span { padding: 2px 8px; border-radius: 4px; }
+  .seg .on { background: var(--accent-soft); color: var(--text); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; color: var(--faint); font-weight: 550; font-size: 12px; }
+  th, td { padding: 8px 12px; border-top: 1px solid var(--line); }
+  thead th { border-top: 0; }
+  .slash { color: var(--faint); font-size: 14px; }
+  .slash kbd { background: var(--card-2); border-radius: 4px; padding: 0 5px; font: inherit; color: var(--dim); }
+
+  /* mock-up notes */
+  .note { margin-top: 22px; border-left: 2px solid var(--accent); padding: 4px 0 4px 12px; color: var(--dim); max-width: 760px; }
+  .note b { color: var(--text); }
+  .mock { position: fixed; right: 14px; bottom: 12px; background: var(--card-2); border: 1px solid var(--line-2); border-radius: 20px; padding: 4px 12px; font-size: 11.5px; color: var(--dim); }
+
+  @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } .cols { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) { body { grid-template-columns: 1fr; } .side, .brand { display: none; } main { padding: 20px 16px 64px; } }
+</style>
+</head>
+<body>
+
+<div class="brand">
+  <svg viewBox="0 0 64 64"><rect x="4" y="22" width="23" height="26" rx="7" fill="#8b7cf8"/><rect x="37" y="22" width="23" height="26" rx="7" fill="#5a4de8"/><path d="M25 6h14a2 2 0 0 1 2 2v6.3a2 2 0 0 1-.7 1.5L34 21.3V57a2 2 0 0 1-4 0V21.3l-6.3-5.5a2 2 0 0 1-.7-1.5V8a2 2 0 0 1 2-2z" fill="#c4a5fb"/></svg>
+  Cutline
+</div>
+<div class="top">
+  <button class="tab on">Home</button>
+  <button class="tab">Review</button>
+  <button class="tab">Lounge</button>
+  <span class="sp"></span>
+  <button class="icon-btn" title="Notifications">&#9993;</button>
+  <span class="ava a1">KT</span>
+</div>
+
+<aside class="side">
+  <button class="nav"><span class="ic">&#8981;</span>Search<span class="k">Ctrl+K</span></button>
+
+  <div class="sect">PERSONAL</div>
+  <button class="nav l2"><span class="ic">&#9750;</span>My dashboard</button>
+  <button class="nav l2"><span class="ic">&#9643;</span>Notes</button>
+  <button class="nav l2 add">+ New page</button>
+
+  <div class="sect">PROJECTS</div>
+  <button class="nav on" data-view="dash"><span class="chev">&#9660;</span>Day Of Week</button>
+  <button class="nav l2" data-view="page"><span class="ic">&#9643;</span>Shot list</button>
+  <button class="nav l2"><span class="ic">&#9643;</span>Creative brief</button>
+  <button class="nav l2"><span class="ic">&#9643;</span>Edit notes</button>
+  <button class="nav l3"><span class="ic">&#9643;</span>Sound &amp; music</button>
+  <button class="nav l2 add">+ New page</button>
+  <button class="nav"><span class="chev">&#9654;</span>Spring Campaign</button>
+  <button class="nav"><span class="chev">&#9654;</span>Showreel 2027</button>
+  <button class="nav add" style="margin-top:8px">+ New project</button>
+</aside>
+
+<main>
+<div class="wrap">
+
+<!-- ================= project dashboard ================= -->
+<section class="view on" id="dash">
+  <div class="head">
+    <div>
+      <div class="crumb">Projects</div>
+      <h1>Day Of Week</h1>
+      <div class="meta">
+        <span class="people"><span class="ava a1">KT</span><span class="ava a2">RI</span><span class="ava a3">LA</span><span class="ava a4">+2</span></span>
+        <span>Delivery 12 Dec</span>
+        <span class="pill p-amber">26 days left</span>
+      </div>
+    </div>
+    <span class="sp"></span>
+    <button class="btn">Edit dashboard</button>
+    <button class="btn pri">New page</button>
+  </div>
+
+  <div class="grid">
+    <!-- left: the ring and the key numbers -->
+    <div class="stack">
+      <div class="card">
+        <span class="grip">&#8942;&#8942;</span>
+        <h3>Progress <small>all tasks</small></h3>
+        <div class="ring-row">
+          <div class="ring">
+            <svg viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#2a2640" stroke-width="12"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#3fb98a" stroke-width="12" stroke-dasharray="182 314" stroke-linecap="butt"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#6d5df0" stroke-width="12" stroke-dasharray="72 314" stroke-dashoffset="-185"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#e0a23c" stroke-width="12" stroke-dasharray="19 314" stroke-dashoffset="-260"/>
+            </svg>
+            <div class="mid"><b>58%</b><span>done</span></div>
+          </div>
+          <div class="legend">
+            <div><i style="background:var(--green)"></i>Done<b>28</b></div>
+            <div><i style="background:var(--accent)"></i>In progress<b>11</b></div>
+            <div><i style="background:var(--amber)"></i>Overdue<b>3</b></div>
+            <div><i style="background:#2a2640"></i>Not started<b>6</b></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="grip">&#8942;&#8942;</span>
+        <h3>At a glance</h3>
+        <div class="facts">
+          <div class="fact"><span>Open tasks</span><b>20</b><em>3 overdue</em></div>
+          <div class="fact"><span>Mine</span><b>7</b></div>
+          <div class="fact"><span>Clips in review</span><b>14</b></div>
+          <div class="fact"><span>Open comments</span><b>23</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- right: three lists side by side -->
+    <div class="cols">
+      <div class="card">
+        <span class="grip">&#8942;&#8942;</span>
+        <h3>My tasks</h3>
+        <div class="row"><span class="box"></span><div class="t"><b>Lock picture, act 2</b><span>Edit notes</span></div><span class="pill p-red">Yesterday</span></div>
+        <div class="row"><span class="box"></span><div class="t"><b>Grade pass on shots 010–040</b><span>Shot list</span></div><span class="pill p-amber">Today</span></div>
+        <div class="row"><span class="box"></span><div class="t"><b>Send music cue sheet</b><span>Sound &amp; music</span></div><span class="pill p-acc">Thu</span></div>
+        <div class="row"><span class="box"></span><div class="t"><b>Subtitles, Norwegian</b><span>Shot list</span></div><span class="pill p-acc">24 Nov</span></div>
+        <div class="quick">+ Add a task</div>
+        <button class="more">All 7 &rarr;</button>
+      </div>
+
+      <div class="card">
+        <span class="grip">&#8942;&#8942;</span>
+        <h3>In review</h3>
+        <div class="row"><span class="thumb"></span><div class="t"><b>shot_010_v3</b><span>4 new comments</span></div></div>
+        <div class="row"><span class="thumb"></span><div class="t"><b>teaser_cut_v2</b><span>Rita approved</span></div><span class="pill p-green">OK</span></div>
+        <div class="row"><span class="thumb"></span><div class="t"><b>shot_032_v1</b><span>Uploaded 2 h ago</span></div><span class="pill p-acc">New</span></div>
+        <div class="row"><span class="thumb"></span><div class="t"><b>titles_v4</b><span>1 new comment</span></div></div>
+        <button class="more">Open Review &rarr;</button>
+      </div>
+
+      <div class="card">
+        <span class="grip">&#8942;&#8942;</span>
+        <h3>Latest</h3>
+        <div class="row"><span class="ava a2">RI</span><div class="t"><b>Rita in Lounge</b><span>&ldquo;Can we move the grade to Friday?&rdquo;</span></div></div>
+        <div class="row"><span class="ava a3">LA</span><div class="t"><b>Lars finished a task</b><span>Conform reel 1 &middot; 1 h ago</span></div></div>
+        <div class="row"><span class="ava a1">KT</span><div class="t"><b>You edited Creative brief</b><span>3 h ago</span></div></div>
+        <div class="row"><span class="ava a2">RI</span><div class="t"><b>Rita mentioned you</b><span>Edit notes &middot; yesterday</span></div></div>
+        <button class="more">Open Lounge &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- full width: schedule -->
+  <div class="card wide">
+    <span class="grip">&#8942;&#8942;</span>
+    <h3>Schedule <small>milestones from the task database</small></h3>
+    <div class="sched">
+      <div class="weeks"><span></span><span>20 Oct</span><span>27 Oct</span><span>3 Nov</span><span>10 Nov</span><span>17 Nov</span><span>24 Nov</span><span>1 Dec</span><span>8 Dec</span></div>
+      <div class="lane"><span>Offline edit</span><div class="bar done" style="grid-column:2/5"></div></div>
+      <div class="lane"><span>Picture lock</span><div class="bar late" style="grid-column:4/6"></div></div>
+      <div class="lane"><span>Grade</span><div class="bar" style="grid-column:5/8"></div></div>
+      <div class="lane"><span>Sound mix</span><div class="bar" style="grid-column:6/9"></div></div>
+      <div class="lane"><span>Delivery</span><div class="bar" style="grid-column:9/10"></div></div>
+      <div class="today"></div>
+    </div>
+  </div>
+
+  <!-- full width: pages -->
+  <div class="card wide">
+    <span class="grip">&#8942;&#8942;</span>
+    <h3>Pages</h3>
+    <div class="pages">
+      <div class="pg"><span>&#9643;</span><b>Shot list</b><span>Table &middot; 42 rows &middot; edited today</span></div>
+      <div class="pg"><span>&#9643;</span><b>Creative brief</b><span>Text &middot; edited 3 h ago</span></div>
+      <div class="pg"><span>&#9643;</span><b>Edit notes</b><span>Text + list &middot; 1 sub-page</span></div>
+      <div class="pg new">+ New page</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>How it hangs together.</b> This dashboard is the project's own front page, built from the same blocks as any other page.
+    <b>Edit dashboard</b> lets you move, remove or add boxes. There is no fixed &ldquo;Tasks&rdquo; page: tasks live in the project's
+    database, and every box here (and every table or list on a page) is a window onto it.
+  </div>
+</section>
+
+<!-- ================= an ordinary page ================= -->
+<section class="view" id="page">
+  <div class="doc">
+    <div class="crumb">Day Of Week</div>
+    <h1>Shot list</h1>
+    <p>Free text sits between the blocks. Write the plan for the week here, then drop in a table or a list that reads from the project's tasks.</p>
+
+    <div class="blk">
+      <div class="bh"><b>Shots</b><span>tasks where Type = Shot</span><span class="sp"></span><div class="seg"><span class="on">Table</span><span>List</span><span>Board</span></div></div>
+      <table>
+        <thead><tr><th>Name</th><th>Status</th><th>Assignee</th><th>Due</th></tr></thead>
+        <tbody>
+          <tr><td>shot_010</td><td><span class="pill p-green">Done</span></td><td>Lars</td><td>14 Nov</td></tr>
+          <tr><td>shot_020</td><td><span class="pill p-acc">In progress</span></td><td>Rita</td><td>18 Nov</td></tr>
+          <tr><td>shot_032</td><td><span class="pill p-amber">Overdue</span></td><td>Kristian</td><td>15 Nov</td></tr>
+          <tr><td style="color:var(--faint)">+ New row</td><td></td><td></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Open questions</h2>
+    <p>The same tasks can be shown again further down, filtered another way. Change one in either place and both update.</p>
+
+    <div class="blk">
+      <div class="bh"><b>Mine this week</b><span>tasks where Assignee = me</span><span class="sp"></span><div class="seg"><span>Table</span><span class="on">List</span><span>Board</span></div></div>
+      <div style="padding:10px 12px">
+        <div class="row"><span class="box"></span><div class="t"><b>shot_032</b><span>Due 15 Nov</span></div><span class="pill p-amber">Overdue</span></div>
+        <div class="row"><span class="box"></span><div class="t"><b>Grade pass on shots 010–040</b><span>Due today</span></div></div>
+      </div>
+    </div>
+
+    <p class="slash">Type <kbd>/</kbd> for a table, list, board, chart, number or clip</p>
+  </div>
+</section>
+
+</div>
+</main>
+
+<div class="mock">Mock-up, placeholder data. Click “Day Of Week” or “Shot list” in the sidebar.</div>
+
+<script>
+  document.querySelectorAll('[data-view]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('.view').forEach(function (v) { v.classList.toggle('on', v.id === b.dataset.view); });
+      document.querySelectorAll('.side .nav').forEach(function (n) { n.classList.remove('on'); });
+      b.classList.add('on');
+    });
+  });
+</script>
+</body>
+</html>
