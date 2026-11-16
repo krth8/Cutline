@@ -1,6 +1,8 @@
-import type { ComponentType } from 'react';
+import { useEffect, type ComponentType } from 'react';
 import { getPlatform } from '../platform';
-import { useRoute, type Route } from '../router';
+import { routeProjectId, useRoute, type Route } from '../router';
+import { ActivityPanel } from './ActivityPanel';
+import { tabOf } from './ProjectTabs';
 import { useRouteView } from './registry';
 import './shell.css';
 
@@ -56,6 +58,12 @@ function MainView({ route }: { route: Route }) {
 export function Shell() {
   const route = useRoute();
   const user = getPlatform().user();
+  // The Home tab has the activity panel on its right; the grid of projects and pages outside the tabs do not
+  const hasPanel = !!user && tabOf(route) === 'main';
+  useEffect(() => {
+    const layout = document.getElementById('clLayout');
+    if (layout) layout.dataset.homePanel = hasPanel ? '1' : '0';
+  }, [hasPanel]);
   if (!user) {
     return (
       <div className="cl-shell" data-testid="cl-shell">
@@ -70,6 +78,7 @@ export function Shell() {
       <main className="cl-main" id="cl-main" tabIndex={-1}>
         <MainView route={route} />
       </main>
+      {hasPanel ? <ActivityPanel projectId={routeProjectId(route)} /> : null}
     </div>
   );
 }

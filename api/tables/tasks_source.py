@@ -348,7 +348,7 @@ class TasksSource(TableSource):
                 siblings = [t.get("sortOrder") or 0 for t in tasks.values()
                             if t["projectId"] == task["projectId"] and t.get("parentId") == parent_id]
                 fields["sortOrder"] = (max(siblings) + 1) if siblings else 0
-        await task_api.update_task_record(task, fields)
+        await task_api.update_task_record(task, fields, actor=principal)
         return self._one_row(principal, row_id)
 
     async def delete_row(self, principal: dict, row_id: str) -> None:

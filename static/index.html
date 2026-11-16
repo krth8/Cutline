@@ -49,7 +49,7 @@
     <link rel="stylesheet" href="/static/css/theme.css">
     <link rel="stylesheet" href="/static/css/main.css?v=197">
     <link rel="stylesheet" href="/static/css/comment-tasks.css?v=2">
-    <link rel="stylesheet" href="/static/css/nav-layout.css?v=2">
+    <link rel="stylesheet" href="/static/css/nav-layout.css?v=3">
     <link rel="stylesheet" href="/static/dist/pages.css">
 </head>
 <body>
@@ -786,6 +786,10 @@
                 <button class="notifications-btn hidden" id="searchBtn" style="width:auto;gap:6px;padding:0 10px;font-size:12px" title="Search and commands" onclick="window.dispatchEvent(new CustomEvent('cutline:open-search'))">
                     <svg class="icon" style="width:16px;height:16px"><use href="/static/icons.svg#icon-search"/></svg><span class="header-search-label">Search</span> <kbd id="searchBtnKey" style="font:inherit;opacity:.7">Ctrl+K</kbd>
                 </button>
+                <!-- The right panel (comments, people or activity) on and off: static/js/features/panel.js -->
+                <button class="notifications-btn panel-toggle-btn hidden" id="panelToggleBtn" aria-pressed="true" title="Hide panel" onclick="RightPanel.toggle()">
+                    <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M10 3v10"/></svg>
+                </button>
                 <!-- Notifications -->
                 <div class="notifications-menu" id="notificationsMenu">
                     <button class="notifications-btn" id="notificationsBtn" onclick="toggleNotificationsPanel()">
@@ -1252,13 +1256,14 @@
     <script src="/static/js/modules/docs/docMerge.js"></script>
     <script src="/static/js/modules/docs/DocsModule.js?v=11"></script>
     <!-- Lounge Module -->
-    <script src="/static/js/modules/lounge/LoungeModule.js?v=6"></script>
+    <script src="/static/js/modules/lounge/LoungeModule.js?v=7"></script>
     <!-- Feature modules -->
     <script src="/static/js/features/settingsUI.js?v=2"></script>
     <script src="/static/js/features/routes.js?v=6"></script>
     <script src="/static/js/features/navigation.js?v=21"></script>
     <script src="/static/js/features/usersAdmin.js?v=2"></script>
     <script src="/static/js/features/push.js?v=1"></script>
+    <script src="/static/js/features/panel.js?v=1"></script>
     <!-- Main application -->
     <script src="/static/js/app.js?v=83"></script>
     <script src="/static/js/video-player.js?v=31"></script>

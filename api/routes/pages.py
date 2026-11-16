@@ -4,6 +4,7 @@ import math
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from api.activity import page_created
 from api.auth import can_access_space, can_edit_page, can_read_page, require_auth
 from api.events import live
 from api.pagesync import close_rooms_without_access, close_unavailable_rooms
@@ -145,6 +146,7 @@ async def create_page(space: str, data: dict, user: dict = Depends(require_auth)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     await _notify(page, "created")
+    await page_created(user, page)
     return _body(page, user)
 
 

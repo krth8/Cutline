@@ -59,6 +59,7 @@ function switchTab(tabName, options) {
 
     // Update app data attribute (for CSS styling)
     app.dataset.view = tabName;
+    if (typeof RightPanel !== 'undefined') RightPanel.apply();
 
     // Update tab active states
     tabs.forEach(tab => {

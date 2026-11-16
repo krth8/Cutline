@@ -27,6 +27,7 @@ from database.task_trash import (
     db_soft_delete_tasks,
     db_trashed_descendants,
 )
+from api import activity
 from api.auth import Permission, can_edit_tasks, has_permission, require_auth
 from api.events import live
 from api.state import projects, tasks
@@ -145,12 +146,15 @@ async def create_task_record(user: dict, project_id: str, data: dict, link: Opti
 
     await live.to_project(project_id, {"type": "task_created", "task": full_task or task}, tasks_only=True)
     await rows_changed(project_id, [task["id"]], "created")
+    await activity.task_created(user, full_task or task)
     return full_task or task
 
 
-async def update_task_record(task: dict, data: dict) -> dict:
-    """Apply the given API fields (name, statusId, assigneeIds, ...) to a task."""
+async def update_task_record(task: dict, data: dict, actor: Optional[dict] = None) -> dict:
+    """Apply the given API fields (name, statusId, assigneeIds, ...) to a task. `actor` is who did it, for
+    the activity log."""
     task_id = task["id"]
+    before = dict(task)
 
     # API field -> database column
     field_mapping = {
@@ -194,6 +198,7 @@ async def update_task_record(task: dict, data: dict) -> dict:
 
     await live.to_project(task["projectId"], {"type": "task_updated", "task": task}, tasks_only=True)
     await rows_changed(task["projectId"], [task_id], "updated")
+    await activity.task_changed(actor, before, task)
     return task
 
 
@@ -413,7 +418,7 @@ async def update_task(task_id: str, data: dict, user: dict = Depends(require_aut
     if not can_edit_tasks(user, task["projectId"]):
         raise HTTPException(status_code=403, detail="Task access denied for this project")
 
-    task = await update_task_record(task, data)
+    task = await update_task_record(task, data, actor=user)
     return {"task": task}
 
 

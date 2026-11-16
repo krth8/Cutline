@@ -101,7 +101,8 @@ from api.config import (
 )
 from api.media import process_image, safe_upload_name
 from api.comment_export import FORMATS as EXPORT_FORMATS, export_comments
-from api.comment_notify import notify_about_comment
+from api.activity import comment_added
+from api.comment_notify import comment_link, notify_about_comment
 from api.state import (
     WS_ACCESS_REMOVED,
     clip_locks,
@@ -2234,8 +2235,11 @@ async def add_comment(session_id: str, data: dict, request: Request, principal: 
     try:
         parent = next((c for c in projects[project_id]["comments"] if c.get("id") == parent_id), None) if parent_id else None
         writer_id = None if principal.get("is_guest") else principal["id"]
-        for notification in await asyncio.to_thread(notify_about_comment, project_id, comment, parent, writer_id):
+        told = await asyncio.to_thread(notify_about_comment, project_id, comment, parent, writer_id)
+        for notification in told:
             await live.to_user(notification["userId"], {"type": "notification", "notification": notification})
+        await comment_added(principal, project_id, comment, comment_link(project_id, comment),
+                            [n["userId"] for n in told])
     except Exception as exc:  # a comment never fails over its notifications
         print(f"Could not notify about comment {comment['id']}: {exc}")
 

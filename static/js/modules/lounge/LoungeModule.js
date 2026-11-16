@@ -408,7 +408,7 @@ const LoungeModule = {
                 <aside class="lounge-sidebar-right">
                     <div class="lounge-online-section">
                         <div class="lounge-online-header">
-                            <span>Online</span>
+                            <span>People</span>
                             <span class="lounge-online-count">${this.onlineUsers.length}</span>
                         </div>
                         <div class="lounge-online-list" id="loungeOnlineList">

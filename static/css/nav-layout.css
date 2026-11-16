@@ -46,6 +46,23 @@
 .app .sidebar-left,
 #toggleProjectsBtn { display: none !important; }
 
+/* The right panel: one button in the header for all three tabs (static/js/features/panel.js) */
+#toggleCommentsBtn { display: none !important; }
+.panel-toggle-btn.active { color: var(--accent-light); background: var(--accent-bg-strong); }
+.panel-toggle-btn .icon { fill: none; }
+.cl-layout[data-home-panel="0"] .app[data-view="pages"] #panelToggleBtn { display: none; }
+
+/* Lounge: the people, in the same container and width as the comments of Review */
+.lounge-sidebar-right { width: var(--sidebar-right); background: var(--bg-panel); }
+.cl-layout.panel-off-lounge .lounge-sidebar-right { display: none; }
+.lounge-sidebar-right .lounge-online-section { padding: 14px 16px; }
+.lounge-sidebar-right .lounge-online-header { font-size: 14px; font-weight: 650; text-transform: none; color: var(--text); margin-bottom: 12px; }
+.lounge-sidebar-right .lounge-online-count { background: none; color: var(--text-muted); font-size: 12px; font-weight: 500; padding: 0; }
+.lounge-sidebar-right .lounge-online-count::after { content: " online"; }
+@media (max-width: 1000px) {
+    .lounge-sidebar-right { display: none; }
+}
+
 /* Old task list (localStorage.legacyTasks): the sidebar picks the project, so its own list and grid go */
 .cl-layout.has-nav .projects-sidebar,
 .cl-layout.has-nav #projectsBackBtn { display: none; }
