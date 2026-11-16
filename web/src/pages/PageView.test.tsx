@@ -280,6 +280,37 @@ describe('menu', () => {
   });
 });
 
+describe('export menu', () => {
+  it('downloads the page as Markdown, with and without sub-pages', async () => {
+    const user = userEvent.setup();
+    const hrefs: string[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      hrefs.push(this.getAttribute('href') ?? '');
+    });
+    render(<PageView route={route} />);
+    await user.click(await screen.findByRole('button', { name: 'Page menu' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Export as Markdown' }));
+    await user.click(screen.getByRole('button', { name: 'Page menu' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Export as Markdown with sub-pages' }));
+    expect(hrefs).toEqual(['/api/pages/P2/export?format=md', '/api/pages/P2/export?format=md&subpages=1']);
+    click.mockRestore();
+  });
+
+  it('Print / Save as PDF calls window.print and restores the page afterwards', async () => {
+    const user = userEvent.setup();
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {
+      expect(document.documentElement.classList.contains('cl-print-page')).toBe(true);
+    });
+    render(<PageView route={route} />);
+    await user.click(await screen.findByRole('button', { name: 'Page menu' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Print / Save as PDF' }));
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    window.dispatchEvent(new Event('afterprint'));
+    expect(document.documentElement.classList.contains('cl-print-page')).toBe(false);
+    print.mockRestore();
+  });
+});
+
 describe('read-only', () => {
   beforeEach(() => {
     current = infoOf(tree[2]!, { canEdit: false });
@@ -292,7 +323,13 @@ describe('read-only', () => {
     expect(screen.queryByRole('textbox', { name: 'Page title' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add icon' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Page menu' }));
-    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['History', 'Copy link']);
+    expect(screen.getAllByRole('menuitem').map((m) => m.textContent)).toEqual([
+      'History',
+      'Export as Markdown',
+      'Export as Markdown with sub-pages',
+      'Print / Save as PDF',
+      'Copy link',
+    ]);
   });
 
   it('passes editable=false to the body', async () => {

@@ -1,5 +1,6 @@
 /** The commands that ship with the palette. Each one calls an existing function or API. */
 import { createPage } from '../api/pageTree';
+import { exportPageMarkdown, printPage } from '../export';
 import { createRow } from '../api/tables';
 import { setHomePage } from '../pages/home/homeStore';
 import { getPlatform } from '../platform';
@@ -107,6 +108,24 @@ export function registerBuiltinCommands(): void {
     async run(ctx) {
       if (ctx.route.kind === 'mePage') await setHomePage(ctx.route.pageId);
     },
+  });
+
+  registerCommand({
+    id: 'export-page-md',
+    title: 'Export page as Markdown',
+    keywords: ['download', 'md', 'save'],
+    when: (ctx) => ctx.route.kind === 'mePage' || ctx.route.kind === 'projectPage',
+    run(ctx) {
+      if (ctx.route.kind === 'mePage' || ctx.route.kind === 'projectPage') exportPageMarkdown(ctx.route.pageId, false);
+    },
+  });
+
+  registerCommand({
+    id: 'print-page',
+    title: 'Print page',
+    keywords: ['pdf', 'save as pdf', 'export'],
+    when: (ctx) => ctx.route.kind === 'mePage' || ctx.route.kind === 'projectPage',
+    run: () => printPage(),
   });
 
   registerCommand({

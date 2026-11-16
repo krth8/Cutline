@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { getPlatform } from '../platform';
+import { viewExportItem } from '../export';
 import { Input, cx, type MenuItem } from '../ui';
 import { useAddProject } from './addProject';
 import { getViewSource, toLayoutProps, useView } from './store';
@@ -152,7 +153,7 @@ export function ViewShell({
         add={view.tableRef === 'tasks:*' ? add : undefined}
         onTrash={canUseTrash(view.tableRef) ? () => setTrashOpen(true) : undefined}
         nest={nestable ? { checked: nested, onChange: toggleNest } : undefined}
-        menuItems={menuItems}
+        menuItems={[...(menuItems ?? []), viewExportItem(view)]}
       />
       {canUseTrash(view.tableRef) && (
         <TrashDialog tableRef={view.tableRef} open={trashOpen} onClose={() => setTrashOpen(false)} />

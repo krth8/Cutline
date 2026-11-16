@@ -20,6 +20,7 @@ import { getPlatform } from '../platform';
 import { Backlinks } from './backlinks';
 import { setHomePage, useHomePageId } from './home/homeStore';
 import { buildRoute, navigate, type Route } from '../router';
+import { pageExportItems } from '../export';
 import { Avatar, Button, cx, Menu, Popover, type MenuItem } from '../ui';
 import {
   consumeTitleFocus,
@@ -382,6 +383,7 @@ function PageViewInner({ space, pageId }: { space: SpaceKey; pageId: string }) {
     items.push({ id: 'duplicate', label: 'Duplicate', onSelect: () => void duplicateAndOpen(space, pageId) });
     items.push({ id: 'save-template', label: 'Save as template...', onSelect: () => setTemplateOpen(true) });
   }
+  items.push(...pageExportItems(pageId));
   items.push({
     id: 'copy',
     label: 'Copy link',
