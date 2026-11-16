@@ -1,17 +1,21 @@
 /**
- * The sidebar. It stays on screen for every route, including the legacy Review and Lounge views.
- * Outside a project it lists Home, the personal pages and the projects. Inside a project it shows that
- * project's pages only: Review, Tasks, Pages and Lounge are the tabs of the header (ProjectTabs).
+ * The sidebar. It stays on screen for every route, including the legacy Review and Lounge views, and
+ * always lists Home, the personal pages and every project the user has access to, each with Tasks and its
+ * pages. Choosing a project here decides what the tabs of the header (Main, Review, Lounge) show.
  */
-import { type MouseEvent, type ReactNode } from 'react';
+import { useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { getPlatform } from '../platform';
 import { buildRoute, navigate, routeProjectId, type Route } from '../router';
 import { openSearch, shortcutLabel } from '../search';
-import { Button, cx } from '../ui';
+import { Button, cx, Menu } from '../ui';
+import { usePageStore } from '../pages/tree/space';
+import { useOpenProjects } from './navState';
+import { projectMenuItems } from './projectMenu';
+import { tabOf, tabRoute } from './ProjectTabs';
 import { useSidebarSections, type Space } from './registry';
 import './sidebar.css';
 
-type IconName = 'search' | 'home' | 'projects' | 'lounge' | 'plus';
+type IconName = 'search' | 'home' | 'projects' | 'tasks' | 'plus';
 
 /** Small line icons, drawn in the text colour. */
 function Icon({ name }: { name: IconName }) {
@@ -39,10 +43,11 @@ function Icon({ name }: { name: IconName }) {
           <rect x="9" y="9" width="5" height="4.5" rx="1" />
         </svg>
       );
-    case 'lounge':
+    case 'tasks':
       return (
         <svg {...common}>
-          <path d="M2.5 3.5h11v7h-6L4.5 13v-2.5h-2z" />
+          <rect x="2" y="2" width="12" height="12" rx="2.5" />
+          <path d="M5 8.2l2.1 2.1L11 6" />
         </svg>
       );
     case 'plus':
@@ -102,6 +107,89 @@ function SectionSlots({ space, route }: { space: Space; route: Route }) {
   );
 }
 
+/** The project's Tasks entry, first among its pages. It is also current while the project's Tasks page or a task view is open. */
+function TasksLink({ projectId, route }: { projectId: string; route: Route }) {
+  const { snap } = usePageStore(`p:${projectId}`);
+  const inProject = routeProjectId(route) === projectId;
+  const onTasksPage = route.kind === 'projectPage' && inProject && snap.model.byId.get(route.pageId)?.page.system === 'tasks';
+  const active = inProject && (route.kind === 'projectTasks' || route.kind === 'projectView' || onTasksPage);
+  return (
+    <NavLink to={{ kind: 'projectTasks', projectId }} active={active} indent testId="nav-tasks">
+      <Icon name="tasks" />
+      <span className="cl-nav__label">Tasks</span>
+    </NavLink>
+  );
+}
+
+type SidebarProject = ReturnType<ReturnType<typeof getPlatform>['projects']>[number];
+
+/**
+ * One project: its name opens it in the tab that is showing (Main, Review or Lounge); under it are Tasks
+ * and its pages.
+ */
+function ProjectItem({ project, route, open, onOpenChange }: { project: SidebarProject; route: Route; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const current = routeProjectId(route) === project.id;
+  const onOverview = route.kind === 'projectPages' && current;
+  const panelId = `cl-project-${project.id}`;
+  const moreRef = useRef<HTMLButtonElement | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const items = projectMenuItems(project);
+  const target = tabRoute(tabOf(route), project.id);
+
+  return (
+    <li className="cl-nav__project" data-project-id={project.id}>
+      <div className={cx('cl-nav__projectrow', current && 'is-current', onOverview && 'is-active', menuOpen && 'is-menu-open')}>
+        <button
+          type="button"
+          className={cx('cl-nav__chevron', open && 'is-open')}
+          aria-expanded={open}
+          aria-controls={panelId}
+          aria-label={`${open ? 'Collapse' : 'Expand'} ${project.name}`}
+          onClick={() => onOpenChange(!open)}
+        >
+          &#9656;
+        </button>
+        <a
+          href={buildRoute(target)}
+          className="cl-nav__projectname"
+          data-testid="nav-project"
+          aria-current={onOverview ? 'page' : undefined}
+          onClick={(e) => {
+            if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            e.preventDefault();
+            onOpenChange(true);
+            navigate(target);
+          }}
+        >
+          {project.name}
+        </a>
+        {items.length ? (
+          <button
+            ref={moreRef}
+            type="button"
+            className="cl-nav__more"
+            aria-haspopup="menu"
+            aria-label={`Actions for ${project.name}`}
+            title="Project actions"
+            onClick={() => setMenuOpen(true)}
+          >
+            &hellip;
+          </button>
+        ) : null}
+      </div>
+      {items.length ? (
+        <Menu open={menuOpen} onOpenChange={setMenuOpen} anchorRef={moreRef} items={items} placement="bottom-start" aria-label={`${project.name} actions`} />
+      ) : null}
+      {open ? (
+        <div id={panelId} className="cl-nav__children">
+          {project.canTasks ? <TasksLink projectId={project.id} route={route} /> : null}
+          <SectionSlots space={{ kind: 'project', projectId: project.id }} route={route} />
+        </div>
+      ) : null}
+    </li>
+  );
+}
+
 function RailLink({ to, active, label, icon }: { to: Route; active: boolean; label: string; icon: IconName }) {
   return (
     <a
@@ -135,7 +223,6 @@ function Rail({ route, onToggle }: { route: Route; onToggle: () => void }) {
         </button>
         <RailLink to={{ kind: 'home' }} active={route.kind === 'home'} label="Home" icon="home" />
         <RailLink to={{ kind: 'projects' }} active={route.kind === 'projects'} label="Projects" icon="projects" />
-        <RailLink to={{ kind: 'lounge' }} active={route.kind === 'lounge' && !route.projectId} label="Lounge" icon="lounge" />
       </div>
     </>
   );
@@ -155,9 +242,9 @@ export function Sidebar({
 }) {
   const platform = getPlatform();
   const projects = platform.projects();
+  const user = platform.user();
   const tools = platform.projectTools;
-  const projectId = routeProjectId(route);
-  const project = projectId ? projects.find((p) => p.id === projectId) : undefined;
+  const open = useOpenProjects(user?.id ?? 'anonymous', routeProjectId(route));
 
   return (
     <aside className={cx('cl-sidebar', collapsed && 'is-collapsed', drawer && 'is-drawer')} data-testid="cl-sidebar">
@@ -202,60 +289,31 @@ export function Sidebar({
               <Icon name="home" />
               <span className="cl-nav__label">Home</span>
             </NavLink>
-            {projectId ? (
-              <NavLink to={{ kind: 'projects' }} active={false} testId="nav-projects">
-                <Icon name="projects" />
-                <span className="cl-nav__label">All projects</span>
-              </NavLink>
-            ) : null}
 
-            {projectId ? (
-              <div className="cl-nav__project" data-project-id={projectId} data-testid="nav-project-pages">
-                <NavLink to={{ kind: 'projectPages', projectId }} active={route.kind === 'projectPages'} className="cl-nav__heading" testId="nav-project-heading">
-                  {project?.name ?? 'Project'}
-                </NavLink>
-                <SectionSlots space={{ kind: 'project', projectId }} route={route} />
-              </div>
+            <NavLink to={{ kind: 'me' }} active={route.kind === 'me' || route.kind === 'mePage'} className="cl-nav__heading" testId="nav-personal">
+              Personal
+            </NavLink>
+            <SectionSlots space={{ kind: 'personal' }} route={route} />
+
+            <NavLink to={{ kind: 'projects' }} active={route.kind === 'projects'} className="cl-nav__heading" testId="nav-projects">
+              Projects
+            </NavLink>
+            {projects.length === 0 ? (
+              <div className="cl-nav__empty">No projects</div>
             ) : (
-              <>
-                <NavLink to={{ kind: 'me' }} active={route.kind === 'me' || route.kind === 'mePage'} className="cl-nav__heading" testId="nav-personal">
-                  Personal
-                </NavLink>
-                <SectionSlots space={{ kind: 'personal' }} route={route} />
-
-                <NavLink to={{ kind: 'projects' }} active={route.kind === 'projects'} className="cl-nav__heading" testId="nav-projects-heading">
-                  Projects
-                </NavLink>
-                {projects.length === 0 ? (
-                  <div className="cl-nav__empty">No projects</div>
-                ) : (
-                  <ul className="cl-nav__projects">
-                    {projects.map((p) => (
-                      <li key={p.id} className="cl-nav__project" data-project-id={p.id}>
-                        <NavLink to={{ kind: 'review', projectId: p.id }} active={false} testId="nav-project">
-                          <span className="cl-nav__label">{p.name}</span>
-                        </NavLink>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {tools?.canCreate() ? (
-                  <button type="button" className="cl-nav__item cl-nav__newproject" data-testid="new-project" onClick={() => tools.create()}>
-                    <Icon name="plus" />
-                    <span className="cl-nav__label">New project</span>
-                  </button>
-                ) : null}
-              </>
+              <ul className="cl-nav__projects">
+                {projects.map((p) => (
+                  <ProjectItem key={p.id} project={p} route={route} open={open.isOpen(p.id)} onOpenChange={(o) => open.set(p.id, o)} />
+                ))}
+              </ul>
             )}
+            {tools?.canCreate() ? (
+              <button type="button" className="cl-nav__item cl-nav__newproject" data-testid="new-project" onClick={() => tools.create()}>
+                <Icon name="plus" />
+                <span className="cl-nav__label">New project</span>
+              </button>
+            ) : null}
           </nav>
-          {projectId ? null : (
-            <div className="cl-sidebar__foot">
-              <NavLink to={{ kind: 'lounge' }} active={route.kind === 'lounge'} testId="nav-lounge">
-                <Icon name="lounge" />
-                <span className="cl-nav__label">Lounge</span>
-              </NavLink>
-            </div>
-          )}
         </>
       )}
     </aside>

@@ -1,38 +1,28 @@
 /**
- * The open project and its tabs, shown in the header on every screen of a project: Review, Tasks, Pages
- * and Lounge. Choosing a project (the Projects grid) decides what all four show.
+ * The three tabs of the header, on every screen: Main (pages and tasks), Review and Lounge.
+ *
+ * Which project they show is chosen in the sidebar. With a project open each tab shows that project;
+ * with none, Main is Home, Review is the grid of projects and Lounge is the general Lounge.
  */
-import { useRef, useState, type MouseEvent, type ReactNode } from 'react';
-import { usePageStore } from '../pages/tree/space';
-import { getPlatform } from '../platform';
+import type { MouseEvent, ReactNode } from 'react';
 import { buildRoute, navigate, routeProjectId, type Route } from '../router';
-import { cx, Menu } from '../ui';
-import { projectMenuItems } from './projectMenu';
+import { cx } from '../ui';
 import './projectTabs.css';
 
-type TabId = 'review' | 'tasks' | 'pages' | 'lounge';
+export type TabId = 'main' | 'review' | 'lounge';
 
-/** Which tab a route of this project belongs to. `onTasksPage`: the open page is the project's Tasks page. */
-export function tabOf(route: Route, onTasksPage: boolean): TabId | null {
-  switch (route.kind) {
-    case 'review':
-      return 'review';
-    case 'projectTasks':
-    case 'projectView':
-      return 'tasks';
-    case 'projectPage':
-      return onTasksPage ? 'tasks' : 'pages';
-    case 'projectPages':
-      return 'pages';
-    case 'lounge':
-      return 'lounge';
-    default:
-      return null;
-  }
+/** Which tab a route belongs to: Review and Lounge have their own screens, everything else is Main. */
+export function tabOf(route: Route): TabId {
+  if (route.kind === 'review' || route.kind === 'projects') return 'review';
+  if (route.kind === 'lounge') return 'lounge';
+  return 'main';
 }
 
-function plainClick(e: MouseEvent<HTMLAnchorElement>): boolean {
-  return !(e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
+/** Where a tab leads: into the open project, or to its general screen when no project is open. */
+export function tabRoute(tab: TabId, projectId: string | null): Route {
+  if (tab === 'review') return projectId ? { kind: 'review', projectId } : { kind: 'projects' };
+  if (tab === 'lounge') return projectId ? { kind: 'lounge', projectId } : { kind: 'lounge' };
+  return projectId ? { kind: 'projectPages', projectId } : { kind: 'home' };
 }
 
 function Tab({ id, to, active, children }: { id: TabId; to: Route; active: boolean; children: ReactNode }) {
@@ -42,8 +32,8 @@ function Tab({ id, to, active, children }: { id: TabId; to: Route; active: boole
       className={cx('cl-ptabs__tab', active && 'is-active')}
       aria-current={active ? 'page' : undefined}
       data-testid={`tab-${id}`}
-      onClick={(e) => {
-        if (!plainClick(e)) return;
+      onClick={(e: MouseEvent<HTMLAnchorElement>) => {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         e.preventDefault();
         navigate(to);
       }}
@@ -53,77 +43,22 @@ function Tab({ id, to, active, children }: { id: TabId; to: Route; active: boole
   );
 }
 
-function Tabs({ projectId, route }: { projectId: string; route: Route }) {
-  const platform = getPlatform();
-  const project = platform.projects().find((p) => p.id === projectId);
-  const { snap } = usePageStore(`p:${projectId}`);
-  const moreRef = useRef<HTMLButtonElement | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const onTasksPage = route.kind === 'projectPage' && snap.model.byId.get(route.pageId)?.page.system === 'tasks';
-  const current = tabOf(route, onTasksPage);
-  const name = project?.name ?? 'Project';
-  const items = project ? projectMenuItems(project) : [];
-
+export function ProjectTabs({ route }: { route: Route }) {
+  const projectId = routeProjectId(route);
+  const current = tabOf(route);
   return (
-    <nav className="cl-ptabs" aria-label="Project" data-testid="project-tabs" data-project-id={projectId}>
-      <a
-        href="/projects"
-        className="cl-ptabs__back"
-        data-testid="tabs-projects"
-        title="All projects"
-        onClick={(e) => {
-          if (!plainClick(e)) return;
-          e.preventDefault();
-          navigate({ kind: 'projects' });
-        }}
-      >
-        Projects
-      </a>
-      <span className="cl-ptabs__sep" aria-hidden="true">
-        /
-      </span>
-      <span className="cl-ptabs__name" data-testid="tabs-project-name" title={name}>
-        {name}
-      </span>
-      {items.length ? (
-        <>
-          <button
-            ref={moreRef}
-            type="button"
-            className="cl-ptabs__more"
-            aria-haspopup="menu"
-            aria-label={`Actions for ${name}`}
-            title="Project actions"
-            onClick={() => setMenuOpen(true)}
-          >
-            &hellip;
-          </button>
-          <Menu open={menuOpen} onOpenChange={setMenuOpen} anchorRef={moreRef} items={items} placement="bottom-start" aria-label={`${name} actions`} />
-        </>
-      ) : null}
+    <nav className="cl-ptabs" aria-label="Sections" data-testid="project-tabs" {...(projectId ? { 'data-project-id': projectId } : {})}>
       <div className="cl-ptabs__tabs">
-        <Tab id="review" to={{ kind: 'review', projectId }} active={current === 'review'}>
+        <Tab id="main" to={tabRoute('main', projectId)} active={current === 'main'}>
+          Main
+        </Tab>
+        <Tab id="review" to={tabRoute('review', projectId)} active={current === 'review'}>
           Review
         </Tab>
-        {project?.canTasks ? (
-          <Tab id="tasks" to={{ kind: 'projectTasks', projectId }} active={current === 'tasks'}>
-            Tasks
-          </Tab>
-        ) : null}
-        <Tab id="pages" to={{ kind: 'projectPages', projectId }} active={current === 'pages'}>
-          Pages
-        </Tab>
-        <Tab id="lounge" to={{ kind: 'lounge', projectId }} active={current === 'lounge'}>
+        <Tab id="lounge" to={tabRoute('lounge', projectId)} active={current === 'lounge'}>
           Lounge
         </Tab>
       </div>
     </nav>
   );
-}
-
-/** Nothing outside a project (Home, the personal space, the Projects grid, the general Lounge). */
-export function ProjectTabs({ route }: { route: Route }) {
-  const projectId = routeProjectId(route);
-  if (!projectId) return null;
-  return <Tabs key={projectId} projectId={projectId} route={route} />;
 }
