@@ -555,7 +555,8 @@ def page_list_md(ctx: PageContext, attrs: dict) -> str:
         limit = 8
     user = ctx.user
     if scope == "all":
-        project_ids = [p["id"] for p in db_list_accessible_projects(user["id"]) if p["id"] in projects]
+        project_ids = [p["id"] for p in db_list_accessible_projects(user["id"])
+                       if p["id"] in projects and p.get("canTasks", True)]  # pages are part of the Main tab
         pages = db_recent_pages("all", project_ids, user["id"], limit)
     elif scope == "me":
         pages = db_recent_pages("personal", [], user["id"], limit)

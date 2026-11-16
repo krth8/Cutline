@@ -81,6 +81,17 @@ def close_setup(page):
     page.wait_for_selector("[data-testid=chart-setup]", state="detached")
 
 
+def refused(server, username, page_id):
+    """The status the page API gives this user (review alone does not read pages; they are the Main tab)."""
+    from e2e.e2e_support import PASSWORD, ApiError
+    token = server.api("/api/auth/login", {"username": username, "password": PASSWORD}, token="")["token"]
+    try:
+        server.api(f"/api/pages/{page_id}", token=token)
+    except ApiError as e:
+        return e.status
+    return 200
+
+
 @pytest.fixture(scope="module")
 def scene(server, new_page, tmp_path_factory):
     ids = {name: server.create_user(name) for name in ("alice", "bob", "carol")}
@@ -239,14 +250,7 @@ def test_screenshots_of_every_chart_in_both_themes(scene):
     assert len(list(scene["shots"].glob("*.png"))) == 9
 
 
-def test_a_user_without_task_access_sees_a_quiet_message(scene, server, new_page):
-    carol = new_page(name="carol")
-    open_page(carol, server, scene["page"], "carol")
-    carol.wait_for_selector(f"{CHART} [data-testid=chart-state][data-state=denied]", timeout=15000)
-    wait_for(lambda: carol.locator("[data-testid=chart-state][data-state=denied]").count() == 3)
-    assert "You don't have access to this view" in carol.inner_text(CHART + " >> nth=0")
-    assert carol.locator("[role=alert]").count() == 0
-    assert carol.locator(".toast, .toast-container .toast").count() == 0
-    assert carol.locator("[data-testid=chart-settings-btn]").count() == 0
-    carol.click(CHART)
-    assert carol.locator("[data-testid=chart-setup]").count() == 0
+def test_someone_with_review_only_cannot_open_the_page(scene, server):
+    # Pages and tasks are one tab (Main): without it the page is closed, so there is no half-readable state here.
+    # How a block looks when its view is closed to the reader is covered by the unit tests of the block.
+    assert refused(server, "carol", scene["page"]) == 403

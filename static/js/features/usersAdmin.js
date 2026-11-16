@@ -112,13 +112,14 @@ const UsersAdmin = (() => {
                         <span>${escapeHtml(p.name)}</span>
                         ${owner ? '<span class="access-owner">Owner</span>' : ''}
                     </label>
+                    <label class="access-flag"><input type="checkbox" data-action="tasks" ${a?.canTasks ? 'checked' : ''} ${a ? '' : 'disabled'}> Main</label>
                     <label class="access-flag"><input type="checkbox" data-action="review" ${a?.canReview ? 'checked' : ''} ${a ? '' : 'disabled'}> Review</label>
-                    <label class="access-flag"><input type="checkbox" data-action="tasks" ${a?.canTasks ? 'checked' : ''} ${a ? '' : 'disabled'}> Tasks</label>
+                    <label class="access-flag"><input type="checkbox" data-action="lounge" ${a?.canLounge !== false && a ? 'checked' : ''} ${a ? '' : 'disabled'}> Lounge</label>
                 </div>`;
         }).join('');
         return `
             <div class="access-list">${rows}</div>
-            <div class="user-access-note">Review covers clips and comments. Tasks covers the task list and docs.</div>`;
+            <div class="user-access-note">One switch per tab. Main is the project's pages and tasks, Review its clips and comments, Lounge its chat. A person sees only the tabs they have.</div>`;
     }
 
     async function changeRole(user, select) {
@@ -159,7 +160,7 @@ const UsersAdmin = (() => {
         if (action === 'access' && checkbox.checked) {
             res = await API.request(`/projects/${projectId}/access`, {
                 method: 'POST',
-                body: JSON.stringify({ userId: user.id, canReview: true, canTasks: false }),
+                body: JSON.stringify({ userId: user.id, canReview: true, canTasks: false, canLounge: true }),
             });
         } else if (action === 'access') {
             res = await API.request(`/projects/${projectId}/access/${user.id}`, { method: 'DELETE' });
@@ -169,6 +170,7 @@ const UsersAdmin = (() => {
                 body: JSON.stringify({
                     canReview: action === 'review' ? checkbox.checked : !!current?.canReview,
                     canTasks: action === 'tasks' ? checkbox.checked : !!current?.canTasks,
+                    canLounge: action === 'lounge' ? checkbox.checked : current?.canLounge !== false,
                 }),
             });
         }

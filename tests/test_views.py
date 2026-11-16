@@ -137,8 +137,12 @@ def test_page_views_follow_the_page(api, admin, project, editor, make_user, gran
 
     reviewer = make_user()
     grant(project, reviewer["user"]["id"], can_review=True, can_tasks=False)
-    assert api("GET", f"/api/views/{view['id']}", reviewer).status_code == 200
+    assert api("GET", f"/api/views/{view['id']}", reviewer).status_code == 403  # review only: no pages, no views of them
     assert api("PATCH", f"/api/views/{view['id']}", reviewer, {"name": "x"}).status_code == 403
+    viewer = make_user("viewer")
+    grant(project, viewer["user"]["id"], can_review=True, can_tasks=True)
+    assert api("GET", f"/api/views/{view['id']}", viewer).status_code == 200  # reads with the Main tab
+    assert api("PATCH", f"/api/views/{view['id']}", viewer, {"name": "x"}).status_code == 403
 
 
 def test_personal_page_views_belong_to_the_page_owner(api, admin, make_user):

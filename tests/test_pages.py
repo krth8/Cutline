@@ -139,17 +139,18 @@ def test_project_page_permissions(client, team, admin):
     page = create(client, team["member"], team["space"], "Shared")
     pid = page["id"]
 
-    # Reading: any project access
-    for who in ("member", "reviewer", "viewer"):
+    # Reading: the Main tab of the project (can_tasks). Review alone does not read pages.
+    for who in ("member", "viewer"):
         res = client.get(f"/api/pages/{pid}", headers=auth(team[who]))
         assert res.status_code == 200, who
         assert client.get(f"/api/spaces/{team['space']}/pages", headers=auth(team[who])).status_code == 200
+    assert client.get(f"/api/pages/{pid}", headers=auth(team["reviewer"])).status_code == 403
+    assert client.get(f"/api/spaces/{team['space']}/pages", headers=auth(team["reviewer"])).status_code == 403
     assert client.get(f"/api/pages/{pid}", headers=auth(admin["token"])).status_code == 200
 
     # canEdit follows can_edit_tasks
     can_edit = lambda who: client.get(f"/api/pages/{pid}", headers=auth(team[who])).json()["canEdit"]
     assert can_edit("member") is True
-    assert can_edit("reviewer") is False
     assert can_edit("viewer") is False
 
     # Editing and creating: task access and not a viewer role

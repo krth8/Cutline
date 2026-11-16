@@ -429,6 +429,22 @@ def can_view_project(principal: Optional[dict], project_id: str) -> bool:
     return db_check_project_access(principal["id"], project_id)
 
 
+def can_use_review(principal: Optional[dict], project_id: str) -> bool:
+    """The Review tab: a user with can_review on the project, or the guest of a share link for it."""
+    if not principal or not project_id:
+        return False
+    if principal.get("is_guest"):
+        return principal.get("project_id") == project_id
+    return db_check_project_access(principal["id"], project_id, require_review=True)
+
+
+def can_use_lounge(principal: Optional[dict], project_id: str) -> bool:
+    """The Lounge tab: a logged-in user with can_lounge on the project."""
+    if not principal or not project_id or principal.get("is_guest"):
+        return False
+    return db_check_project_access(principal["id"], project_id, require_lounge=True)
+
+
 def can_edit_tasks(user: dict, project_id: str) -> bool:
     """Task access on the project and a role that may change things (viewers are read-only)."""
     return has_permission(user.get("role", "guest"), Permission.PROJECT_UPDATE) and         db_check_project_access(user["id"], project_id, require_tasks=True)
@@ -440,7 +456,7 @@ def can_access_space(principal: Optional[dict], space: str, write: bool = False)
     """May the principal read (or, with write, create pages in) a space: 'me' or 'p:<projectId>'?
 
     'me' is the caller's own personal space (admins are no exception). A project space is readable
-    with any access to the project, writable with can_edit_tasks. Share-link guests never get in.
+    with the Main tab of the project (can_tasks), writable with can_edit_tasks. Share-link guests never get in.
     """
     if not principal or principal.get("is_guest"):
         return False
@@ -451,18 +467,16 @@ def can_access_space(principal: Optional[dict], space: str, write: bool = False)
     project_id = space[2:]
     if write:
         return can_edit_tasks(principal, project_id)
-    return db_check_project_access(principal["id"], project_id)
+    return db_check_project_access(principal["id"], project_id, require_tasks=True)
 
 
 def can_read_page(principal: Optional[dict], page: dict) -> bool:
-    """Personal pages: the owner only. Project pages: any project access. Task pages: task access."""
+    """Personal pages: the owner only. Project pages and task pages: the Main tab of the project (can_tasks)."""
     if not principal or principal.get("is_guest"):
         return False
     if page["spaceType"] == "personal":
         return page["ownerId"] == principal["id"]
-    if page["kind"] == "task":
-        return db_check_project_access(principal["id"], page["projectId"], require_tasks=True)
-    return db_check_project_access(principal["id"], page["projectId"])
+    return db_check_project_access(principal["id"], page["projectId"], require_tasks=True)
 
 
 def can_edit_page(principal: Optional[dict], page: dict) -> bool:
@@ -513,6 +527,15 @@ def require_project_viewer(principal: Optional[dict], project_id: str) -> dict:
     if principal is None:
         raise HTTPException(status_code=401, detail="Authentication required")
     if not can_view_project(principal, project_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+    return principal
+
+
+def require_project_reviewer(principal: Optional[dict], project_id: str) -> dict:
+    """Raise 401/403 unless principal may use the Review of project_id (can_review, or the guest of its share link)."""
+    if principal is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    if not can_use_review(principal, project_id):
         raise HTTPException(status_code=403, detail="Access denied")
     return principal
 

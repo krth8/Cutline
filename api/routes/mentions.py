@@ -73,7 +73,7 @@ async def search_mentions(q: str = Query("", max_length=MAX_QUERY), space: str =
                                    "projectName": projects[pid].get("name")})
     clip_items.sort(key=lambda c: (c["projectId"] != space_project, c["label"].lower()))
 
-    pages = db_search_pages(query, list(rights), user["id"])
+    pages = db_search_pages(query, [pid for pid, (_review, can_tasks) in rights.items() if can_tasks], user["id"])
     page_items = _first_then_rest(
         [{"kind": "page", "id": p["id"], "label": p["title"], "icon": p["icon"],
           "space": "me" if p["space_type"] == "personal" else f"p:{p['project_id']}"} for p in pages],

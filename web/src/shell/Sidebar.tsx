@@ -11,7 +11,7 @@ import { Button, cx, Menu } from '../ui';
 import { usePageStore } from '../pages/tree/space';
 import { useOpenProjects } from './navState';
 import { projectMenuItems } from './projectMenu';
-import { tabOf, tabRoute } from './ProjectTabs';
+import { allowedTabs, projectTabs, tabOf, tabRoute } from './ProjectTabs';
 import { useSidebarSections, type Space } from './registry';
 import './sidebar.css';
 
@@ -134,21 +134,30 @@ function ProjectItem({ project, route, open, onOpenChange }: { project: SidebarP
   const moreRef = useRef<HTMLButtonElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const items = projectMenuItems(project);
-  const target = tabRoute(tabOf(route), project.id);
+  // The tab that is showing, if this project has it; else the first one it has
+  const tabs = projectTabs(project);
+  const showing = tabOf(route);
+  const target = tabRoute(showing && tabs.includes(showing) ? showing : (tabs[0] ?? 'main'), project.id);
+  // Tasks and the pages are the Main tab: without it there is nothing to unfold
+  const hasMain = tabs.includes('main');
 
   return (
     <li className="cl-nav__project" data-project-id={project.id}>
       <div className={cx('cl-nav__projectrow', current && 'is-current', onOverview && 'is-active', menuOpen && 'is-menu-open')}>
-        <button
-          type="button"
-          className={cx('cl-nav__chevron', open && 'is-open')}
-          aria-expanded={open}
-          aria-controls={panelId}
-          aria-label={`${open ? 'Collapse' : 'Expand'} ${project.name}`}
-          onClick={() => onOpenChange(!open)}
-        >
-          &#9656;
-        </button>
+        {hasMain ? (
+          <button
+            type="button"
+            className={cx('cl-nav__chevron', open && 'is-open')}
+            aria-expanded={open}
+            aria-controls={panelId}
+            aria-label={`${open ? 'Collapse' : 'Expand'} ${project.name}`}
+            onClick={() => onOpenChange(!open)}
+          >
+            &#9656;
+          </button>
+        ) : (
+          <span className="cl-nav__chevron is-none" aria-hidden="true" />
+        )}
         <a
           href={buildRoute(target)}
           className="cl-nav__projectname"
@@ -180,9 +189,9 @@ function ProjectItem({ project, route, open, onOpenChange }: { project: SidebarP
       {items.length ? (
         <Menu open={menuOpen} onOpenChange={setMenuOpen} anchorRef={moreRef} items={items} placement="bottom-start" aria-label={`${project.name} actions`} />
       ) : null}
-      {open ? (
+      {open && hasMain ? (
         <div id={panelId} className="cl-nav__children">
-          {project.canTasks ? <TasksLink projectId={project.id} route={route} /> : null}
+          <TasksLink projectId={project.id} route={route} />
           <SectionSlots space={{ kind: 'project', projectId: project.id }} route={route} />
         </div>
       ) : null}
@@ -209,7 +218,7 @@ function RailLink({ to, active, label, icon }: { to: Route; active: boolean; lab
 }
 
 /** What the sidebar offers when it is folded to a narrow strip: the entries that need no list. */
-function Rail({ route, onToggle }: { route: Route; onToggle: () => void }) {
+function Rail({ route, onToggle, hasMain }: { route: Route; onToggle: () => void; hasMain: boolean }) {
   return (
     <>
       <div className="cl-sidebar__bar">
@@ -221,7 +230,7 @@ function Rail({ route, onToggle }: { route: Route; onToggle: () => void }) {
         <button type="button" className="cl-nav__railbtn" aria-label="Search" title="Search and commands" onClick={openSearch}>
           <Icon name="search" />
         </button>
-        <RailLink to={{ kind: 'home' }} active={route.kind === 'home'} label="Home" icon="home" />
+        {hasMain ? <RailLink to={{ kind: 'home' }} active={route.kind === 'home'} label="Home" icon="home" /> : null}
         <RailLink to={{ kind: 'projects' }} active={route.kind === 'projects'} label="Projects" icon="projects" />
       </div>
     </>
@@ -245,11 +254,13 @@ export function Sidebar({
   const user = platform.user();
   const tools = platform.projectTools;
   const open = useOpenProjects(user?.id ?? 'anonymous', routeProjectId(route));
+  // Home and the personal pages belong to the Main tab: someone with only Review or Lounge does not have them
+  const hasMain = allowedTabs(projects, null).includes('main');
 
   return (
     <aside className={cx('cl-sidebar', collapsed && 'is-collapsed', drawer && 'is-drawer')} data-testid="cl-sidebar">
       {collapsed ? (
-        <Rail route={route} onToggle={onToggle} />
+        <Rail route={route} onToggle={onToggle} hasMain={hasMain} />
       ) : (
         <>
           <div className="cl-sidebar__bar">
@@ -285,15 +296,19 @@ export function Sidebar({
               <span className="cl-nav__label">Search</span>
               <kbd>{shortcutLabel()}</kbd>
             </button>
-            <NavLink to={{ kind: 'home' }} active={route.kind === 'home'} testId="nav-home">
-              <Icon name="home" />
-              <span className="cl-nav__label">Home</span>
-            </NavLink>
+            {hasMain ? (
+              <>
+                <NavLink to={{ kind: 'home' }} active={route.kind === 'home'} testId="nav-home">
+                  <Icon name="home" />
+                  <span className="cl-nav__label">Home</span>
+                </NavLink>
 
-            <NavLink to={{ kind: 'me' }} active={route.kind === 'me' || route.kind === 'mePage'} className="cl-nav__heading" testId="nav-personal">
-              Personal
-            </NavLink>
-            <SectionSlots space={{ kind: 'personal' }} route={route} />
+                <NavLink to={{ kind: 'me' }} active={route.kind === 'me' || route.kind === 'mePage'} className="cl-nav__heading" testId="nav-personal">
+                  Personal
+                </NavLink>
+                <SectionSlots space={{ kind: 'personal' }} route={route} />
+              </>
+            ) : null}
 
             <NavLink to={{ kind: 'projects' }} active={route.kind === 'projects'} className="cl-nav__heading" testId="nav-projects">
               Projects

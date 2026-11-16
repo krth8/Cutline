@@ -71,6 +71,7 @@ from api.auth import (
     JWT_EXPIRATION_HOURS,
     Permission,
     can_view_project,
+    can_use_review,
     clean_email,
     check_comment_rate_limit,
     create_jwt_token,
@@ -82,7 +83,7 @@ from api.auth import (
     record_comment_attempt,
     require_permission,
     require_project_access,
-    require_project_viewer,
+    require_project_reviewer,
     resolve_project_id,
     set_guest_media_cookie,
     verify_jwt_token,
@@ -1124,7 +1125,7 @@ async def create_project(data: dict, user: dict = Depends(require_permission(Per
 @app.get("/api/projects/{project_id}")
 async def get_project(project_id: str, principal: Optional[dict] = Depends(get_principal)):
     """Get a project with all its data (project members or share-link guests)."""
-    require_project_viewer(principal, project_id)
+    require_project_reviewer(principal, project_id)
     return _project_payload(project_id)
 
 
@@ -1491,7 +1492,7 @@ async def track_guest(data: dict, principal: Optional[dict] = Depends(get_princi
     name = data.get("name", "").strip()
     project_id = data.get("projectId")
     share_link_id = data.get("shareLinkId")
-    require_project_viewer(principal, project_id)
+    require_project_reviewer(principal, project_id)
 
     if not name or not project_id:
         raise HTTPException(status_code=400, detail="Name and project ID required")
@@ -1611,7 +1612,7 @@ async def list_sessions(user: Optional[dict] = Depends(get_current_user)):
 
     active_sessions = []
     for sess_id, sess in sessions.items():
-        if not can_view_project(user, sess["project_id"]):
+        if not can_use_review(user, sess["project_id"]):
             continue
         project = projects.get(sess["project_id"], {})
         active_sessions.append({
@@ -1632,7 +1633,7 @@ async def list_project_sessions(project_id: str, principal: Optional[dict] = Dep
     """List active sessions for a specific project (members or share-link guests)."""
     if project_id not in projects:
         raise HTTPException(status_code=404, detail="Project not found")
-    require_project_viewer(principal, project_id)
+    require_project_reviewer(principal, project_id)
 
     project = projects.get(project_id, {})
     project_sessions = []
@@ -1658,7 +1659,7 @@ async def create_session(data: dict, user: Optional[dict] = Depends(get_principa
     session_name = data.get("session_name")  # Optional custom session name
 
     if project_id and project_id in projects:
-        require_project_viewer(user, project_id)
+        require_project_reviewer(user, project_id)
     else:
         # No (valid) project given: creating a new project needs a real user with create rights
         if not user or user.get("is_guest") or not has_permission(user.get("role", "guest"), Permission.PROJECT_CREATE):
@@ -1702,7 +1703,7 @@ async def join_session(session_id: str, data: dict, principal: Optional[dict] = 
 
     user_name = data.get("name", "Anonymous")
     project_id = sessions[session_id]["project_id"]
-    require_project_viewer(principal, project_id)
+    require_project_reviewer(principal, project_id)
 
     # Also verify project exists
     if project_id not in projects:
@@ -1767,7 +1768,7 @@ def _first_accessible_session(user: Optional[dict]) -> Optional[str]:
     if not user:
         return None
     for sess_id, sess in sessions.items():
-        if can_view_project(user, sess["project_id"]):
+        if can_use_review(user, sess["project_id"]):
             return sess_id
     return None
 
@@ -1901,7 +1902,7 @@ async def get_html_review_url(project_id: str, base_name: str, version: int, pri
     """
     if project_id not in projects:
         raise HTTPException(status_code=404, detail="Project not found")
-    require_project_viewer(principal, project_id)
+    require_project_reviewer(principal, project_id)
 
     clip_version = _find_clip_version(project_id, base_name, version)
     if not clip_version or clip_version.get("mediaType") != "html":
@@ -2083,7 +2084,7 @@ async def export_project_comments(project_id: str, format: str = "md", clip: Opt
     Open to everyone who can already read the comments (members and share-link guests).
     `clip` limits the export to one clip.
     """
-    require_project_viewer(principal, project_id)
+    require_project_reviewer(principal, project_id)
     if project_id not in projects:
         raise HTTPException(status_code=404, detail="Project not found")
     if format not in EXPORT_FORMATS:
@@ -2133,7 +2134,7 @@ MAX_DRAWING_BYTES = 2_000_000
 def _comment_project(session_or_project_id: str, principal: Optional[dict]) -> str:
     """The project a comment request is about, after checking the caller may see it."""
     project_id = resolve_project_id(session_or_project_id)
-    require_project_viewer(principal, project_id)
+    require_project_reviewer(principal, project_id)
     if project_id not in projects:
         raise HTTPException(status_code=404, detail="Project not found")
     return project_id
@@ -2278,7 +2279,7 @@ async def websocket_endpoint(
     ticket: Optional[str] = Query(None)
 ):
     principal = principal_from_ticket(ticket)
-    if not can_view_project(principal, resolve_project_id(session_id)):
+    if not can_use_review(principal, resolve_project_id(session_id)):
         await websocket.close(code=WS_ACCESS_REMOVED)
         return
 
@@ -2477,7 +2478,7 @@ async def websocket_endpoint(
 async def get_session(session_id: str, principal: Optional[dict] = Depends(get_principal)):
     """Legacy endpoint - get session/project data."""
     project_id = resolve_project_id(session_id)
-    require_project_viewer(principal, project_id)
+    require_project_reviewer(principal, project_id)
     return _project_payload(project_id)
 
 

@@ -71,7 +71,8 @@ async def recent_pages(scope: str = "all", limit: int = DEFAULT_RECENT, user: di
     personal pages never appear."""
     limit = max(1, min(MAX_RECENT, limit))
     if scope == "all":
-        project_ids = [p["id"] for p in db_list_accessible_projects(user["id"]) if p["id"] in projects]
+        project_ids = [p["id"] for p in db_list_accessible_projects(user["id"])
+                       if p["id"] in projects and p.get("canTasks", True)]  # pages are part of the Main tab
         rows = db_recent_pages("all", project_ids, user["id"], limit)
     else:
         try:

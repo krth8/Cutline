@@ -89,7 +89,7 @@ def _p(value: str) -> str:
 
 def search_pages(user: dict, rights: Dict[str, tuple], words: List[str], query_folded: str, limit: int,
                  only_project: Optional[str]) -> List[dict]:
-    project_ids = list(rights)
+    project_ids = [pid for pid, (_review, can_tasks) in rights.items() if can_tasks]  # pages are part of the Main tab
     metas = db_search_visible_pages(project_ids, user["id"], only_project)
     body_hits: List[Set[str]] = [db_page_ids_with_text(w, project_ids, user["id"], only_project) for w in words]
     found = []

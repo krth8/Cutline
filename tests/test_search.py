@@ -122,9 +122,9 @@ def test_permission_matrix(client, scene, admin):
     seen = lambda who: {t: ids(i) for t, i in found(client, who, word).items()}  # noqa: E731
     assert seen(scene["member"]) == everything
     assert seen(admin["token"]) == everything
-    # review only: no tasks
-    assert seen(scene["reviewer"]) == {k: v for k, v in everything.items() if k != "task"}
-    # tasks only: no comments or clips; the project's pages are readable with any access
+    # review only: clips and comments, no tasks and no pages (those are the Main tab)
+    assert seen(scene["reviewer"]) == {k: v for k, v in everything.items() if k not in ("task", "page")}
+    # Main only: pages and tasks, no comments or clips
     assert seen(scene["tasks_only"]) == {"page": [page], "task": [task]}
     assert seen(scene["outsider"]) == {}
 

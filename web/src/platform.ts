@@ -25,11 +25,14 @@ export interface Platform {
   toast(kind: 'info' | 'success' | 'error', message: string, opts?: ToastOptions): void;
   confirm(message: string, opts?: { danger?: boolean; confirmLabel?: string }): Promise<boolean>;
   navigate(route: string): void;
-  projects(): Array<{ id: string; name: string; canTasks: boolean; isOwner: boolean; clipCount?: number; coverImage?: string }>;
+  /** `canTasks` is the Main tab (pages and tasks), `canReview` and `canLounge` the other two; unstated counts as allowed. */
+  projects(): Array<{ id: string; name: string; canTasks: boolean; canReview?: boolean; canLounge?: boolean; isOwner: boolean; clipCount?: number; coverImage?: string }>;
   statuses(): Array<{ id: string; name: string; color: string }>;
   members(projectId: string): Promise<Array<{ id: string; username: string; profileImage?: string }>>;
   /** End the login (the "Log out" command). Optional so existing fakes keep compiling. */
   logout?(): Promise<void>;
+  /** False until the project list has come from the server (absent: treat as loaded). */
+  projectsLoaded?(): boolean;
   /** The legacy project dialogs the sidebar's project menu calls (create, share link, cover image, delete, access). */
   projectTools?: ProjectTools;
   /** Call `listener` whenever the project list changed (new project, deleted, access granted). Returns the unsubscribe. */
@@ -66,8 +69,9 @@ export const PROJECTS_CHANGED_EVENT = 'cutline:projects-changed';
 interface LegacyGlobals {
   AppState?: {
     adminUser?: { id?: string; username?: string; role?: string; isAdmin?: boolean; profileImage?: string | null } | null;
-    projects?: Array<{ id: string; name: string; canTasks?: boolean; isOwner?: boolean; clipCount?: number; coverImage?: string | null }>;
+    projects?: Array<{ id: string; name: string; canTasks?: boolean; canReview?: boolean; canLounge?: boolean; isOwner?: boolean; clipCount?: number; coverImage?: string | null }>;
     statuses?: Array<{ id: string; name: string; color: string }>;
+    projectsLoaded?: boolean;
     isAdmin?: boolean;
   };
   Live?: {
@@ -219,11 +223,15 @@ export function createLegacyPlatform(): Platform {
         name: p.name,
         // The admin's project list is the unfiltered one and carries no per-project flags
         canTasks: p.canTasks ?? admin,
+        canReview: p.canReview ?? true,
+        canLounge: p.canLounge ?? true,
         isOwner: p.isOwner ?? admin,
         ...(typeof p.clipCount === 'number' ? { clipCount: p.clipCount } : {}),
         ...(p.coverImage ? { coverImage: p.coverImage } : {}),
       }));
     },
+
+    projectsLoaded: () => legacy().AppState?.projectsLoaded === true,
 
     projectTools: {
       canCreate: () => !!legacy().canCreateProject?.(),

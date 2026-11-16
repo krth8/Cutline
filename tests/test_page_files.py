@@ -28,8 +28,8 @@ def team(client, admin, make_project, make_user, grant):
     project_id = make_project()
     editor = make_user()
     grant(project_id, editor["user"]["id"], can_tasks=True)
-    reader = make_user()
-    grant(project_id, reader["user"]["id"], can_tasks=False)
+    reader = make_user("viewer")  # reads the project's pages, edits nothing
+    grant(project_id, reader["user"]["id"], can_tasks=True)
     outsider = make_user()
     res = client.post(f"/api/spaces/p:{project_id}/pages", json={"title": "P"}, headers=auth(editor["token"]))
     assert res.status_code == 200, res.text
@@ -113,7 +113,7 @@ def test_anonymous_is_refused(client, team):
 def test_cookie_login_serves_img_tags_and_only_to_readers(client, team, admin, make_user, grant):
     body = upload(client, team["editor"], team["page"], png_bytes()).json()
     reader = make_user()
-    grant(team["project"], reader["user"]["id"])
+    grant(team["project"], reader["user"]["id"], can_tasks=True)
     b = browser(reader["user"]["username"])
     assert b.get(body["url"]).status_code == 200  # no Authorization header, like <img src>
     stranger = make_user()

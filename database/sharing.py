@@ -274,7 +274,7 @@ def db_list_revoked_tokens() -> List[str]:
 
 def db_create_invite_link(created_by: str, is_admin: bool = False, role: str = 'viewer',
                           project_id: str = None, can_review: bool = True, can_tasks: bool = False,
-                          max_uses: int = 1, expires_in_days: int = None) -> dict:
+                          max_uses: int = 1, expires_in_days: int = None, can_lounge: bool = True) -> dict:
     """Create a new invite link."""
     link_id = secrets.token_urlsafe(16)
     created_at = datetime.now().isoformat()
@@ -289,10 +289,10 @@ def db_create_invite_link(created_by: str, is_admin: bool = False, role: str = '
 
     with get_db() as conn:
         execute(conn, """
-            INSERT INTO invite_links (id, created_by, is_admin, role, project_id, can_review, can_tasks, max_uses, uses, expires_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+            INSERT INTO invite_links (id, created_by, is_admin, role, project_id, can_review, can_tasks, can_lounge, max_uses, uses, expires_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         """, (link_id, created_by, 1 if is_admin else 0, role, project_id,
-              1 if can_review else 0, 1 if can_tasks else 0, max_uses, expires_at, created_at))
+              1 if can_review else 0, 1 if can_tasks else 0, 1 if can_lounge else 0, max_uses, expires_at, created_at))
 
     return {
         "id": link_id,
@@ -302,6 +302,7 @@ def db_create_invite_link(created_by: str, is_admin: bool = False, role: str = '
         "projectId": project_id,
         "canReview": can_review,
         "canTasks": can_tasks,
+        "canLounge": can_lounge,
         "maxUses": max_uses,
         "uses": 0,
         "expiresAt": expires_at,
@@ -326,6 +327,7 @@ def db_get_invite_link(link_id: str) -> Optional[dict]:
             "projectId": row.get("project_id"),
             "canReview": bool(row.get("can_review", 1)),
             "canTasks": bool(row.get("can_tasks", 0)),
+            "canLounge": row.get("can_lounge") is None or bool(row.get("can_lounge")),
             "maxUses": row["max_uses"],
             "uses": row["uses"],
             "expiresAt": row["expires_at"],
@@ -354,6 +356,7 @@ def db_list_invite_links() -> List[dict]:
             "projectName": row.get("project_name"),
             "canReview": bool(row.get("can_review", 1)),
             "canTasks": bool(row.get("can_tasks", 0)),
+            "canLounge": row.get("can_lounge") is None or bool(row.get("can_lounge")),
             "maxUses": row["max_uses"],
             "uses": row["uses"],
             "expiresAt": row["expires_at"],

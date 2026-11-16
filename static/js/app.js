@@ -831,6 +831,7 @@ async function refreshProjectsList() {
         const res = await fetch('/api/projects');
         if (!res.ok) return;
         AppState.projects = (await res.json()).projects || [];
+        AppState.projectsLoaded = true;
         renderProjectsSidebar();
         if (typeof UserManager !== 'undefined' && AppState.projectId) {
             UserManager.setProjectAccessFromList(AppState.projectId);
@@ -845,6 +846,7 @@ async function loadProjects() {
         const res = await authFetch('/api/projects');
         const data = await res.json();
         AppState.projects = data.projects || [];
+        AppState.projectsLoaded = true;
         renderProjectsSidebar();
 
         // Show project selection modal if on Review tab with no project selected
@@ -3858,13 +3860,17 @@ async function loadInviteLinks() {
                 if (role === 'viewer') {
                     accessInfo = `
                         <div class="invite-link-access">
+                            <span class="invite-link-access-pill ${invite.canTasks ? 'active' : ''}">
+                                <svg class="icon"><use href="/static/icons.svg#icon-check"/></svg>
+                                Main
+                            </span>
                             <span class="invite-link-access-pill ${invite.canReview ? 'active' : ''}">
                                 <svg class="icon"><use href="/static/icons.svg#icon-eye"/></svg>
                                 Review
                             </span>
-                            <span class="invite-link-access-pill ${invite.canTasks ? 'active' : ''}">
-                                <svg class="icon"><use href="/static/icons.svg#icon-check"/></svg>
-                                Tasks
+                            <span class="invite-link-access-pill ${invite.canLounge !== false ? 'active' : ''}">
+                                <svg class="icon"><use href="/static/icons.svg#icon-chat-circle"/></svg>
+                                Lounge
                             </span>
                         </div>
                     `;
@@ -3913,6 +3919,8 @@ async function createInviteLink() {
     const projectId = projectSelect ? projectSelect.value : '';
     const canReview = canReviewCheckbox ? canReviewCheckbox.checked : true;
     const canTasks = canTasksCheckbox ? canTasksCheckbox.checked : false;
+    const canLoungeCheckbox = document.getElementById('inviteCanLounge');
+    const canLounge = canLoungeCheckbox ? canLoungeCheckbox.checked : true;
     const maxUses = maxUsesSelect ? parseInt(maxUsesSelect.value, 10) : 1;
 
     // Legacy support: check old isAdmin checkbox if role select doesn't exist
@@ -3930,6 +3938,7 @@ async function createInviteLink() {
             payload.projectId = projectId;
             payload.canReview = canReview;
             payload.canTasks = canTasks;
+            payload.canLounge = canLounge;
         }
 
         const res = await authFetch('/api/admin/invites', {
@@ -3949,6 +3958,7 @@ async function createInviteLink() {
             if (projectSelect) projectSelect.value = '';
             if (canReviewCheckbox) canReviewCheckbox.checked = true;
             if (canTasksCheckbox) canTasksCheckbox.checked = false;
+            if (canLoungeCheckbox) canLoungeCheckbox.checked = true;
             if (maxUsesSelect) maxUsesSelect.value = '1';
             if (isAdminCheckbox) isAdminCheckbox.checked = false;
 

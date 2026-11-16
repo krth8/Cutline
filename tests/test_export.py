@@ -251,9 +251,8 @@ def test_mention_labels_follow_what_the_exporter_may_read(client, team, page, ma
     store(page, P(N("mention", {"kind": "task", "id": task_id, "label": "Stored label"})))
     # the member reads the task: live title, link
     assert "[Secret name](http://testserver/?task=" in md(client, team["member"], page)
-    # a reviewer reads the page but has no task access: stored label, no link
-    out = md(client, team["reviewer"], page)
-    assert "Stored label" in out and "Secret name" not in out and "?task=" not in out
+    # review alone does not read the page at all
+    assert export(client, team["reviewer"], page).status_code == 403
 
 
 # ============ Views inside pages ============
@@ -266,9 +265,8 @@ def test_view_block_shows_the_rows_the_exporter_may_read(client, admin, team, pa
     store(page, N("viewBlock", {"viewId": view["id"], "height": None}))
     member = md(client, team["member"], page)
     assert "| Name |" in member and "| Visible task |" in member
-    # the reviewer reads the page but not the tasks: the table is replaced by a note, the export still works
-    reviewer = md(client, team["reviewer"], page)
-    assert "*(view not available)*" in reviewer and "Visible task" not in reviewer
+    # review alone does not read the page at all
+    assert export(client, team["reviewer"], page).status_code == 403
     # a view that does not exist
     store(page, N("viewBlock", {"viewId": "gone", "height": None}))
     assert "*(view not available)*" in md(client, team["member"], page)
@@ -332,7 +330,7 @@ def test_files_the_exporter_may_not_read_are_left_out(client, team, make_user):
     secret = upload(client, team["member"], secret_page, png_bytes()).json()
     mine = create(client, team["member"], team["space"], "Shared")["id"]
     store(mine, N("image", {"src": secret["url"], "fileId": secret["id"], "alt": "secret"}))
-    out = export(client, team["reviewer"], mine)
+    out = export(client, team["viewer"], mine)
     assert out.status_code == 200 and out.headers["content-type"].startswith("text/markdown")
     assert "*(image not available)*" in out.text and "secret.png" not in out.text and "files/" not in out.text
 
@@ -402,7 +400,8 @@ def test_download_headers(client, team):
 def test_who_may_export_a_page(client, team, page, share, admin):
     store(page, P("hello"))
     assert "hello" in md(client, team["member"], page)
-    assert "hello" in md(client, team["reviewer"], page)      # any project access reads project pages
+    assert "hello" in md(client, team["viewer"], page)        # the Main tab reads project pages
+    assert export(client, team["reviewer"], page).status_code == 403  # review alone does not
     assert "hello" in md(client, admin["token"], page)
     assert export(client, team["outsider"], page).status_code == 403
     assert client.get(f"/api/pages/{page}/export").status_code == 401
@@ -708,4 +707,4 @@ def test_chart_block_becomes_a_table_of_groups(client, team, page):
     out = md(client, team["member"], page)
     assert "**By status**" in out and "| Group | Value |" in out
     assert "| 2 |" in out
-    assert "*(chart not available)*" in md(client, team["reviewer"], page)
+    assert export(client, team["reviewer"], page).status_code == 403

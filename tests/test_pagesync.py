@@ -347,7 +347,7 @@ def test_task_pages_follow_the_task_access(client, connect_page, team, admin):
 def test_logout_closes_the_page_socket(client, admin, make_user, make_project, grant, connect_page):
     project_id = make_project()
     user = make_user()
-    grant(project_id, user["user"]["id"])
+    grant(project_id, user["user"]["id"], can_tasks=True)
     page_id = create(client, admin["token"], f"p:{project_id}", "Shared")["id"]
     with pytest.raises(WebSocketDisconnect) as closed:
         with connect_page(user["token"], page_id) as ws:

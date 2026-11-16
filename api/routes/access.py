@@ -73,12 +73,14 @@ async def grant_project_access(project_id: str, data: dict, user: dict = Depends
 
     can_review = data.get("canReview", True)
     can_tasks = data.get("canTasks", False)
+    can_lounge = data.get("canLounge", True)
 
     access = db_grant_project_access(
         user_id=target_user_id,
         project_id=project_id,
         can_review=can_review,
         can_tasks=can_tasks,
+        can_lounge=can_lounge,
         is_owner=False,
         granted_by=user["id"]
     )
@@ -112,8 +114,10 @@ async def update_project_access(project_id: str, target_user_id: str, data: dict
 
     can_review = data.get("canReview")
     can_tasks = data.get("canTasks")
+    can_lounge = data.get("canLounge")
 
-    success = db_update_project_access(target_user_id, project_id, can_review=can_review, can_tasks=can_tasks)
+    success = db_update_project_access(target_user_id, project_id, can_review=can_review, can_tasks=can_tasks,
+                                       can_lounge=can_lounge)
     if not success:
         raise HTTPException(status_code=404, detail="Access record not found")
 

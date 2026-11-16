@@ -74,8 +74,9 @@ def test_search_finds_the_four_kinds_and_respects_access(client, scene):
 
 def test_task_and_clip_access_levels(client, scene):
     projects[scene["project"]].setdefault("clips", {})["reel_a"] = {"versions": [], "activeVersion": 1}
-    # the reviewer has review access but no task access: clips yes, tasks no
-    res = search(client, scene["reviewer"], "", scene["space"]).json()
+    # the reviewer has review access but not the Main tab: clips yes, tasks no (and the project's pages are not theirs)
+    assert search(client, scene["reviewer"], "", scene["space"]).status_code == 403
+    res = search(client, scene["reviewer"], "", "me").json()
     assert res["tasks"] == [] and "reel_a" in [c["label"] for c in res["clips"]]
 
 

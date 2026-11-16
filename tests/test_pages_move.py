@@ -239,7 +239,7 @@ def test_views_owned_by_moved_pages_follow_the_new_permissions(client, world):
     seen = client.get(f"/api/views/{vid}", headers=auth(world["b"]))
     assert seen.status_code == 200 and seen.json()["tableRef"] == ref  # the table ref is not rewritten
     assert seen.json()["canEdit"] is True
-    assert client.get(f"/api/views/{vid}", headers=auth(world["reviewer"])).json()["canEdit"] is False
+    assert client.get(f"/api/views/{vid}", headers=auth(world["reviewer"])).status_code == 403  # review only: no pages
     assert client.get(f"/api/views/{vid}", headers=auth(world["outsider"])).status_code == 403
 
     assert move(client, world["b"], page["id"], "me").status_code == 200  # b takes it to personal

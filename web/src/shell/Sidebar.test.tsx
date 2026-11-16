@@ -127,18 +127,56 @@ describe('Sidebar', () => {
     expect(fake.navigations[fake.navigations.length - 1]).toBe('/p/p1/lounge');
   });
 
-  it('lists Tasks under a project only with task access', async () => {
+  it('a project without the Main tab has no Tasks, no pages and nothing to unfold', async () => {
     const user = userEvent.setup();
     render(<NavApp />);
     await user.click(screen.getByRole('button', { name: 'Expand Project One' }));
-    await user.click(screen.getByRole('button', { name: 'Expand Project Two' }));
-    expect(screen.getAllByRole('link', { name: 'Tasks' })).toHaveLength(1); // Project Two has no task access
+    expect(screen.queryByRole('button', { name: 'Expand Project Two' })).toBeNull();
+    expect(screen.getAllByRole('link', { name: 'Tasks' })).toHaveLength(1);
     await user.click(screen.getByRole('link', { name: 'Tasks' }));
     expect(fake.navigations).toEqual(['/p/p1/tasks']);
+    // its name opens the first tab it has
+    await user.click(within(nav()).getByRole('link', { name: 'Project Two' }));
+    expect(fake.navigations[fake.navigations.length - 1]).toBe('/p/p2/review');
+  });
+
+  it('shows only the tabs the open project gives', () => {
+    fake.data.projects = [
+      { id: 'p1', name: 'Project One', canTasks: true, isOwner: true },
+      { id: 'p2', name: 'Review and Lounge', canTasks: false, canReview: true, canLounge: true, isOwner: false },
+      { id: 'p3', name: 'Lounge only', canTasks: false, canReview: false, canLounge: true, isOwner: false },
+    ];
+    render(<NavApp />);
+    const labels = () => within(tabs()).getAllByRole('link').map((a) => a.textContent);
+    expect(labels()).toEqual(['Main', 'Review', 'Lounge']); // no project open: what any project gives
+    go('/p/p2/review');
+    expect(labels()).toEqual(['Review', 'Lounge']);
+    go('/p/p3/lounge');
+    expect(screen.queryByRole('navigation', { name: 'Sections' })).toBeNull(); // one tab is no choice
+  });
+
+  it('someone with the Lounge only sees no tabs, no Home and no personal pages, and lands in the Lounge', () => {
+    fake.data.user = { id: 'u9', username: 'Guest', role: 'viewer' };
+    fake.data.projects = [{ id: 'p3', name: 'Lounge only', canTasks: false, canReview: false, canLounge: true, isOwner: false }];
+    render(<NavApp />);
+    expect(screen.queryByRole('navigation', { name: 'Sections' })).toBeNull();
+    expect(within(nav()).queryByRole('link', { name: 'Home' })).toBeNull();
+    expect(within(nav()).queryByRole('link', { name: 'Personal' })).toBeNull();
+    expect(within(nav()).getByRole('link', { name: 'Lounge only' }).getAttribute('href')).toBe('/p/p3/lounge');
+    expect(fake.navigations).toEqual(['/lounge']); // /home is in Main, which they do not have
+    go('/p/p3/review');
+    expect(fake.navigations[fake.navigations.length - 1]).toBe('/p/p3/lounge');
+  });
+
+  it('a route in a tab the project does not give goes to the first one it gives', () => {
+    window.history.replaceState({}, '', '/p/p2/tasks');
+    render(<NavApp />);
+    expect(fake.navigations).toEqual(['/p/p2/review']);
   });
 
   it('opens the project of the current route and remembers open projects per user', async () => {
     const user = userEvent.setup();
+    fake.data.projects[1]!.canTasks = true;
     window.history.replaceState({}, '', '/p/p1/review');
     const first = render(<NavApp />);
     expect(screen.getAllByRole('link', { name: 'Tasks' })).toHaveLength(1);

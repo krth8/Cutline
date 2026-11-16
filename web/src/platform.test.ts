@@ -26,8 +26,8 @@ describe('legacy platform bridge', () => {
     w.AppState = {
       adminUser: { id: 'u1', username: 'kris', role: 'editor', profileImage: '/profiles/u1.png' },
       projects: [
-        { id: 'p1', name: 'One', canTasks: true, isOwner: false },
-        { id: 'p2', name: 'Two', canTasks: false, isOwner: true },
+        { id: 'p1', name: 'One', canTasks: true, canReview: true, canLounge: true, isOwner: false },
+        { id: 'p2', name: 'Two', canTasks: false, canReview: true, canLounge: true, isOwner: true },
       ],
       statuses: [{ id: 's1', name: 'Done', color: '#0f0', extra: 1 }],
     };
@@ -204,8 +204,8 @@ describe('legacy platform bridge', () => {
   describe('projects() and statuses()', () => {
     it('maps project access flags', () => {
       expect(platform.projects()).toEqual([
-        { id: 'p1', name: 'One', canTasks: true, isOwner: false },
-        { id: 'p2', name: 'Two', canTasks: false, isOwner: true },
+        { id: 'p1', name: 'One', canTasks: true, canReview: true, canLounge: true, isOwner: false },
+        { id: 'p2', name: 'Two', canTasks: false, canReview: true, canLounge: true, isOwner: true },
       ]);
     });
     it('treats flag-less projects as full access for admins only', () => {

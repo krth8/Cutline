@@ -432,17 +432,22 @@
                                 </select>
                             </div>
                             <div class="invite-form-row" id="inviteAccessOptions">
-                                <label class="input-label">Permissions</label>
+                                <label class="input-label">Tabs they get</label>
                                 <div class="checkbox-group">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="inviteCanTasks">
+                                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-check"/></svg>
+                                        <span>Main</span>
+                                    </label>
                                     <label class="checkbox-label">
                                         <input type="checkbox" id="inviteCanReview" checked>
                                         <svg class="icon icon-sm"><use href="/static/icons.svg#icon-eye"/></svg>
                                         <span>Review</span>
                                     </label>
                                     <label class="checkbox-label">
-                                        <input type="checkbox" id="inviteCanTasks">
-                                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-check"/></svg>
-                                        <span>Tasks</span>
+                                        <input type="checkbox" id="inviteCanLounge" checked>
+                                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-chat-circle"/></svg>
+                                        <span>Lounge</span>
                                     </label>
                                 </div>
                             </div>
@@ -1252,10 +1257,10 @@
     <script src="/static/js/features/settingsUI.js?v=2"></script>
     <script src="/static/js/features/routes.js?v=6"></script>
     <script src="/static/js/features/navigation.js?v=21"></script>
-    <script src="/static/js/features/usersAdmin.js?v=1"></script>
+    <script src="/static/js/features/usersAdmin.js?v=2"></script>
     <script src="/static/js/features/push.js?v=1"></script>
     <!-- Main application -->
-    <script src="/static/js/app.js?v=81"></script>
+    <script src="/static/js/app.js?v=83"></script>
     <script src="/static/js/video-player.js?v=31"></script>
     <script src="/static/js/websocket.js?v=23"></script>
     <script src="/static/js/html-review.js?v=2"></script>

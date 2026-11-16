@@ -13,8 +13,8 @@ from .projects import db_list_projects
 
 def db_grant_project_access(user_id: str, project_id: str, can_review: bool = True,
                             can_tasks: bool = False, is_owner: bool = False,
-                            granted_by: str = None) -> dict:
-    """Grant a user access to a project."""
+                            granted_by: str = None, can_lounge: bool = True) -> dict:
+    """Grant a user access to a project: one switch per tab (Review, Main = can_tasks, Lounge)."""
     access_id = secrets.token_urlsafe(8)
     granted_at = datetime.now().isoformat()
 
@@ -28,17 +28,17 @@ def db_grant_project_access(user_id: str, project_id: str, can_review: bool = Tr
         if existing:
             execute(conn, """
                 UPDATE project_access
-                SET can_review = ?, can_tasks = ?, is_owner = ?, granted_by = ?, granted_at = ?
+                SET can_review = ?, can_tasks = ?, can_lounge = ?, is_owner = ?, granted_by = ?, granted_at = ?
                 WHERE user_id = ? AND project_id = ?
-            """, (1 if can_review else 0, 1 if can_tasks else 0, 1 if is_owner else 0,
+            """, (1 if can_review else 0, 1 if can_tasks else 0, 1 if can_lounge else 0, 1 if is_owner else 0,
                   granted_by, granted_at, user_id, project_id))
             access_id = existing["id"]
         else:
             execute(conn, """
-                INSERT INTO project_access (id, user_id, project_id, can_review, can_tasks, is_owner, granted_by, granted_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO project_access (id, user_id, project_id, can_review, can_tasks, can_lounge, is_owner, granted_by, granted_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (access_id, user_id, project_id, 1 if can_review else 0, 1 if can_tasks else 0,
-                  1 if is_owner else 0, granted_by, granted_at))
+                  1 if can_lounge else 0, 1 if is_owner else 0, granted_by, granted_at))
 
     return {
         "id": access_id,
@@ -46,6 +46,7 @@ def db_grant_project_access(user_id: str, project_id: str, can_review: bool = Tr
         "projectId": project_id,
         "canReview": can_review,
         "canTasks": can_tasks,
+        "canLounge": can_lounge,
         "isOwner": is_owner,
         "grantedBy": granted_by,
         "grantedAt": granted_at
@@ -74,6 +75,7 @@ def db_get_project_access(user_id: str, project_id: str) -> Optional[dict]:
             "projectId": row["project_id"],
             "canReview": bool(row["can_review"]),
             "canTasks": bool(row["can_tasks"]),
+            "canLounge": bool(row["can_lounge"]) if row["can_lounge"] is not None else True,
             "isOwner": bool(row["is_owner"]),
             "grantedBy": row["granted_by"],
             "grantedAt": row["granted_at"]
@@ -102,6 +104,7 @@ def db_list_project_access(project_id: str) -> List[dict]:
             "projectId": row["project_id"],
             "canReview": bool(row["can_review"]),
             "canTasks": bool(row["can_tasks"]),
+            "canLounge": bool(row["can_lounge"]) if row["can_lounge"] is not None else True,
             "isOwner": bool(row["is_owner"]),
             "grantedBy": row["granted_by"],
             "grantorName": row["grantor_name"],
@@ -128,13 +131,14 @@ def db_list_user_project_access(user_id: str) -> List[dict]:
             "coverImage": row["cover_image"],
             "canReview": bool(row["can_review"]),
             "canTasks": bool(row["can_tasks"]),
+            "canLounge": bool(row["can_lounge"]) if row["can_lounge"] is not None else True,
             "isOwner": bool(row["is_owner"]),
             "grantedAt": row["granted_at"]
         } for row in fetchall(cursor)]
 
 
 def db_update_project_access(user_id: str, project_id: str,
-                             can_review: bool = None, can_tasks: bool = None) -> bool:
+                             can_review: bool = None, can_tasks: bool = None, can_lounge: bool = None) -> bool:
     """Update a user's access permissions for a project."""
     updates = []
     params = []
@@ -145,6 +149,9 @@ def db_update_project_access(user_id: str, project_id: str,
     if can_tasks is not None:
         updates.append("can_tasks = ?")
         params.append(1 if can_tasks else 0)
+    if can_lounge is not None:
+        updates.append("can_lounge = ?")
+        params.append(1 if can_lounge else 0)
 
     if not updates:
         return False
@@ -168,8 +175,9 @@ def db_revoke_project_access(user_id: str, project_id: str) -> bool:
 
 
 def db_check_project_access(user_id: str, project_id: str,
-                            require_review: bool = False, require_tasks: bool = False) -> bool:
-    """Check if a user has access to a project."""
+                            require_review: bool = False, require_tasks: bool = False,
+                            require_lounge: bool = False) -> bool:
+    """Check if a user has access to a project (and to the named tabs of it). Admins have everything."""
     user = db_get_user_by_id(user_id)
     if user and user.get("role") == "admin":
         return True
@@ -181,6 +189,8 @@ def db_check_project_access(user_id: str, project_id: str,
     if require_review and not access["canReview"]:
         return False
     if require_tasks and not access["canTasks"]:
+        return False
+    if require_lounge and not access["canLounge"]:
         return False
 
     return True
@@ -199,13 +209,13 @@ def db_list_accessible_projects(user_id: str) -> List[dict]:
         cursor = execute(conn, """
             SELECT p.id, p.name, p.cover_image, p.created_at, p.created_by,
                    COUNT(DISTINCT c.id) as clip_count,
-                   pa.can_review, pa.can_tasks, pa.is_owner
+                   pa.can_review, pa.can_tasks, pa.can_lounge, pa.is_owner
             FROM projects p
             JOIN project_access pa ON p.id = pa.project_id
             LEFT JOIN clips c ON c.project_id = p.id
             WHERE pa.user_id = ?
             GROUP BY p.id, p.name, p.cover_image, p.created_at, p.created_by,
-                     pa.can_review, pa.can_tasks, pa.is_owner
+                     pa.can_review, pa.can_tasks, pa.can_lounge, pa.is_owner
             ORDER BY p.created_at DESC
         """, (user_id,))
 
@@ -218,5 +228,6 @@ def db_list_accessible_projects(user_id: str) -> List[dict]:
             "clipCount": row["clip_count"],
             "canReview": bool(row["can_review"]),
             "canTasks": bool(row["can_tasks"]),
+            "canLounge": bool(row["can_lounge"]) if row["can_lounge"] is not None else True,
             "isOwner": bool(row["is_owner"])
         } for row in fetchall(cursor)]

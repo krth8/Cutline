@@ -342,7 +342,7 @@ def test_duplicate_permissions(client, world, share):
     assert duplicate(client, a, team_page["id"]).status_code == 200
     assert duplicate(client, world["b"], team_page["id"], space="me").status_code == 200  # reads Alpha, owns "me"
     assert duplicate(client, world["reader"], team_page["id"]).status_code == 403  # no task access: no create rights
-    assert duplicate(client, world["reader"], team_page["id"], space="me").status_code == 200  # may read, copy it home
+    assert duplicate(client, world["reader"], team_page["id"], space="me").status_code == 403  # review only: cannot read it
     assert duplicate(client, world["viewer"], team_page["id"]).status_code == 403  # viewer role
     assert duplicate(client, world["outsider"], team_page["id"]).status_code == 403
     assert duplicate(client, world["outsider"], team_page["id"], space="me").status_code == 403  # cannot read it

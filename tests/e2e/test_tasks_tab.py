@@ -180,10 +180,10 @@ def test_the_sidebar_opens_a_projects_tasks_on_the_new_list_by_default(server, s
     assert page.url.endswith(f"/p/{scene['project']}/tasks")
 
 
-def test_someone_without_task_access_gets_a_message_not_the_table(server, scene, new_page):
+def test_someone_without_the_main_tab_is_sent_to_a_tab_they_have(server, scene, new_page):
     page = new_page(name="reviewer")
     open_tab(page, server, scene, "reviewer")
-    page.wait_for_selector("[data-testid=tasks-denied]", timeout=20000)
+    page.wait_for_url(f"**/p/{scene['project']}/review", timeout=20000)
     assert page.locator("[data-testid=table-layout]").count() == 0
     # the sidebar offers no Tasks link for this project
     assert page.locator("[data-testid=cl-sidebar] a:text-is('Tasks')").count() == 0

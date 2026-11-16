@@ -7,9 +7,9 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { getPlatform } from '../platform';
-import { useRoute } from '../router';
+import { buildRoute, useRoute } from '../router';
 import { readCollapsed, writeCollapsed } from './navState';
-import { ProjectTabs } from './ProjectTabs';
+import { ProjectTabs, redirectFor } from './ProjectTabs';
 import { Sidebar } from './Sidebar';
 
 const NARROW_QUERY = '(max-width: 800px)';
@@ -40,6 +40,15 @@ export function NavApp() {
 
   // The project list is re-rendered by the legacy page after create / delete / access changes
   useEffect(() => getPlatform().onProjectsChanged?.(() => setProjectsVersion((v) => v + 1)), []);
+
+  // A route in a tab the user does not have (Review for someone with the Lounge only) goes to one they have
+  // (not before the project list is here: until then nobody seems to have any tab)
+  const loaded = getPlatform().projectsLoaded?.() ?? true;
+  const redirect = user && loaded ? redirectFor(route, getPlatform().projects()) : null;
+  const redirectTo = redirect ? buildRoute(redirect) : null;
+  useEffect(() => {
+    if (redirectTo) getPlatform().navigate(redirectTo);
+  }, [redirectTo]);
 
   const effectiveCollapsed = collapsed && !narrow;
   // The header shows the logo itself while the sidebar is folded or a drawer

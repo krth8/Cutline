@@ -52,6 +52,17 @@ def pick_view_and_close(page, view_id):
     page.wait_for_selector("[data-testid=summary-setup]")
 
 
+def refused(server, username, page_id):
+    """The status the page API gives this user (review alone does not read pages; they are the Main tab)."""
+    from e2e.e2e_support import PASSWORD, ApiError
+    token = server.api("/api/auth/login", {"username": username, "password": PASSWORD}, token="")["token"]
+    try:
+        server.api(f"/api/pages/{page_id}", token=token)
+    except ApiError as e:
+        return e.status
+    return 200
+
+
 @pytest.fixture(scope="module")
 def scene(server, new_page):
     ids = {name: server.create_user(name) for name in ("alice", "bob", "carol")}
@@ -150,14 +161,7 @@ def test_editing_a_summary_later_goes_through_the_same_settings(scene):
     wait_for(lambda: labels(bob)[0] == "All tasks")
 
 
-def test_a_user_without_task_access_sees_a_dash_not_an_error(scene, server, new_page):
-    carol = new_page(name="carol")
-    open_page(carol, server, scene["page"], "carol")
-    carol.wait_for_selector(f"{BLOCK} [data-state=denied]", timeout=15000)
-    wait_for(lambda: values(carol)[0] == "—")  # each summary loads on its own
-    wait_for(lambda: values(carol, INLINE) == ["—"])  # the inline number loads on its own
-    assert carol.locator("[role=alert]").count() == 0
-    assert carol.locator(".toast, .toast-container .toast").count() == 0
-    # Read-only for her: no settings on click
-    carol.click(BLOCK)
-    assert carol.locator("[data-testid=summary-setup]").count() == 0
+def test_someone_with_review_only_cannot_open_the_page(scene, server):
+    # Pages and tasks are one tab (Main): without it the page is closed, so there is no half-readable state here.
+    # How a block looks when its view is closed to the reader is covered by the unit tests of the block.
+    assert refused(server, "carol", scene["page"]) == 403

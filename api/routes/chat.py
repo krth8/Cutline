@@ -35,6 +35,7 @@ from database.chat import (
 )
 from api.state import WS_ACCESS_REMOVED, SocketRooms, track_socket, untrack_socket
 from api.auth import (
+    can_use_lounge,
     can_view_project,
     media_principals,
     principal_from_ticket,
@@ -126,7 +127,7 @@ async def get_chat_room(room_id: str, user: dict = Depends(require_auth)):
 
     # Check access via project
     if room.get("projectId"):
-        if not db_check_project_access(user["id"], room["projectId"]):
+        if not db_check_project_access(user["id"], room["projectId"], require_lounge=True):
             raise HTTPException(status_code=403, detail="Access denied")
 
     return room
@@ -135,7 +136,7 @@ async def get_chat_room(room_id: str, user: dict = Depends(require_auth)):
 @router.get("/api/projects/{project_id}/chat")
 async def get_project_chat_room(project_id: str, user: dict = Depends(require_auth)):
     """Get or create chat room for a project."""
-    if not db_check_project_access(user["id"], project_id):
+    if not db_check_project_access(user["id"], project_id, require_lounge=True):
         raise HTTPException(status_code=403, detail="Access denied")
 
     project = db_get_project(project_id)
@@ -159,7 +160,7 @@ async def get_chat_messages(
         raise HTTPException(status_code=404, detail="Room not found")
 
     if room.get("projectId"):
-        if not db_check_project_access(user["id"], room["projectId"]):
+        if not db_check_project_access(user["id"], room["projectId"], require_lounge=True):
             raise HTTPException(status_code=403, detail="Access denied")
 
     messages = db_get_messages(room_id, limit, before)
@@ -174,7 +175,7 @@ async def send_chat_message(room_id: str, request: Request, user: dict = Depends
         raise HTTPException(status_code=404, detail="Room not found")
 
     if room.get("projectId"):
-        if not db_check_project_access(user["id"], room["projectId"]):
+        if not db_check_project_access(user["id"], room["projectId"], require_lounge=True):
             raise HTTPException(status_code=403, detail="Access denied")
 
     data = await request.json()
@@ -244,7 +245,7 @@ async def upload_chat_attachment(
         raise HTTPException(status_code=404, detail="Room not found")
 
     if room.get("projectId"):
-        if not db_check_project_access(user["id"], room["projectId"]):
+        if not db_check_project_access(user["id"], room["projectId"], require_lounge=True):
             raise HTTPException(status_code=403, detail="Access denied")
 
     # Save file
@@ -296,7 +297,7 @@ async def chat_websocket_endpoint(
         and not principal.get("is_guest")
         and principal["id"] == user_id
         and room is not None
-        and (not room.get("projectId") or can_view_project(principal, room["projectId"]))
+        and (not room.get("projectId") or can_use_lounge(principal, room["projectId"]))
     )
     if not allowed:
         await websocket.close(code=WS_ACCESS_REMOVED)

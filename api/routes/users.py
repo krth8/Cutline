@@ -309,7 +309,8 @@ async def admin_create_invite(data: dict, user: dict = Depends(require_admin)):
         "role": "admin" | "editor" | "viewer",  // User role
         "projectId": "optional_project_id",      // Link user to specific project
         "canReview": true/false,                 // For viewers: review access
-        "canTasks": true/false,                  // For viewers: tasks access
+        "canTasks": true/false,                  // The Main tab: pages and tasks
+        "canLounge": true/false,                 // The Lounge tab (default true)
         "maxUses": 1,
         "expiresInDays": 7
     }
@@ -319,6 +320,7 @@ async def admin_create_invite(data: dict, user: dict = Depends(require_admin)):
     project_id = data.get("projectId")
     can_review = data.get("canReview", True)
     can_tasks = data.get("canTasks", False)
+    can_lounge = data.get("canLounge", True)
     max_uses = data.get("maxUses", 1)
     expires_in_days = data.get("expiresInDays")
 
@@ -333,6 +335,7 @@ async def admin_create_invite(data: dict, user: dict = Depends(require_admin)):
         project_id=project_id,
         can_review=can_review,
         can_tasks=can_tasks,
+        can_lounge=can_lounge,
         max_uses=max_uses,
         expires_in_days=expires_in_days
     )
@@ -473,6 +476,7 @@ async def register_with_invite(invite_id: str, data: dict, request: Request, res
             project_id=invite["projectId"],
             can_review=invite.get("canReview", True),
             can_tasks=invite.get("canTasks", False),
+            can_lounge=invite.get("canLounge", True),
             is_owner=False,
             granted_by=invite.get("createdBy")
         )

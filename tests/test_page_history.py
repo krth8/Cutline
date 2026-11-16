@@ -213,8 +213,10 @@ def test_permissions(client, team, page, share, second_editor):
         assert client.get(base, headers=auth(token)).status_code == 200
     assert client.patch(f"{base}/{vid}", json={"name": "V1b"}, headers=auth(second_editor["token"])).status_code == 200
 
-    # a reader (project access without task rights) reads but never writes
-    reader = team["reviewer"]
+    # review alone does not read pages
+    assert client.get(base, headers=auth(team["reviewer"])).status_code == 403
+    # a reader (the Main tab, viewer role) reads but never writes
+    reader = team["viewer"]
     assert client.get(base, headers=auth(reader)).status_code == 200
     assert client.get(f"{base}/{vid}", headers=auth(reader)).status_code == 200
     assert client.post(base, json={"name": "x"}, headers=auth(reader)).status_code == 403

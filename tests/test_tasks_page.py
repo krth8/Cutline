@@ -115,10 +115,11 @@ def test_it_can_be_edited_like_any_page(client, team):
     assert len(system_pages(team["project"])) == 1  # still found by its marker, whatever its title
 
 
-def test_a_reader_without_task_access_cannot_edit_it(client, team):
+def test_a_viewer_reads_it_but_cannot_edit_it_and_review_alone_does_not_read_it(client, team):
     page_id = system_pages(team["project"])[0]["id"]
-    body = client.get(f"/api/pages/{page_id}", headers=auth(team["reviewer"])).json()
+    body = client.get(f"/api/pages/{page_id}", headers=auth(team["viewer"])).json()
     assert body["canEdit"] is False
+    assert client.get(f"/api/pages/{page_id}", headers=auth(team["reviewer"])).status_code == 403
 
 
 def test_the_page_opens_over_the_sync_socket_with_its_view_block(client, team, ticket):

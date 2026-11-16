@@ -223,11 +223,11 @@ def test_migrated_pages_are_readable_by_exactly_those_who_could_read_the_documen
         client, admin, make_user, make_project, grant):
     project = make_project("Docs project")
     other = make_project("Other project")
-    reader = make_user()      # review access only
+    reader = make_user("viewer")      # reads the docs (now pages), edits nothing
     tasker = make_user()      # task access
     viewer = make_user("viewer")
     outsider = make_user()    # no access
-    grant(project, reader["user"]["id"], can_review=True, can_tasks=False)
+    grant(project, reader["user"]["id"], can_review=True, can_tasks=True)
     grant(project, tasker["user"]["id"], can_review=False, can_tasks=True)
     grant(project, viewer["user"]["id"], can_review=True, can_tasks=True)
 
