@@ -162,9 +162,10 @@ async def revoke_project_access(project_id: str, target_user_id: str, user: dict
 
 @router.get("/api/projects/{project_id}/members")
 async def list_project_members(project_id: str, user: dict = Depends(require_auth)):
-    """List all users who can be assigned to tasks in this project.
+    """The people in this project: everyone granted access to it, and every admin (who sees all projects).
 
-    Returns all users in the system - any user can be assigned to a task.
+    These are the people offered when assigning a task or tagging someone in a comment; users of other
+    projects are not listed.
     """
     # Check database for project existence (not in-memory dict)
     project = db_get_project(project_id)
@@ -172,18 +173,17 @@ async def list_project_members(project_id: str, user: dict = Depends(require_aut
         raise HTTPException(status_code=404, detail="Project not found")
     require_project_access(user, project_id)
 
-    # Return all users - anyone can be assigned to a task
-    all_users = db_list_users()
+    members = {}
+    for row in db_list_project_access(project_id):
+        members[row["userId"]] = {"id": row["userId"], "username": row["username"],
+                                  "profileImage": row["profileImage"], "role": row["userRole"],
+                                  "canTasks": row["canTasks"]}
+    for u in db_list_users():
+        if u["role"] == "admin" and u["id"] not in members:
+            members[u["id"]] = {"id": u["id"], "username": u["username"], "profileImage": u.get("profileImage"),
+                                "role": u["role"], "canTasks": True}
 
-    members = [{
-        "id": u["id"],
-        "username": u["username"],
-        "profileImage": u.get("profileImage"),
-        "role": u["role"],
-        "canTasks": True
-    } for u in all_users]
-
-    return {"members": members}
+    return {"members": sorted(members.values(), key=lambda m: m["username"].lower())}
 
 
 @router.get("/api/users/{user_id}/access")

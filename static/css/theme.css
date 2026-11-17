@@ -23,6 +23,8 @@
    ========================================================================== */
 :root,
 [data-theme="dark"] {
+    color-scheme: dark;                        /* native controls, their popups and scrollbars follow the theme */
+
     /* ---- Base colours ---- */
     --white: #ffffff;                          /* pure white */
     --black: #000000;                          /* pure black */

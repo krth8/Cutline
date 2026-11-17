@@ -28,8 +28,13 @@ class Toast {
     static init() {
         if (Toast.container) return;
 
+        // The bottom rail: a strip at the bottom centre of the screen. Toasts stack in it now; later it can
+        // hold other passing things (uploads in progress, a running export).
         Toast.container = document.createElement('div');
-        Toast.container.className = 'toast-container';
+        Toast.container.className = 'toast-container cl-rail';
+        Toast.container.id = 'clRail';
+        Toast.container.setAttribute('role', 'status');
+        Toast.container.setAttribute('aria-live', 'polite');
         document.body.appendChild(Toast.container);
     }
 
@@ -53,6 +58,11 @@ class Toast {
 
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
+        // A toast with an action (Undo) shows how long the offer stands: a thin bar that runs out
+        if (action && duration > 0) {
+            toast.classList.add('toast-timed');
+            toast.style.setProperty('--toast-ms', `${duration}ms`);
+        }
 
         // Icon based on type
         const icons = {

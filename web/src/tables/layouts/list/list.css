@@ -26,16 +26,21 @@
   flex: 1 1 auto; min-width: 0; font: inherit; color: inherit; background: transparent;
   border: 1px solid var(--accent); border-radius: var(--radius-xs); padding: var(--space-0-5) var(--space-1-5);
 }
-.cl-list__secondary { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); max-width: 60%; min-width: 0; }
-.cl-list__value { min-width: 0; max-width: 140px; overflow: hidden; }
+/* The values stand in columns: each secondary column has a slot of the same width in every row */
+.cl-list__secondary { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: var(--space-3); max-width: 60%; min-width: 0; }
+.cl-list__value { flex: none; width: var(--cl-list-slot, 120px); min-width: 0; overflow: hidden; display: flex; align-items: center; }
 .cl-list__row.is-done .cl-list__secondary { opacity: 0.6; }
 
 /* Narrow container: the secondary values move under the title (class set from a ResizeObserver, container query as backup) */
 .cl-list.is-narrow .cl-list__row { flex-wrap: wrap; row-gap: 0; }
 .cl-list.is-narrow .cl-list__secondary { flex: 1 0 100%; max-width: 100%; justify-content: flex-start; flex-wrap: wrap; padding-left: var(--space-6); gap: var(--space-1) var(--space-2); }
+.cl-list.is-narrow .cl-list__value { width: auto; max-width: 160px; }
+.cl-list.is-narrow .cl-list__value.is-empty { display: none; }
 @container (max-width: 419px) {
   .cl-list__row { flex-wrap: wrap; row-gap: 0; }
   .cl-list__secondary { flex: 1 0 100%; max-width: 100%; justify-content: flex-start; flex-wrap: wrap; padding-left: var(--space-6); gap: var(--space-1) var(--space-2); }
+  .cl-list__value { width: auto; max-width: 160px; }
+  .cl-list__value.is-empty { display: none; }
 }
 
 .cl-list__group { display: flex; align-items: center; gap: var(--space-1-5); margin: var(--space-3) 0 var(--space-0-5); padding: 0 var(--space-1-5); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--text-secondary); }

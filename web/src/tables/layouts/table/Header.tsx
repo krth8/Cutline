@@ -78,7 +78,9 @@ export function Header({
     e.preventDefault();
     e.stopPropagation();
     const startX = e.clientX;
-    const startWidth = c.width;
+    // From the width on screen: the title column may be wider than its set width (it takes the spare room)
+    const shown = e.currentTarget.parentElement?.getBoundingClientRect().width;
+    const startWidth = shown && shown > 0 ? shown : c.width;
     let width = startWidth;
     const move = (ev: globalThis.PointerEvent) => {
       width = startWidth + ev.clientX - startX;

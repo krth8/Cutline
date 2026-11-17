@@ -552,7 +552,13 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
   }
 
   // ---- render ----
-  const style = { '--cl-table-cols': gridTemplate(cols), '--cl-table-width': `${gridWidth(cols)}px`, '--cl-table-row-h': `${ROW_HEIGHT}px` } as CSSProperties;
+  const style = {
+    '--cl-table-cols': gridTemplate(cols),
+    '--cl-table-width': `${gridWidth(cols)}px`,
+    '--cl-table-row-h': `${ROW_HEIGHT}px`,
+    // Room for the header's add-column button, kept in every row so the columns line up with the header
+    ...(schema.capabilities.editSchema ? { '--cl-table-tail': '40px' } : {}),
+  } as CSSProperties;
   const allIds = order;
   const filtered = !!query.filter || !!query.search;
   const clearFilters = () => {

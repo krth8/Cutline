@@ -105,6 +105,10 @@
 .cl-editor__prose .ProseMirror-selectednode { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-sm); }
 .ProseMirror-gapcursor:after { border-top-color: var(--text); }
 .cl-editor__prose ::selection { background: var(--accent-glow); color: inherit; }
+/* Blocks that are not text (views, charts, numbers, embeds) are controls: their labels can't be selected
+   like copy. Their own fields still can. */
+.cl-editor__prose [contenteditable="false"] { -webkit-user-select: none; user-select: none; }
+.cl-editor__prose [contenteditable="false"] :is(input, textarea, [contenteditable="true"]) { -webkit-user-select: text; user-select: text; }
 
 /* ---- task list ---- */
 .cl-editor__prose ul[data-type='taskList'] { list-style: none; padding-left: 0; }

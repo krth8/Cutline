@@ -54,6 +54,18 @@ def test_people_are_the_members_and_the_admins_with_their_place(client, admin, m
     assert not seen[rname]["online"] and seen[rname]["place"] is None and seen[rname]["lastSeen"]
 
 
+def test_members_are_the_people_of_the_project_not_every_user(client, admin, make_project, make_user, grant):
+    project_id = make_project()
+    rita, stranger = make_user(), make_user()
+    grant(project_id, rita["user"]["id"])
+    res = client.get(f"/api/projects/{project_id}/members", headers=auth(rita["token"]))
+    assert res.status_code == 200, res.text
+    names = {m["username"]: m for m in res.json()["members"]}
+    assert {"admin", rita["user"]["username"]} <= set(names)
+    assert stranger["user"]["username"] not in names
+    assert all(m["role"] == "admin" for name, m in names.items() if name != rita["user"]["username"])
+
+
 def test_people_need_the_lounge_tab(client, admin, make_project, make_user):
     project_id = make_project()
     reviewer, stranger = make_user(), make_user()

@@ -1,10 +1,16 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type RefObject } from 'react';
 import { CellHost } from '../../cells';
 import { ProjectSelect, useAddProject, useFocusWithin } from '../../addProject';
-import type { LayoutProps, Row } from '../../types';
+import type { Column, LayoutProps, Row } from '../../types';
 import { cx } from '../../../ui';
-import { doneModel, hasValue, rowInGroup, secondaryColumns } from './listHelpers';
+import { getPlatform } from '../../../platform';
+import { UNDO_TOAST_MS } from '../../store/mutations';
+import { doneModel, hasValue, rowInGroup, secondaryColumns, slotWidth } from './listHelpers';
 import './list.css';
+
+function slotStyle(column: Column): CSSProperties {
+  return { '--cl-list-slot': `${slotWidth(column)}px` } as CSSProperties;
+}
 
 /** Containers narrower than this (px) put the secondary values on a second line under the title. */
 export const NARROW_WIDTH = 420;
@@ -35,7 +41,8 @@ export function ListLayout({ schema, view, result, loading, actions }: LayoutPro
   const rootRef = useRef<HTMLDivElement>(null);
   const narrow = useNarrow(rootRef);
   const done = doneModel(schema);
-  const secondary = secondaryColumns(schema, view.config);
+  // A secondary column that is empty in every row takes no slot
+  const secondary = secondaryColumns(schema, view.config).filter((c) => result.rows.some((r) => hasValue(c, r.values[c.key])));
   const titleKey = schema.titleColumn;
   const titleColumn = schema.columns.find((c) => c.key === titleKey);
   const groupBy = view.config.query.groupBy ?? '';
@@ -49,10 +56,21 @@ export function ListLayout({ schema, view, result, loading, actions }: LayoutPro
 
   function toggle(row: Row) {
     if (!done || !row.canEdit) return;
-    const next = done.isDone(row) ? done.openValue : done.doneValue;
-    actions.updateRow(row.id, { [done.column.key]: next }).catch(() => {
+    const wasDone = done.isDone(row);
+    const key = done.column.key;
+    const before = row.values[key] ?? null;
+    actions.updateRow(row.id, { [key]: wasDone ? done.openValue : done.doneValue }).catch(() => {
       /* the store has already shown the error */
     });
+    // A done task often leaves the list (open tasks, my tasks), so offer the way back
+    if (!wasDone) {
+      const title = String(row.values[titleKey] ?? '').trim() || 'Task';
+      getPlatform().toast('success', `“${title}” is done`, {
+        actionLabel: 'Undo',
+        durationMs: UNDO_TOAST_MS,
+        onAction: () => void actions.updateRow(row.id, { [key]: before }).catch(() => {}),
+      });
+    }
   }
 
   function startEdit(row: Row) {
@@ -172,7 +190,7 @@ export function ListLayout({ schema, view, result, loading, actions }: LayoutPro
         <span className="cl-list__secondary">
           {secondary.map((c) =>
             hasValue(c, row.values[c.key]) ? (
-              <span key={c.key} className="cl-list__value" data-column={c.key}>
+              <span key={c.key} className="cl-list__value" data-column={c.key} style={slotStyle(c)}>
                 <CellHost
                   column={c}
                   value={row.values[c.key]}
@@ -183,7 +201,10 @@ export function ListLayout({ schema, view, result, loading, actions }: LayoutPro
                   }}
                 />
               </span>
-            ) : null,
+            ) : (
+              // an empty slot keeps the columns lined up (left out when the values wrap under the title)
+              <span key={c.key} className="cl-list__value is-empty" aria-hidden="true" style={slotStyle(c)} />
+            ),
           )}
         </span>
       </li>

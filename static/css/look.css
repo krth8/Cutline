@@ -113,6 +113,63 @@
 .dropdown-item,
 .custom-dropdown-item { border-radius: var(--radius-sm); }
 
+/* ---- the bottom rail: toasts as compact cards at the bottom centre (static/js/components/toast.js) ---- */
+.cl-rail {
+    left: 50%;
+    right: auto;
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    align-items: center;
+    gap: 8px;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+}
+.cl-rail .toast {
+    position: relative;
+    overflow: hidden;
+    gap: 10px;
+    min-width: 0;
+    max-width: min(560px, calc(100vw - 32px));
+    padding: 8px 8px 8px 14px;
+    background: var(--modal-elevated);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(14px) scale(0.98);
+    -webkit-user-select: none;
+    user-select: none;
+}
+.cl-rail .toast-visible { transform: none; }
+.cl-rail .toast-hiding { transform: translateY(14px) scale(0.98); }
+.cl-rail .toast-icon,
+.cl-rail .toast-icon .icon { width: 16px; height: 16px; }
+.cl-rail .toast-message { font-size: var(--font-size-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.cl-rail .toast-action {
+    color: var(--accent-light);
+    background: var(--accent-bg);
+    font-weight: var(--font-weight-semibold);
+    border-radius: var(--radius-sm);
+}
+.cl-rail .toast-action:hover { background: var(--accent-bg-strong); }
+.cl-rail .toast-dismiss { border-radius: var(--radius-sm); }
+/* how long an Undo stands: a hairline along the bottom that runs out */
+.cl-rail .toast-timed::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    width: 100%;
+    background: var(--accent);
+    opacity: 0.7;
+    transform-origin: left;
+    animation: cl-rail-run var(--toast-ms, 8s) linear forwards;
+}
+@keyframes cl-rail-run { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (max-width: 600px) {
+    .cl-rail .toast-message { white-space: normal; }
+}
+
 /* ---- Lounge: messages sit on the page, the composer is a card ---- */
 .lounge-message { border-radius: var(--radius-md); }
 .lounge-message:hover { background: var(--bg-hover); }

@@ -121,6 +121,31 @@ describe('list layout', () => {
     expect(actions.updateRow).toHaveBeenCalledWith('r2', { status: 's-todo' });
   });
 
+  it('values stand in columns: an empty value keeps its slot, a column empty in every row has none', () => {
+    setup([row('r1', 'Write script', 's-todo', { dueDate: '2026-06-20' }), row('r2', 'Edit cut', null)]);
+    const [first, second] = [...document.querySelectorAll<HTMLElement>('.cl-list__secondary')];
+    expect(first!.children).toHaveLength(2); // status and due
+    expect(second!.children).toHaveLength(2);
+    expect(second!.querySelectorAll('.is-empty')).toHaveLength(2);
+    expect(first!.querySelector<HTMLElement>('[data-column=dueDate]')!.style.getPropertyValue('--cl-list-slot')).toBe('96px');
+    setup([row('r3', 'No dates', 's-todo')]);
+    expect(document.querySelectorAll('[data-row-id=r3] .cl-list__value')).toHaveLength(1); // the empty due column is gone
+  });
+
+  it('checking a row off offers an undo toast that puts the old status back', async () => {
+    const fake = createFakePlatform();
+    setPlatform(fake);
+    const user = userEvent.setup();
+    const { actions } = setup(rows());
+    await user.click(screen.getAllByTestId('list-check')[0]!);
+    expect(fake.toasts).toHaveLength(1);
+    expect(fake.toasts[0]).toMatchObject({ kind: 'success', message: '“Write script” is done', actionLabel: 'Undo' });
+    (fake.toasts[0] as { onAction: () => void }).onAction();
+    expect(actions.updateRow).toHaveBeenLastCalledWith('r1', { status: 's-todo' });
+    await user.click(screen.getAllByTestId('list-check')[1]!); // unchecking needs no undo
+    expect(fake.toasts).toHaveLength(1);
+  });
+
   it('title click opens the row, double click edits it inline', async () => {
     const user = userEvent.setup();
     const { actions } = setup(rows());

@@ -261,7 +261,7 @@ describe('columns', () => {
     const cols = gridColumns(schema, config({ columns: [{ key: 'status', hidden: true }] }), { name: 500 });
     expect(cols.map((c) => c.column.key)).toEqual(['name', 'due', 'n']);
     expect(cols[0]!.width).toBe(500);
-    expect(gridTemplate(cols)).toBe('44px 500px 140px 110px');
+    expect(gridTemplate(cols)).toBe('44px minmax(500px, 1fr) 140px 110px'); // the title takes the spare room
   });
 
   it('clampWidth keeps widths in range', () => {

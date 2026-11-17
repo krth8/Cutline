@@ -331,8 +331,12 @@ export function gridColumns(schema: TableSchema, config: View['config'], live: R
     });
 }
 
+/**
+ * The grid tracks. Every column has its width; the title column also takes the room left over when the table
+ * is narrower than its container, so names are not cut short next to empty space.
+ */
 export function gridTemplate(columns: readonly GridColumn[]): string {
-  return [`${LEAD_WIDTH}px`, ...columns.map((c) => `${c.width}px`)].join(' ');
+  return [`${LEAD_WIDTH}px`, ...columns.map((c) => (c.isTitle ? `minmax(${c.width}px, 1fr)` : `${c.width}px`))].join(' ');
 }
 
 export function gridWidth(columns: readonly GridColumn[]): number {

@@ -75,6 +75,22 @@ export function rowInGroup(value: unknown, key: string | null): boolean {
   return atoms.some((a) => String(a) === key);
 }
 
+/**
+ * The width (px) of a secondary column's slot. Every row gives each secondary column the same slot, so the
+ * values stand in columns down the list (a status under a status) instead of wherever the row's text ends.
+ */
+export function slotWidth(column: Column): number {
+  switch (column.type) {
+    case 'checkbox': return 28;
+    case 'number': return 72;
+    case 'date': return 96;
+    case 'priority': return 84;
+    case 'status': case 'select': return 124;
+    case 'person': return 120;
+    default: return 140;
+  }
+}
+
 export function hasValue(column: Column, value: unknown): boolean {
   return !getCell(column.type).isEmpty(value);
 }
