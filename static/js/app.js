@@ -422,7 +422,7 @@ function renderSessionsList() {
         const usersHtml = (s.users || []).map(u => {
             const userName = u.name || u.id?.substr(-4) || 'User';
             const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase().substr(0, 2) || 'U';
-            const color = u.color || '#6d5df0';
+            const color = u.color || '#2f86dd';
             return `
                 <div class="session-user-item">
                     <span class="session-user-avatar" style="background: ${color}">${initials}</span>
@@ -2177,7 +2177,7 @@ function showSyncFlash(userId, action, targetElement = null) {
 
     if (toast && toastAvatar && toastUser && toastAction) {
         toastAvatar.textContent = initials;
-        toastAvatar.style.background = user.color || '#6d5df0';
+        toastAvatar.style.background = user.color || '#2f86dd';
         toastUser.textContent = displayName;
         toastAction.textContent = action;
 
@@ -3202,10 +3202,10 @@ function applyCustomTheme(colors) {
 }
 
 function updateCustomTheme() {
-    const bgColor = document.getElementById('customBgColor')?.value || '#0f0c14';
+    const bgColor = document.getElementById('customBgColor')?.value || '#0a111e';
     const panelsColor = document.getElementById('customPanelsColor')?.value || '#1e1a2e';
-    const accentColor = document.getElementById('customAccentColor')?.value || '#6d5df0';
-    const textColor = document.getElementById('customTextColor')?.value || '#ecebf5';
+    const accentColor = document.getElementById('customAccentColor')?.value || '#2f86dd';
+    const textColor = document.getElementById('customTextColor')?.value || '#e7edf6';
 
     const customColors = {
         background: bgColor,
@@ -3220,10 +3220,10 @@ function updateCustomTheme() {
 
 function resetCustomTheme() {
     const defaults = {
-        background: '#0f0c14',
+        background: '#0a111e',
         panels: '#1e1a2e',
-        accent: '#6d5df0',
-        text: '#ecebf5'
+        accent: '#2f86dd',
+        text: '#e7edf6'
     };
 
     // Update color pickers
@@ -3262,10 +3262,10 @@ function initTheme() {
     const accentPicker = document.getElementById('customAccentColor');
     const textPicker = document.getElementById('customTextColor');
 
-    if (bgPicker) bgPicker.value = customColors.background || '#0f0c14';
+    if (bgPicker) bgPicker.value = customColors.background || '#0a111e';
     if (panelsPicker) panelsPicker.value = customColors.panels || '#1e1a2e';
-    if (accentPicker) accentPicker.value = customColors.accent || '#6d5df0';
-    if (textPicker) textPicker.value = customColors.text || '#ecebf5';
+    if (accentPicker) accentPicker.value = customColors.accent || '#2f86dd';
+    if (textPicker) textPicker.value = customColors.text || '#e7edf6';
 }
 
 async function loadSettingsShareLinks() {
@@ -3324,7 +3324,7 @@ function updateSettingsOnlineUsers() {
 
     container.innerHTML = usersList.map(user => `
         <div class="online-user-item">
-            <div class="online-user-avatar" style="background: ${user.color || '#6d5df0'}">
+            <div class="online-user-avatar" style="background: ${user.color || '#2f86dd'}">
                 ${(user.name || 'U').substring(0, 2).toUpperCase()}
             </div>
             <span class="online-user-name">${escapeHtml(user.name || 'Anonymous')}</span>

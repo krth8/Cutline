@@ -8,8 +8,10 @@
   margin: var(--space-2) 0;
   padding: var(--space-2-5) 14px;
   min-width: 0;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
 }
 .cl-summary--block.cl-summary--editable:hover { background: var(--bg-hover); }
 .ProseMirror-selectednode .cl-summary--block { border-color: var(--accent); }

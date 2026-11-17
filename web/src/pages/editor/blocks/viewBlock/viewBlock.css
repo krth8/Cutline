@@ -81,3 +81,9 @@
 .cl-viewpicker__meta { font-size: 12px; color: var(--text-muted); }
 .cl-viewpicker__state { color: var(--text-muted); margin: 8px 0; }
 .cl-viewpicker__heading { margin: 8px 0 4px; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+
+/* The common look: a view in a page is a soft card (the table inside drops its own card) */
+.cl-viewblock { padding: var(--space-3) var(--space-4) var(--space-2); background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-lg); box-shadow: var(--card-shadow); }
+.cl-viewblock .cl-table__scroll { background: transparent; border-color: transparent; box-shadow: none; border-radius: 0; }
+.cl-viewblock .cl-table__header { background: transparent; }
+.ProseMirror-selectednode .cl-viewblock { outline-offset: 2px; border-radius: var(--radius-lg); }

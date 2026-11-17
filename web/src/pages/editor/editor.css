@@ -396,7 +396,7 @@ span.cl-unsupported .cl-unsupported__label { display: inline; }
 .cl-column > :last-child { margin-bottom: 0; }
 /* while editing, the columns show where they are */
 .cl-editor__prose[contenteditable="true"] .cl-column { outline: 1px dashed transparent; outline-offset: 6px; border-radius: 4px; }
-.cl-editor__prose[contenteditable="true"] .cl-columns:hover .cl-column { outline-color: var(--border-medium); }
+.cl-editor__prose[contenteditable="true"] .cl-columns:hover .cl-column { outline-color: var(--border); }
 /* a view in a column keeps its name readable; its toolbar gives way */
 .cl-column .cl-viewhead__title { flex-shrink: 0; max-width: 100%; }
 .cl-column .cl-viewbar { overflow: hidden; }

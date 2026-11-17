@@ -8,7 +8,7 @@
   width: 248px;
   min-height: 0;
   box-sizing: border-box;
-  background: var(--bg-solid);
+  background: var(--chrome-bg);
   border-right: 1px solid var(--border-medium);
   color: var(--text);
   font-size: 13px;

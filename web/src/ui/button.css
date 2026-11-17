@@ -34,4 +34,4 @@
 /* ---- the common look: quiet outlined secondary buttons ---- */
 .cl-btn--secondary { background: transparent; color: var(--text-secondary); border-color: var(--border-medium); }
 .cl-btn--secondary:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); border-color: var(--border-medium); }
-.cl-btn--primary { box-shadow: 0 1px 2px var(--shadow); }
+.cl-btn--primary { box-shadow: var(--accent-shadow); }

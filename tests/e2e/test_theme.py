@@ -70,7 +70,7 @@ def test_switching_to_light_survives_a_reload_without_a_dark_flash(scene, browse
     page.evaluate("window.CutlineTheme.set('light')")
     assert page.evaluate("document.documentElement.getAttribute('data-theme')") == "light"
     assert page.evaluate("localStorage.getItem('theme')") == "light"
-    assert page.evaluate(BG) == "#f4f4f8"
+    assert page.evaluate(BG) == "#ebe8e4"
 
     # Reload and record <html data-theme> at the moment the browser first meets the theme.css link:
     # the inline script in the head must already have set it
@@ -88,7 +88,7 @@ def test_switching_to_light_survives_a_reload_without_a_dark_flash(scene, browse
     seen = page.evaluate("window.__themeAtLink")
     assert seen == ["light"], seen
     assert page.evaluate("document.documentElement.getAttribute('data-theme')") == "light"
-    assert page.evaluate("getComputedStyle(document.body).backgroundColor") == "rgb(244, 244, 248)"
+    assert page.evaluate("getComputedStyle(document.body).backgroundColor") == "rgb(235, 232, 228)"
 
 
 def test_system_choice_follows_a_change_of_the_os_preference(scene, browser, new_page):

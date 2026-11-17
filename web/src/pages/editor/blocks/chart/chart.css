@@ -159,3 +159,7 @@
   text-align: left;
 }
 .cl-chart-setup__actions { display: flex; justify-content: flex-end; }
+
+/* The common look: a chart in a page is a soft card */
+.cl-chart { padding: var(--space-3) var(--space-4) var(--space-4); background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-lg); box-shadow: var(--card-shadow); }
+.cl-chart--editable:hover { background: var(--card-bg); border-color: var(--border-medium); box-shadow: var(--card-shadow-hover); }
