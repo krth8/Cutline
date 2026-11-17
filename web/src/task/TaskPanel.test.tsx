@@ -96,10 +96,8 @@ beforeEach(() => {
     })
     .on('GET /api/tasks/sub1/page', () => ({ body: { id: 'page-sub1', canEdit: true } }))
     .on('GET /api/tasks/t1/comments', () => ({ body: { comments } }))
-    .on('GET /api/tasks/t1/checklist', () => ({ body: { items: [{ id: 'k1', text: 'Check me', isChecked: false }] } }))
     .on('GET /api/tasks/t1/clips', () => ({ body: { clips: [{ id: 5, baseName: 'shot_010', activeVersion: 2, thumbnail: null }] } }))
     .on('GET /api/tasks/sub1/comments', () => ({ body: { comments: [] } }))
-    .on('GET /api/tasks/sub1/checklist', () => ({ body: { items: [] } }))
     .on('GET /api/tasks/sub1/clips', () => ({ body: { clips: [] } }));
   goto('/p/p1/pages?task=t1');
 });
@@ -111,7 +109,7 @@ afterEach(() => {
 });
 
 describe('task panel', () => {
-  it('opens from the route and shows title, properties, body, clips, subtasks, checklist and the activity stream', async () => {
+  it('opens from the route and shows title, properties, body, clips, subtasks and the activity stream', async () => {
     render(<TaskPanelHost />);
     const title = (await screen.findByLabelText('Task name')) as HTMLInputElement;
     expect(title.value).toBe('Parent task');
@@ -129,7 +127,6 @@ describe('task panel', () => {
     expect((await screen.findByTestId('collab')).getAttribute('data-page-id')).toBe('page-t1');
     expect(await screen.findByText('shot_010')).toBeTruthy();
     expect(await screen.findByText('Child task')).toBeTruthy();
-    expect(await screen.findByText('Check me')).toBeTruthy();
     expect(await screen.findByText('First comment')).toBeTruthy();
   });
 
@@ -305,7 +302,7 @@ describe('task panel', () => {
     goto('/p/p1/pages?task=sub1');
     render(<TaskPanelHost />);
     await screen.findByDisplayValue('Child task');
-    for (const id of ['task-subtasks', 'task-checklist', 'task-clips']) {
+    for (const id of ['task-subtasks', 'task-clips']) {
       const section = await screen.findByTestId(id);
       expect(section.classList.contains('is-empty')).toBe(true);
       expect(section.querySelector('.cl-sec__body')).toBeNull();
@@ -314,8 +311,8 @@ describe('task panel', () => {
     expect(screen.queryByText('No comments yet')).toBeNull();
     expect(screen.queryByText('No clips linked')).toBeNull();
     // The add action is still there, and opens the add row
-    await userEvent.click(within(screen.getByTestId('task-checklist')).getByLabelText('Add checklist item'));
-    expect(screen.getByLabelText('Add a checklist item')).toBeTruthy();
+    await userEvent.click(within(screen.getByTestId('task-subtasks')).getByLabelText('Add subtask'));
+    expect(within(screen.getByTestId('task-subtasks')).getByLabelText(/new/i)).toBeTruthy();
   });
 
   it('sends the comment on Enter and Ctrl+Enter, and breaks the line on Shift+Enter', async () => {

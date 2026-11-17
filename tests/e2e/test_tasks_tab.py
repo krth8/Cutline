@@ -1,11 +1,10 @@
 """The Tasks tab on the new table (T13): /p/<projectId>/tasks shows the project's Tasks view full page inside the
 shell. Editing seen by a second user, a custom column added from the header, sorting by header click, the task
-panel, the Tasks page in the sidebar, the fallback to the old list, and a user without task access."""
+panel, the Tasks page in the sidebar, and a user without task access."""
 
 import time
 
 import pytest
-from playwright.sync_api import expect
 
 from e2e.e2e_support import ADMIN, login, wait_js
 
@@ -61,9 +60,9 @@ def test_the_tab_shows_the_projects_tasks_as_a_table_inside_the_shell(server, sc
     open_table(page, server, scene)
     wait_for(lambda: sorted(names(page)) == ["Alpha", "Beta", "Gamma"])
     assert page.locator("[data-testid=cl-sidebar]").is_visible()
-    # The columns of the old list, in its order
+    # The default columns, in their order
     headers = page.evaluate("() => [...document.querySelectorAll('[data-testid=table-header] [data-col]')].map(h => h.dataset.col)")
-    assert headers == ["name", "status", "priority", "assignees", "dueDate", "stage"]
+    assert headers == ["name", "status", "priority", "assignees", "dueDate"]
     # There is no fixed Tasks page: the sidebar has no Tasks entry, and the view belongs to the project's dashboard
     assert page.locator("[data-testid=cl-sidebar] [data-testid=nav-tasks]").count() == 0
     assert page.locator("[data-testid=cl-sidebar] [role=treeitem][aria-label=Tasks]").count() == 0
@@ -147,25 +146,6 @@ def test_a_task_opens_in_the_panel_from_the_tab(server, scene, new_page):
     page.evaluate(f"AppState.projectId = '{scene['project']}'; openTaskFromClip('{scene['tasks']['Alpha']}')")
     page.wait_for_function(f"location.search.includes('task={scene['tasks']['Alpha']}')", timeout=10000)
     page.wait_for_selector("[data-testid=task-panel]", timeout=15000)
-
-
-def test_the_old_task_list_comes_back_with_the_switch(server, scene, new_page):
-    page = new_page(name="editor-legacy")
-    page.goto(server.base_url)
-    page.evaluate("localStorage.setItem('legacyTasks', '1')")
-    open_tab(page, server, scene, "editor")
-    page.wait_for_selector("#tasksTableContainer:not(.hidden)", timeout=20000)
-    assert page.locator("[data-testid=tasks-tab]").count() == 0
-    wait_js(page, "AppState.activeTab === 'projects'", 10000)
-    page.wait_for_selector("#projectsTableBody .task-row", timeout=10000)
-    # the switch lives in the user menu (Settings, Appearance)
-    page.click("#userMenuBtn")
-    page.click("[data-settings-tab=appearance]")
-    expect(page.locator("#tasksListToggle")).to_have_text("Use the new task list")
-    # switching back brings the new table
-    page.click("#tasksListToggle")
-    page.wait_for_selector(f"{TAB} [data-testid=table-layout]", timeout=20000)
-    assert page.evaluate("localStorage.getItem('legacyTasks')") == "0"
 
 
 def test_the_tasks_address_opens_the_new_list_by_default(server, scene, new_page):

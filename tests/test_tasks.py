@@ -58,13 +58,12 @@ def add_clip(project, base_name):
 
 def test_create_is_in_the_database(admin, new_task):
     task = new_task(admin, "Grade shot 4", description="Warmer", priority="high", dueDate="2030-01-02",
-                    stageTag="Lighting", customFields={"shot": 4})
+                    customFields={"shot": 4})
     row = stored(task["id"])
     assert row["name"] == "Grade shot 4"
     assert row["description"] == "Warmer"
     assert row["priority"] == "high"
     assert row["dueDate"] == "2030-01-02"
-    assert row["stageTag"] == "Lighting"
     assert row["customFields"] == {"shot": 4}
     assert row["createdBy"] == admin["user"]["id"]
 
@@ -90,12 +89,11 @@ def test_update_every_field_is_saved(api, admin, new_task):
     status = database.db_create_status("Approved", "#00ff00")
     res = api("PATCH", f"/api/tasks/{task['id']}", admin, {
         "name": "New", "description": "Desc", "priority": "urgent", "dueDate": "2031-05-06",
-        "stageTag": "FX", "statusId": status["id"], "customFields": {"a": 1}, "sortOrder": 7,
+        "statusId": status["id"], "customFields": {"a": 1}, "sortOrder": 7,
     })
     assert res.status_code == 200, res.text
     row = stored(task["id"])
-    assert (row["name"], row["description"], row["priority"], row["dueDate"], row["stageTag"]) == \
-        ("New", "Desc", "urgent", "2031-05-06", "FX")
+    assert (row["name"], row["description"], row["priority"], row["dueDate"]) == ("New", "Desc", "urgent", "2031-05-06")
     assert row["statusId"] == status["id"] and row["status"]["name"] == "Approved"
     assert row["customFields"] == {"a": 1}
     assert row["sortOrder"] == 7
@@ -230,39 +228,6 @@ def test_reorder_ignores_tasks_of_other_projects(api, admin, make_project, proje
     assert stored(mine["id"])["sortOrder"] == 0
 
 
-# ---------- stages ----------
-
-def test_stages(api, admin, project, new_task):
-    new_task(admin, "A", stageTag="Lighting")
-    new_task(admin, "B", stageTag="Animation")
-    new_task(admin, "C", stageTag="Lighting")
-    new_task(admin, "D")
-    stages = api("GET", f"/api/projects/{project}/tasks/stages", admin).json()
-    assert stages["usedStages"] == ["Animation", "Lighting"]
-    assert "Previz" in stages["suggestedStages"]
-    filtered = api("GET", f"/api/projects/{project}/tasks?stage_tag=Animation", admin).json()["tasks"]
-    assert [t["name"] for t in filtered] == ["B"]
-
-
-# ---------- checklist ----------
-
-def test_checklist(api, admin, new_task):
-    task = new_task(admin)
-    base = f"/api/tasks/{task['id']}/checklist"
-    assert api("POST", base, admin, {"text": "  "}).status_code == 400
-    item = api("POST", base, admin, {"text": "Check audio"}).json()["item"]
-    assert [i["text"] for i in database.db_list_checklist_items(task["id"])] == ["Check audio"]
-
-    assert api("PATCH", f"{base}/{item['id']}", admin, {"isChecked": True}).status_code == 200
-    assert database.db_list_checklist_items(task["id"])[0]["isChecked"]
-    assert api("GET", base, admin).json()["items"][0]["text"] == "Check audio"
-    assert api("PATCH", f"{base}/nope", admin, {"text": "x"}).status_code == 404
-
-    assert api("DELETE", f"{base}/{item['id']}", admin).json() == {"success": True}
-    assert database.db_list_checklist_items(task["id"]) == []
-    assert api("DELETE", f"{base}/{item['id']}", admin).status_code == 404
-
-
 # ---------- task comments ----------
 
 def test_task_comments(api, admin, editor, new_task):
@@ -342,7 +307,6 @@ def test_no_access_at_all(api, project, new_task, admin, make_user):
         ("GET", f"/api/projects/{project}/tasks", None),
         ("POST", f"/api/projects/{project}/tasks", {"name": "x"}),
         ("POST", f"/api/projects/{project}/tasks/reorder", {"taskIds": [task["id"]]}),
-        ("GET", f"/api/projects/{project}/tasks/stages", None),
         ("GET", f"/api/projects/{project}/untagged-clips", None),
         ("GET", f"/api/tasks/{task['id']}", None),
         ("PATCH", f"/api/tasks/{task['id']}", {"name": "hacked"}),
@@ -351,8 +315,6 @@ def test_no_access_at_all(api, project, new_task, admin, make_user):
         ("POST", f"/api/tasks/{task['id']}/comments", {"text": "hi"}),
         ("GET", f"/api/tasks/{task['id']}/clips", None),
         ("POST", f"/api/tasks/{task['id']}/clips", {"clipId": 1}),
-        ("GET", f"/api/tasks/{task['id']}/checklist", None),
-        ("POST", f"/api/tasks/{task['id']}/checklist", {"text": "x"}),
     ]:
         res = api(method, path, outsider, body)
         assert res.status_code == 403, (method, path, res.status_code)
@@ -396,7 +358,6 @@ def test_viewers_can_read_but_not_edit(api, admin, make_user, grant, project, ne
         ("DELETE", f"/api/tasks/{task['id']}", None),
         ("POST", f"/api/projects/{project}/tasks/reorder", {"taskIds": [task["id"]]}),
         ("POST", f"/api/tasks/{task['id']}/clips", {"clipId": 1}),
-        ("POST", f"/api/tasks/{task['id']}/checklist", {"text": "x"}),
     ]:
         assert api(method, path, viewer, body).status_code == 403, (method, path)
     assert stored(task["id"])["name"] == "Task"
@@ -441,11 +402,6 @@ def test_live_events_for_task_changes(client, admin, project, connect):
         client.post(f"/api/projects/{project}/tasks/reorder", json={"taskIds": [task["id"]]}, headers=h)
         assert watcher.receive_json() == {"type": "tasks_reordered", "project": project}
         assert watcher.receive_json()["type"] == "rows_changed"
-
-        item = client.post(f"/api/tasks/{task['id']}/checklist", json={"text": "x"}, headers=h).json()["item"]
-        assert watcher.receive_json() == {"type": "task_checklist_changed", "taskId": task["id"], "project": project}
-        client.delete(f"/api/tasks/{task['id']}/checklist/{item['id']}", headers=h)
-        assert watcher.receive_json()["type"] == "task_checklist_changed"
 
         client.post(f"/api/tasks/{task['id']}/comments", json={"text": "hi"}, headers=h)
         assert watcher.receive_json() == {"type": "task_comments_changed", "taskId": task["id"], "project": project}

@@ -61,15 +61,12 @@ def test_only_people_who_can_edit_tasks_get_the_button(scene):
 
 def test_creating_a_task_shows_the_chip_and_the_task_reaches_the_other_person(scene, server):
     alice, bob = scene["alice"], scene["bob"]
-    bob.evaluate(f"TaskManager.init('{scene['project']}')")
-    bob.wait_for_timeout(2500)
     alice.hover(COMMENT)
     alice.click(f"{COMMENT} .comment-task-btn")
     alice.wait_for_selector(f"{COMMENT} .comment-task-chip", timeout=10000)
     assert alice.locator(f"{COMMENT} .comment-task-btn").count() == 0
 
-    # The other person gets the task in the project's task list and the chip on the comment, without a reload
-    wait_js(bob, "TaskManager.getTasks().some(t => t.name === 'Make the logo bigger')", 15000)
+    # The other person gets the chip on the comment, without a reload
     bob.wait_for_selector(f"{COMMENT} .comment-task-chip", timeout=10000)
 
     tasks = server.api(f"/api/projects/{scene['project']}/tasks")["tasks"]
@@ -90,22 +87,8 @@ def test_asking_again_does_not_make_a_second_task(scene, server):
     assert len([t for t in tasks if t.get("commentId") == scene["comment"]]) == 1
 
 
-def test_the_chip_opens_the_task_and_its_clip_link_opens_the_review(scene):
-    alice = scene["alice"]
-    # This test is about the old task detail, which only exists behind the "old task list" switch (T13)
-    alice.evaluate("localStorage.setItem('legacyTasks', '1')")
-    alice.click(f"{COMMENT} .comment-task-chip")
-    alice.wait_for_selector("#taskDetailPanel:not(.hidden)", timeout=10000)
-    wait_js(alice, "document.getElementById('taskDetailName').value === 'Make the logo bigger'")
-    alice.wait_for_selector(".task-modal-clip-thumb", timeout=10000)
-    alice.click(".task-modal-clip-thumb")
-    wait_js(alice, "AppState.activeTab === 'review' && AppState.currentClip.baseName === 'shot_010'"
-                   " && document.getElementById('taskDetailPanel').classList.contains('hidden')", 10000)
-
-
-def test_with_the_new_task_list_the_chip_opens_the_task_panel(scene):
+def test_the_chip_opens_the_task_panel(scene):
     bob = scene["bob"]
-    bob.evaluate("localStorage.removeItem('legacyTasks')")
     bob.click(f"{COMMENT} .comment-task-chip")
     bob.wait_for_selector("[data-testid=task-panel]", timeout=15000)
     wait_js(bob, "location.pathname.endsWith('/tasks') && location.search.includes('task=')", 10000)

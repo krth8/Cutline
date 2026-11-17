@@ -24,10 +24,8 @@ from database import (
     db_get_effective_setting,
     db_get_priority_preset,
     db_get_project_access,
-    db_get_section,
     db_get_user_by_id,
     db_list_project_access,
-    db_list_sections,
     db_list_statuses,
 )
 
@@ -50,10 +48,8 @@ WRITABLE = {
     "status": "statusId",
     "assignees": "assigneeIds",
     "priority": "priority",
-    "stage": "stageTag",
     "startDate": "startDate",
     "dueDate": "dueDate",
-    "section": "sectionId",
     "description": "description",
 }
 READONLY_KEYS = {"clip", "createdAt", "createdBy", "project"}
@@ -139,18 +135,7 @@ class TasksSource(TableSource):
             return [{"value": o["id"], "label": o.get("label", o["id"]), "color": o.get("color")} for o in ordered]
         return [dict(o) for o in DEFAULT_PRIORITIES]
 
-    def _stage_options(self, project_ids: List[str]) -> List[dict]:
-        used, suggested = set(), []
-        for pid in project_ids:
-            info = task_api.stage_tags(pid)
-            used.update(info["usedStages"])
-            suggested = info["suggestedStages"]
-        names = sorted(used) + [s for s in suggested if s not in used]
-        return [{"value": n, "label": n} for n in names]
-
     def _columns(self, project_ids: List[str], scoped_tasks: List[dict], principal: dict) -> List[dict]:
-        sections = [{"value": s["id"], "label": s["name"], "color": s["color"]}
-                    for pid in project_ids for s in db_list_sections(pid)]
         people = self._people_options(project_ids, scoped_tasks)
         columns = [
             {"key": "name", "name": "Name", "type": "text", "builtin": True},
@@ -160,11 +145,8 @@ class TasksSource(TableSource):
             {"key": "assignees", "name": "Assignees", "type": "people", "builtin": True, "options": people},
             {"key": "priority", "name": "Priority", "type": "priority", "builtin": True,
              "options": self._priority_options()},
-            {"key": "stage", "name": "Stage", "type": "select", "builtin": True,
-             "options": self._stage_options(project_ids)},
             {"key": "startDate", "name": "Start date", "type": "date", "builtin": True},
             {"key": "dueDate", "name": "Due date", "type": "date", "builtin": True},
-            {"key": "section", "name": "Section", "type": "select", "builtin": True, "options": sections},
             {"key": "clip", "name": "Clip", "type": "clip", "builtin": True, "readonly": True},
             {"key": "description", "name": "Description", "type": "longtext", "builtin": True},
             {"key": "createdAt", "name": "Created", "type": "date", "builtin": True, "readonly": True},
@@ -218,10 +200,8 @@ class TasksSource(TableSource):
             "status": task.get("statusId"),
             "assignees": [a["id"] for a in task.get("assignees", [])],
             "priority": task.get("priority"),
-            "stage": task.get("stageTag"),
             "startDate": task.get("startDate"),
             "dueDate": task.get("dueDate"),
-            "section": task.get("sectionId"),
             "clip": clip,
             "description": task.get("description"),
             "createdAt": task.get("createdAt"),
@@ -313,10 +293,6 @@ class TasksSource(TableSource):
             raise _bad(f"Value for '{key}' must be text or null")
         if key == "status" and not any(s["id"] == value for s in db_list_statuses()):
             raise _bad("Unknown status")
-        if key == "section":
-            section = db_get_section(value)
-            if not section or section["projectId"] != project_id:
-                raise _bad("Unknown section for this project")
         if key in ("startDate", "dueDate"):
             if not _DATE_RE.match(value):
                 raise _bad(f"{key} must be a date like 2030-01-31")

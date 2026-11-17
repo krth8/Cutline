@@ -530,10 +530,6 @@ const API = {
         });
     },
 
-    async getStages(projectId) {
-        return this.request(`/projects/${projectId}/tasks/stages`);
-    },
-
     // ============ Task Comments ============
 
     async getTaskComments(taskId) {
@@ -574,93 +570,6 @@ const API = {
 
     async getClipTasks(clipId) {
         return this.request(`/clips/${clipId}/tasks`);
-    },
-
-    // ============ Task Checklist ============
-
-    async getTaskChecklist(taskId) {
-        return this.request(`/tasks/${taskId}/checklist`);
-    },
-
-    async createChecklistItem(taskId, text) {
-        return this.request(`/tasks/${taskId}/checklist`, {
-            method: 'POST',
-            body: JSON.stringify({ text })
-        });
-    },
-
-    async updateChecklistItem(taskId, itemId, updates) {
-        return this.request(`/tasks/${taskId}/checklist/${itemId}`, {
-            method: 'PATCH',
-            body: JSON.stringify(updates)
-        });
-    },
-
-    async deleteChecklistItem(taskId, itemId) {
-        return this.request(`/tasks/${taskId}/checklist/${itemId}`, {
-            method: 'DELETE'
-        });
-    },
-
-    // ============ Task Sections ============
-
-    async getSections(projectId) {
-        return this.request(`/projects/${projectId}/sections`);
-    },
-
-    async createSection(projectId, data) {
-        return this.request(`/projects/${projectId}/sections`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
-    },
-
-    async getSection(sectionId) {
-        return this.request(`/sections/${sectionId}`);
-    },
-
-    async updateSection(sectionId, updates) {
-        return this.request(`/sections/${sectionId}`, {
-            method: 'PATCH',
-            body: JSON.stringify(updates)
-        });
-    },
-
-    async deleteSection(sectionId) {
-        return this.request(`/sections/${sectionId}`, {
-            method: 'DELETE'
-        });
-    },
-
-    async reorderSections(projectId, sectionIds) {
-        return this.request(`/projects/${projectId}/sections/reorder`, {
-            method: 'POST',
-            body: JSON.stringify({ sectionIds })
-        });
-    },
-
-    async getSectionStatuses(sectionId) {
-        return this.request(`/sections/${sectionId}/statuses`);
-    },
-
-    async addSectionStatus(sectionId, statusId) {
-        return this.request(`/sections/${sectionId}/statuses`, {
-            method: 'POST',
-            body: JSON.stringify({ statusId })
-        });
-    },
-
-    async createSectionStatus(sectionId, name, color = '#6366f1') {
-        return this.request(`/sections/${sectionId}/statuses`, {
-            method: 'POST',
-            body: JSON.stringify({ name, color })
-        });
-    },
-
-    async removeSectionStatus(sectionId, statusId) {
-        return this.request(`/sections/${sectionId}/statuses/${statusId}`, {
-            method: 'DELETE'
-        });
     },
 
     // ============ Project Members ============

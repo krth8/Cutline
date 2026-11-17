@@ -1,15 +1,13 @@
 /**
- * PresetManager - Manages priority, status, and stage presets
+ * PresetManager - Manages priority and status presets
  *
  * Provides access to built-in and custom presets for:
  * - Priority options (low/medium/high, P1-P4, urgency, etc.)
  * - Status configurations (kanban, vfx pipeline, simple, etc.)
- * - Stage options (VFX pipeline stages, custom workflows)
  *
  * Usage:
  *   await PresetManager.init();
  *   const priorities = PresetManager.getActivePriorityOptions();
- *   const stages = PresetManager.getActiveStageOptions();
  *   const presets = PresetManager.getPriorityPresets();
  */
 const PresetManager = (function() {
@@ -18,9 +16,7 @@ const PresetManager = (function() {
 
     let priorityPresets = [];
     let statusPresets = [];
-    let stagePresets = [];
     let activePriorityPresetId = 'default';
-    let activeStagePresetId = 'vfx';
     let isInitialized = false;
 
     // ============ API ============
@@ -45,19 +41,6 @@ const PresetManager = (function() {
 
         if (!response.ok) {
             console.error('Failed to fetch status presets:', response.status);
-            return [];
-        }
-
-        return await response.json();
-    }
-
-    async function fetchStagePresets() {
-        const response = await fetch('/api/stage-presets', {
-            headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-        });
-
-        if (!response.ok) {
-            console.error('Failed to fetch stage presets:', response.status);
             return [];
         }
 
@@ -164,49 +147,25 @@ const PresetManager = (function() {
         return result;
     }
 
-    async function createStagePreset(name, stages) {
-        const response = await fetch('/api/stage-presets', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${getAuthToken()}`
-            },
-            body: JSON.stringify({ name, stages })
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            return { error: error.detail || 'Failed to create preset' };
-        }
-
-        const preset = await response.json();
-        stagePresets.push(preset);
-        notify('stagePresetCreated', preset);
-        return { preset };
-    }
-
     // ============ Core Functions ============
 
     async function init() {
         // Load presets from API
-        const [priorities, statuses, stages] = await Promise.all([
+        const [priorities, statuses] = await Promise.all([
             fetchPriorityPresets(),
-            fetchStatusPresets(),
-            fetchStagePresets()
+            fetchStatusPresets()
         ]);
 
         priorityPresets = priorities;
         statusPresets = statuses;
-        stagePresets = stages;
 
         // Get active presets from settings
         if (typeof SettingsManager !== 'undefined' && SettingsManager.isReady()) {
             activePriorityPresetId = SettingsManager.get('priorityPreset') || 'default';
-            activeStagePresetId = SettingsManager.get('stagePreset') || 'vfx';
         }
 
         isInitialized = true;
-        notify('initialized', { priorityPresets, statusPresets, stagePresets });
+        notify('initialized', { priorityPresets, statusPresets });
     }
 
     function setActivePriorityPreset(presetId) {
@@ -251,24 +210,6 @@ const PresetManager = (function() {
             });
             Object.assign(PropertyRegistry.PriorityOptions, priorityOptions);
         }
-    }
-
-    function setActiveStagePreset(presetId) {
-        const preset = stagePresets.find(p => p.id === presetId);
-        if (!preset) {
-            console.warn('Stage preset not found:', presetId);
-            return false;
-        }
-
-        activeStagePresetId = presetId;
-
-        // Save to settings
-        if (typeof SettingsManager !== 'undefined') {
-            SettingsManager.set('stagePreset', presetId);
-        }
-
-        notify('activeStagePresetChanged', { presetId, preset });
-        return true;
     }
 
     // ============ Getters ============
@@ -320,45 +261,6 @@ const PresetManager = (function() {
         return map;
     }
 
-    function getStagePresets() {
-        return [...stagePresets];
-    }
-
-    function getStagePreset(presetId) {
-        return stagePresets.find(p => p.id === presetId) || null;
-    }
-
-    function getActiveStagePreset() {
-        return getStagePreset(activeStagePresetId);
-    }
-
-    function getActiveStageOptions() {
-        const preset = getActiveStagePreset();
-        if (preset && preset.stages) {
-            // Convert array to object keyed by value/id
-            const options = {};
-            preset.stages.forEach(stage => {
-                const key = stage.value || stage.id || stage.label;
-                options[key] = {
-                    label: stage.label,
-                    color: stage.color
-                };
-            });
-            return options;
-        }
-
-        // Fallback to hardcoded VFX defaults
-        return {
-            'Previz': { label: 'Previz', color: '#8b5cf6' },
-            'Layout': { label: 'Layout', color: '#3b82f6' },
-            'Animation': { label: 'Animation', color: '#10b981' },
-            'Lighting': { label: 'Lighting', color: '#f59e0b' },
-            'FX': { label: 'FX', color: '#ef4444' },
-            'Comp': { label: 'Comp', color: '#ec4899' },
-            'Review': { label: 'Review', color: '#6366f1' }
-        };
-    }
-
     function isReady() {
         return isInitialized;
     }
@@ -400,14 +302,6 @@ const PresetManager = (function() {
         getStatusPreset,
         createStatusPreset,
         applyStatusPreset,
-
-        // Stage presets
-        getStagePresets,
-        getStagePreset,
-        getActiveStagePreset,
-        getActiveStageOptions,
-        setActiveStagePreset,
-        createStagePreset,
 
         // Utilities
         isReady,

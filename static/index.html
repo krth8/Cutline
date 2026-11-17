@@ -430,16 +430,6 @@
                                 </button>
                             </div>
                         </div>
-                        <div class="settings-section">
-                            <label class="settings-label">Tasks</label>
-                            <div class="settings-row">
-                                <div class="settings-row-text">
-                                    <span class="settings-row-title">Old task list</span>
-                                    <span class="settings-hint">The task list from before pages and views.</span>
-                                </div>
-                                <a href="#" class="btn btn-secondary btn-small" id="tasksListToggle" data-testid="use-old-tasks" onclick="Routes.toggleLegacyTasks(); return false;">Use the old task list</a>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Members (admin only) -->
@@ -583,22 +573,6 @@
                         </div>
 
                         <div class="settings-section">
-                            <label class="settings-label">Stages</label>
-                            <div class="preset-selector">
-                                <select class="input-large" id="stagePresetSelect" onchange="changeStagePreset(this.value)">
-                                    <option value="">Loading...</option>
-                                </select>
-                            </div>
-                            <div class="preset-preview" id="stagePresetPreview"></div>
-                            <div class="preset-actions">
-                                <button class="btn btn-ghost btn-small" onclick="showCreateStagePreset()">
-                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
-                                    New preset
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="settings-section">
                             <label class="settings-label">Clip statuses</label>
                             <div class="status-list" id="settingsStatusList">
                                 <div class="status-list-empty">No statuses defined</div>
@@ -611,189 +585,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Task Detail Modal (Centered popup) -->
-    <div class="task-modal-overlay hidden" id="taskDetailOverlay" onclick="closeTaskDetail()"></div>
-    <div class="task-modal hidden" id="taskDetailPanel">
-        <div class="task-modal-header">
-            <input type="text" class="task-modal-name" id="taskDetailName" placeholder="Task name">
-            <button class="btn-icon btn-icon-danger" onclick="deleteCurrentTask()" title="Delete task">
-                <svg class="icon"><use href="/static/icons.svg#icon-trash"/></svg>
-            </button>
-            <button class="task-modal-close" onclick="closeTaskDetail()" title="Close">
-                <svg class="icon"><use href="/static/icons.svg#icon-x"/></svg>
-            </button>
-        </div>
-        <div class="task-modal-body">
-            <!-- Left Column: Main Content -->
-            <div class="task-modal-main">
-                <!-- Properties Grid -->
-                <div class="task-modal-properties">
-                    <div class="task-modal-prop">
-                        <label>Status</label>
-                        <div class="task-modal-prop-value" id="taskDetailStatus" onclick="openTaskDetailStatusDropdown(event)">
-                            <span class="status-badge">-</span>
-                        </div>
-                    </div>
-                    <div class="task-modal-prop">
-                        <label>Priority</label>
-                        <div class="task-modal-prop-value" id="taskDetailPriority" onclick="openTaskDetailPriorityDropdown(event)">
-                            <span class="priority-pill">-</span>
-                        </div>
-                    </div>
-                    <div class="task-modal-prop">
-                        <label>Assignees</label>
-                        <div class="task-modal-prop-value task-modal-assignees" id="taskDetailAssignees" onclick="openTaskDetailAssigneeDropdown(event)">
-                            <span class="assignee-placeholder"><svg class="icon icon-sm"><use href="/static/icons.svg#icon-user"/></svg></span>
-                        </div>
-                    </div>
-                    <div class="task-modal-prop">
-                        <label>Due Date</label>
-                        <div class="task-modal-prop-value" id="taskDetailDueDate" onclick="openTaskDetailDatePicker(event)">
-                            <span>-</span>
-                        </div>
-                    </div>
-                    <div class="task-modal-prop">
-                        <label>Stage</label>
-                        <div class="task-modal-prop-value" id="taskDetailStage" onclick="openTaskDetailStageDropdown(event)">
-                            <span>-</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Description -->
-                <div class="task-modal-field">
-                    <label>Description</label>
-                    <textarea class="task-modal-textarea" id="taskDetailDescription" placeholder="Add a description..."></textarea>
-                </div>
-
-                <!-- Linked Clips Section -->
-                <div class="task-modal-section" id="taskDetailClipsSection">
-                    <div class="task-modal-section-header">
-                        <label>Linked Clips <span class="task-modal-count" id="taskDetailClipsCount">(0)</span></label>
-                        <button class="btn-link" onclick="openClipLinkModal()">+ Link Clip</button>
-                    </div>
-                    <div class="task-modal-clips" id="taskDetailClips">
-                        <div class="task-modal-clips-empty">No clips linked</div>
-                    </div>
-                </div>
-
-                <!-- Subtasks Section -->
-                <div class="task-modal-section">
-                    <div class="task-modal-section-header">
-                        <label>Subtasks <span class="task-modal-count" id="taskDetailSubtasksCount">(0)</span></label>
-                    </div>
-                    <div class="task-modal-subtasks" id="taskDetailSubtasks">
-                        <!-- Subtasks will be rendered here -->
-                    </div>
-                    <div class="task-modal-subtask-add">
-                        <input type="text" id="taskDetailSubtaskInput" placeholder="Add a subtask..." onkeydown="handleSubtaskInputKeydown(event)">
-                        <button class="btn btn-ghost btn-sm" onclick="createSubtaskFromInput()">
-                            <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Checklist Section -->
-                <div class="task-modal-section">
-                    <div class="task-modal-section-header">
-                        <label>Checklist <span class="task-modal-count" id="taskDetailChecklistCount">(0)</span></label>
-                    </div>
-                    <div class="task-modal-checklist" id="taskDetailChecklist">
-                        <!-- Checklist items will be rendered here -->
-                    </div>
-                    <div class="task-modal-checklist-add">
-                        <input type="text" id="taskDetailChecklistInput" placeholder="Add an item..." onkeydown="handleChecklistInputKeydown(event)">
-                        <button class="btn btn-ghost btn-sm" onclick="createChecklistItemFromInput()">
-                            <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Column: Comments -->
-            <div class="task-modal-sidebar">
-                <div class="task-modal-sidebar-content" id="taskDetailComments">
-                    <!-- TaskComments component renders here (including header) -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Clip Selection Modal -->
-    <div class="modal-overlay hidden" id="clipSelectModal" onclick="hideClipSelectModal()">
-        <div class="modal modal-md clip-select-modal" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h3>Link Clips to Task</h3>
-                <button class="modal-close" onclick="hideClipSelectModal()">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="clip-select-search">
-                    <input type="text" id="clipSelectSearch" placeholder="Search clips..." oninput="filterClipSelectList()">
-                </div>
-                <div class="clip-select-list" id="clipSelectList">
-                    <!-- Clips will be rendered here -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-ghost" onclick="hideClipSelectModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="confirmClipSelection()">Link Selected</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Create Task Modal -->
-    <div class="modal-overlay hidden" id="createTaskModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h3>Create Task</h3>
-                <button class="modal-close" onclick="hideCreateTaskModal()">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-field">
-                    <label>Task Name</label>
-                    <input type="text" id="newTaskName" placeholder="Enter task name" class="input-large" autofocus>
-                </div>
-                <div class="form-row">
-                    <div class="form-field">
-                        <label>Status</label>
-                        <select id="newTaskStatus" class="input-large">
-                            <option value="">No status</option>
-                        </select>
-                    </div>
-                    <div class="form-field">
-                        <label>Assignee</label>
-                        <select id="newTaskAssignee" class="input-large">
-                            <option value="">Unassigned</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-field">
-                        <label>Due Date</label>
-                        <input type="date" id="newTaskDueDate" class="input-large">
-                    </div>
-                    <div class="form-field">
-                        <label>Stage</label>
-                        <select id="newTaskStage" class="input-large">
-                            <option value="">No stage</option>
-                            <option value="Previz">Previz</option>
-                            <option value="Layout">Layout</option>
-                            <option value="Animation">Animation</option>
-                            <option value="Lighting">Lighting</option>
-                            <option value="FX">FX</option>
-                            <option value="Compositing">Compositing</option>
-                            <option value="Review">Review</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-ghost" onclick="hideCreateTaskModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="submitCreateTask()">Create Task</button>
             </div>
         </div>
     </div>
@@ -1070,67 +861,6 @@
             </div>
             </div><!-- /view-review -->
 
-            <!-- Projects View (Task Management) -->
-            <div class="view-projects hidden" id="viewProjects">
-                <div class="projects-layout">
-                    <!-- Projects Sidebar -->
-                    <aside class="projects-sidebar">
-                        <div class="projects-sidebar-header">
-                            <span class="projects-sidebar-title">Projects</span>
-                            <button class="btn-icon" onclick="showCreateProject()" title="New project">
-                                <svg class="icon"><use href="/static/icons.svg#icon-plus"/></svg>
-                            </button>
-                        </div>
-                        <div class="projects-sidebar-list" id="projectsSidebarList">
-                            <!-- Project items rendered by JS -->
-                        </div>
-                        
-                    </aside>
-
-                    <!-- Projects Main Content -->
-                    <div class="projects-main">
-                        <!-- Projects Grid (shown first) -->
-                        <div class="projects-grid" id="projectsGrid">
-                            <!-- Project cards will be rendered here -->
-                        </div>
-
-                        <!-- Tasks Table (shown when project selected) -->
-                        <div class="tasks-table-container hidden" id="tasksTableContainer">
-                            <table class="task-list-table" id="projectsTable">
-                                <thead>
-                                    <tr id="projectsTableHeader">
-                                        <th class="col-name">Name</th>
-                                        <th class="col-status">Status</th>
-                                        <th class="col-assignee">Assignee</th>
-                                        <th class="col-date">Due Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="projectsTableBody">
-                                    <!-- Tasks will be rendered here -->
-                                </tbody>
-                            </table>
-                            <div class="projects-empty" id="projectsEmpty">
-                                <div class="projects-empty-icon"><svg class="icon icon-xl"><use href="/static/icons.svg#icon-list"/></svg></div>
-                                <p class="projects-empty-text">No tasks yet</p>
-                                <button class="btn btn-primary" onclick="showCreateTask()"><svg class="icon"><use href="/static/icons.svg#icon-plus"/></svg> Create Task</button>
-                            </div>
-                        </div>
-
-                        <!-- Untagged Assets Section - Separate container -->
-                        <div class="untagged-assets-container hidden" id="untaggedAssetsSection">
-                            <div class="untagged-header" onclick="toggleUntaggedAssets()">
-                                <svg class="icon untagged-chevron" id="untaggedChevron"><use href="/static/icons.svg#icon-caret-right"/></svg>
-                                <span>Untagged Assets</span>
-                                <span class="untagged-count" id="untaggedCount">0</span>
-                            </div>
-                            <div class="untagged-assets-list hidden" id="untaggedAssetsList">
-                                <!-- Untagged clips will be rendered here -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Docs View -->
             <div class="view-docs hidden" id="viewDocs">
                 <!-- DocsModule renders content here -->
@@ -1262,12 +992,10 @@
     <!-- Scripts: Core modules first -->
     <script src="/static/js/core/state.js?v=2"></script>
     <script src="/static/js/core/utils.js?v=1"></script>
-    <script src="/static/js/core/api.js?v=4"></script>
+    <script src="/static/js/core/api.js?v=5"></script>
     <script src="/static/js/core/auth.js?v=3"></script>
-    <script src="/static/js/core/live.js?v=3"></script>
+    <script src="/static/js/core/live.js?v=4"></script>
     <!-- Core infrastructure (new) -->
-    <script src="/static/js/core/PropertyRegistry.js?v=9"></script>
-    <script src="/static/js/core/TaskUpdater.js?v=2"></script>
     <!-- Global components -->
     <script src="/static/js/components/dropdown.js?v=3"></script>
     <script src="/static/js/components/datepicker.js?v=1"></script>
@@ -1279,23 +1007,14 @@
     <script src="/static/js/components/avatar.js?v=1"></script>
     <script src="/static/js/components/badge.js?v=1"></script>
     <script src="/static/js/components/clipcard.js?v=3"></script>
-    <script src="/static/js/components/taskComments.js?v=8"></script>
-    <script src="/static/js/components/clipTasks.js?v=1"></script>
+    <script src="/static/js/components/clipTasks.js?v=2"></script>
     <script src="/static/js/components/index.js?v=2"></script>
     <script src="/static/js/components/playerDropdowns.js?v=3"></script>
     <!-- Modules (new architecture) -->
     <script src="/static/js/modules/core/UserManager.js?v=2"></script>
     <script src="/static/js/modules/core/SettingsManager.js?v=1"></script>
-    <script src="/static/js/modules/core/PresetManager.js?v=2"></script>
-    <script src="/static/js/modules/projects/TaskManager.js?v=2"></script>
+    <script src="/static/js/modules/core/PresetManager.js?v=3"></script>
     <!-- Review Module -->
-    <!-- Projects Module (includes Tasks) -->
-    <script src="/static/js/modules/projects/tasksIndex.js?v=1"></script>
-    <script src="/static/js/modules/projects/taskFilters.js"></script>
-    <script src="/static/js/modules/projects/taskLive.js"></script>
-    <script src="/static/js/modules/projects/TaskListView.js?v=1"></script>
-    <script src="/static/js/modules/projects/taskDetail.js?v=2"></script>
-    <script src="/static/js/modules/projects/taskCreate.js?v=1"></script>
     <!-- Docs Module -->
     <script src="/static/js/vendor/purify.min.js"></script>
     <script src="/static/js/modules/docs/docMerge.js"></script>
@@ -1303,9 +1022,9 @@
     <!-- Lounge Module -->
     <script src="/static/js/modules/lounge/LoungeModule.js?v=9"></script>
     <!-- Feature modules -->
-    <script src="/static/js/features/settingsUI.js?v=3"></script>
-    <script src="/static/js/features/routes.js?v=7"></script>
-    <script src="/static/js/features/navigation.js?v=22"></script>
+    <script src="/static/js/features/settingsUI.js?v=4"></script>
+    <script src="/static/js/features/routes.js?v=8"></script>
+    <script src="/static/js/features/navigation.js?v=23"></script>
     <script src="/static/js/features/usersAdmin.js?v=3"></script>
     <script src="/static/js/features/push.js?v=1"></script>
     <script src="/static/js/features/panel.js?v=1"></script>
@@ -1314,7 +1033,7 @@
     <script src="/static/js/video-player.js?v=31"></script>
     <script src="/static/js/websocket.js?v=23"></script>
     <script src="/static/js/html-review.js?v=2"></script>
-    <script src="/static/js/comments.js?v=37"></script>
+    <script src="/static/js/comments.js?v=38"></script>
     <script src="/static/js/clips.js?v=38"></script>
     <script src="/static/dist/pages.js" defer></script>
 </body>

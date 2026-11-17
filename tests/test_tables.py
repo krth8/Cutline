@@ -87,11 +87,11 @@ def test_schema_has_the_builtin_columns(table, admin, project):
     assert schema["capabilities"] == {"create": True, "delete": True, "hierarchy": True, "editSchema": True}
     cols = {c["key"]: c for c in schema["columns"]}
     assert [c["key"] for c in schema["columns"]] == [
-        "name", "status", "assignees", "priority", "stage", "startDate", "dueDate", "section", "clip",
+        "name", "status", "assignees", "priority", "startDate", "dueDate", "clip",
         "description", "createdAt", "createdBy"]
     assert {k: c["type"] for k, c in cols.items()} == {
-        "name": "text", "status": "status", "assignees": "people", "priority": "priority", "stage": "select",
-        "startDate": "date", "dueDate": "date", "section": "select", "clip": "clip", "description": "longtext",
+        "name": "text", "status": "status", "assignees": "people", "priority": "priority",
+        "startDate": "date", "dueDate": "date", "clip": "clip", "description": "longtext",
         "createdAt": "date", "createdBy": "person"}
     assert all(c["builtin"] for c in cols.values())
     assert {k for k, c in cols.items() if c.get("readonly")} == {"clip", "createdAt", "createdBy"}
@@ -99,16 +99,12 @@ def test_schema_has_the_builtin_columns(table, admin, project):
 
 def test_schema_options(table, admin, editor, project, api):
     status = database.db_create_status("Schema status", "#123456")
-    section = api("POST", f"/api/projects/{project}/sections", admin, {"name": "Sec", "color": "#abcdef"}).json()
-    api("POST", f"/api/projects/{project}/tasks", admin, {"name": "t", "stageTag": "Zzz"})
     cols = {c["key"]: c for c in table(admin, f"tasks:{project}").schema().json()["columns"]}
 
     assert {"value": status["id"], "label": "Schema status", "color": "#123456", "done": False} in cols["status"]["options"]
     assert [o["value"] for o in cols["priority"]["options"]] == ["low", "medium", "high"]
     assert cols["priority"]["options"][2]["color"]
-    stages = [o["value"] for o in cols["stage"]["options"]]
-    assert stages[0] == "Zzz" and "Previz" in stages
-    assert cols["section"]["options"] == [{"value": section["id"], "label": "Sec", "color": "#abcdef"}]
+    assert "stage" not in cols and "section" not in cols  # a project adds its own select column when it wants one
     people = {o["value"]: o["label"] for o in cols["assignees"]["options"]}
     assert people[editor["user"]["id"]] == editor["user"]["username"]
 
@@ -166,7 +162,7 @@ def test_row_shape(table, admin, editor, project):
     t = table(admin, f"tasks:{project}")
     status = database.db_create_status("Shape", "#010203")
     parent = t.create({"name": "Parent", "description": "Long text", "priority": "high", "dueDate": "2030-01-02"}).json()
-    res = t.create({"name": "Child", "status": status["id"], "assignees": [editor["user"]["id"]], "stage": "Layout"},
+    res = t.create({"name": "Child", "status": status["id"], "assignees": [editor["user"]["id"]]},
                    parentId=parent["id"])
     assert res.status_code == 200, res.text
     child = res.json()
@@ -174,7 +170,7 @@ def test_row_shape(table, admin, editor, project):
     assert child["parentId"] == parent["id"] and child["childCount"] == 0 and child["canEdit"] is True
     assert child["values"] == {
         "name": "Child", "status": status["id"], "assignees": [editor["user"]["id"]], "priority": "medium",
-        "stage": "Layout", "startDate": None, "dueDate": None, "section": None, "clip": None,
+        "startDate": None, "dueDate": None, "clip": None,
             "description": None,
         "createdAt": child["values"]["createdAt"], "createdBy": admin["user"]["id"]}
     root = next(r for r in t.rows({"parentId": None}) if r["id"] == parent["id"])
@@ -289,27 +285,23 @@ def test_empty_query_body_is_fine(api, admin, project):
 def test_create_update_delete_are_in_the_database(table, admin, editor, project, api):
     t = table(admin, f"tasks:{project}")
     status = database.db_create_status("Writes", "#aaaaaa")
-    section = api("POST", f"/api/projects/{project}/sections", admin, {"name": "Sec"}).json()
     row = t.add("Created")
     assert stored(row["id"])["name"] == "Created" and stored(row["id"])["createdBy"] == admin["user"]["id"]
 
     res = t.update(row["id"], {"name": "Renamed", "status": status["id"], "assignees": [editor["user"]["id"]],
-                               "priority": "high", "stage": "Lighting", "dueDate": "2030-05-06",
-                               "section": section["id"], "description": "Desc"})
+                               "priority": "high", "dueDate": "2030-05-06", "description": "Desc"})
     assert res.status_code == 200, res.text
     out = res.json()
     assert out["values"]["name"] == "Renamed" and out["values"]["assignees"] == [editor["user"]["id"]]
     db = stored(row["id"])
-    assert (db["name"], db["statusId"], db["priority"], db["stageTag"], db["dueDate"], db["sectionId"],
-            db["description"]) == ("Renamed", status["id"], "high", "Lighting", "2030-05-06", section["id"], "Desc")
+    assert (db["name"], db["statusId"], db["priority"], db["dueDate"], db["description"]) ==         ("Renamed", status["id"], "high", "2030-05-06", "Desc")
     assert [a["id"] for a in db["assignees"]] == [editor["user"]["id"]]
     assert task_cache[row["id"]]["name"] == "Renamed"  # the in-memory copy follows
 
-    res = t.update(row["id"], {"status": None, "assignees": [], "dueDate": None, "section": None, "stage": ""})
+    res = t.update(row["id"], {"status": None, "assignees": [], "dueDate": None})
     assert res.status_code == 200, res.text
     db = stored(row["id"])
     assert db["statusId"] is None and db["assignees"] == [] and db["dueDate"] is None
-    assert db["sectionId"] is None and db["stageTag"] is None
 
     parent = t.add("P")
     child = t.add("C", parentId=parent["id"])
@@ -337,12 +329,11 @@ def test_project_id_must_match_a_project_table(table, admin, project, make_proje
 def test_invalid_values_are_400(table, admin, project, make_project, api):
     t = table(admin, f"tasks:{project}")
     row = t.add("Valid")
-    other_section = api("POST", f"/api/projects/{make_project('Elsewhere')}/sections", admin, {"name": "Foreign"}).json()
     cases = [
         {"nope": 1}, {"clip": 1}, {"createdAt": "2030-01-01"}, {"createdBy": "x"}, {"project": project},
         {"name": ""}, {"name": None}, {"name": 5},
         {"status": "no-such-status"}, {"assignees": ["no-such-user"]}, {"assignees": "x"}, {"assignees": [1]},
-        {"dueDate": "31/01/2030"}, {"dueDate": 5}, {"section": "nope"}, {"section": other_section["id"]},
+        {"dueDate": "31/01/2030"}, {"dueDate": 5}, {"stage": "FX"}, {"section": "x"},
         {"description": 5}, {"priority": 3},
     ]
     for values in cases:
@@ -614,7 +605,7 @@ def test_rows_changed_only_reaches_people_with_task_access(client, admin, projec
 # ---------------------------------------------------------------- equivalence with the old task API
 
 SAME_EDIT = [
-    ("name", "Renamed"), ("priority", "high"), ("dueDate", "2030-04-05"), ("stage", "FX"),
+    ("name", "Renamed"), ("priority", "high"), ("dueDate", "2030-04-05"),
     ("description", "Same text"),
 ]
 
@@ -628,25 +619,22 @@ def comparable(task_id):
 
 def test_the_same_edit_gives_the_same_stored_task(table, api, admin, editor, project):
     status = database.db_create_status("Equal", "#654321")
-    section = api("POST", f"/api/projects/{project}/sections", admin, {"name": "Equal"}).json()
     t = table(admin, f"tasks:{project}")
 
     via_table, via_old = t.add("Start"), api("POST", f"/api/projects/{project}/tasks", admin, {"name": "Start"}).json()["task"]
     assert comparable(via_table["id"]) == comparable(via_old["id"])
 
     t.update(via_table["id"], {"name": "Edited", "status": status["id"], "assignees": [editor["user"]["id"]],
-                               "priority": "high", "stage": "FX", "dueDate": "2030-04-05", "section": section["id"],
-                               "description": "Same text"})
+                               "priority": "high", "dueDate": "2030-04-05", "description": "Same text"})
     api("PATCH", f"/api/tasks/{via_old['id']}", admin,
         {"name": "Edited", "statusId": status["id"], "assigneeIds": [editor["user"]["id"]], "priority": "high",
-         "stageTag": "FX", "dueDate": "2030-04-05", "sectionId": section["id"], "description": "Same text"})
+         "dueDate": "2030-04-05", "description": "Same text"})
     assert comparable(via_table["id"]) == comparable(via_old["id"])
     assert task_cache[via_table["id"]]["assignees"] == task_cache[via_old["id"]]["assignees"]
 
     # clearing values
-    t.update(via_table["id"], {"status": None, "assignees": [], "dueDate": None, "section": None})
-    api("PATCH", f"/api/tasks/{via_old['id']}", admin,
-        {"statusId": None, "assigneeIds": [], "dueDate": None, "sectionId": None})
+    t.update(via_table["id"], {"status": None, "assignees": [], "dueDate": None})
+    api("PATCH", f"/api/tasks/{via_old['id']}", admin, {"statusId": None, "assigneeIds": [], "dueDate": None})
     assert comparable(via_table["id"]) == comparable(via_old["id"])
 
 
@@ -654,10 +642,10 @@ def test_creating_with_values_gives_the_same_stored_task(table, api, admin, edit
     status = database.db_create_status("Equal create", "#222222")
     t = table(admin, f"tasks:{project}")
     new = t.create({"name": "Full", "status": status["id"], "assignees": [editor["user"]["id"]], "priority": "low",
-                    "stage": "Layout", "dueDate": "2030-07-08", "description": "d"}).json()
+                    "dueDate": "2030-07-08", "description": "d"}).json()
     old = api("POST", f"/api/projects/{project}/tasks", admin,
               {"name": "Full", "statusId": status["id"], "assigneeIds": [editor["user"]["id"]], "priority": "low",
-               "stageTag": "Layout", "dueDate": "2030-07-08", "description": "d"}).json()["task"]
+               "dueDate": "2030-07-08", "description": "d"}).json()["task"]
     assert comparable(new["id"]) == comparable(old["id"])
     # the in-memory copies agree too (what the old list endpoint serves)
     a, b = dict(task_cache[new["id"]]), dict(task_cache[old["id"]])

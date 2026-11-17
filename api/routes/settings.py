@@ -8,27 +8,22 @@ from fastapi import (
 from database import (
     db_apply_status_preset_to_project,
     db_create_priority_preset,
-    db_create_stage_preset,
     db_create_status,
     db_create_status_preset,
     db_delete_priority_preset,
     db_delete_setting,
-    db_delete_stage_preset,
     db_delete_status,
     db_delete_status_preset,
     db_get_effective_setting,
     db_get_priority_preset,
     db_get_setting,
-    db_get_stage_preset,
     db_get_status_preset,
     db_list_priority_presets,
     db_list_settings,
-    db_list_stage_presets,
     db_list_status_presets,
     db_list_statuses,
     db_set_setting,
     db_update_priority_preset,
-    db_update_stage_preset,
     db_update_status,
     db_update_status_preset,
 )
@@ -255,64 +250,5 @@ async def apply_status_preset(preset_id: str, data: dict = None, user: dict = De
     try:
         statuses = db_apply_status_preset_to_project(preset_id, project_id)
         return {"success": True, "statuses": statuses}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-# ============ Stage Presets API ============
-
-@router.get("/api/stage-presets")
-async def list_stage_presets(user: dict = Depends(require_auth)):
-    """List all stage presets."""
-    return db_list_stage_presets()
-
-
-@router.get("/api/stage-presets/{preset_id}")
-async def get_stage_preset(preset_id: str, user: dict = Depends(require_auth)):
-    """Get a stage preset by ID."""
-    preset = db_get_stage_preset(preset_id)
-    if not preset:
-        raise HTTPException(status_code=404, detail="Preset not found")
-    return preset
-
-
-@router.post("/api/stage-presets")
-async def create_stage_preset(data: dict, user: dict = Depends(require_auth)):
-    """Create a custom stage preset."""
-    name = data.get("name")
-    stages = data.get("stages", [])
-
-    if not name:
-        raise HTTPException(status_code=400, detail="Name is required")
-    if not stages:
-        raise HTTPException(status_code=400, detail="At least one stage is required")
-
-    preset = db_create_stage_preset(name, stages, user.get("id"))
-    return preset
-
-
-@router.patch("/api/stage-presets/{preset_id}")
-async def update_stage_preset(preset_id: str, data: dict, user: dict = Depends(require_auth)):
-    """Update a stage preset."""
-    name = data.get("name")
-    stages = data.get("stages")
-
-    try:
-        preset = db_update_stage_preset(preset_id, name, stages)
-        if not preset:
-            raise HTTPException(status_code=404, detail="Preset not found")
-        return preset
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.delete("/api/stage-presets/{preset_id}")
-async def delete_stage_preset(preset_id: str, user: dict = Depends(require_auth)):
-    """Delete a stage preset."""
-    try:
-        success = db_delete_stage_preset(preset_id)
-        if not success:
-            raise HTTPException(status_code=404, detail="Preset not found")
-        return {"success": True}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -9,7 +9,6 @@ import { closeTask, openTask, useTaskId } from '../router';
 import { doneModel } from '../tables/layouts/list/listHelpers';
 import { deleteRows, updateRow, useRow, useTableSchema } from '../tables/store';
 import type { MenuItem } from '../ui';
-import { Checklist } from './Checklist';
 import { Clips } from './Clips';
 import { Activity, Composer, useComments } from './Comments';
 import { BellIcon, DoneToggle, IconButton, PanelHeader, Title } from './PanelHeader';
@@ -165,7 +164,6 @@ function TaskContent({ taskId, tableRef }: { taskId: string; tableRef: string })
           <Properties columns={schema.columns} row={row} onChange={(key, value) => save({ [key]: value })} />
           <Body taskId={taskId} page={page} canEdit={row.canEdit} onStatus={setStatus} />
           <Subtasks tableRef={tableRef} taskId={taskId} count={row.childCount ?? 0} canAdd={row.canEdit && schema.capabilities.create} />
-          <Checklist taskId={taskId} canEdit={row.canEdit} />
           <Clips taskId={taskId} projectId={projectId} canEdit={row.canEdit} />
           <Backlinks kind="task" id={taskId} />
           <Activity state={comments} />

@@ -244,16 +244,6 @@ window.Live = Live;
         if (msg.notification && typeof handleNewNotification === 'function') handleNewNotification(msg.notification);
     });
 
-    // ----- Tasks (list rows: TaskLive; open task panel: taskDetail.js) -----
-    ['task_created', 'task_updated', 'task_deleted', 'tasks_reordered'].forEach(type => {
-        Live.on(type, (msg) => { if (window.TaskLive) TaskLive.handle(msg); });
-    });
-    ['comments', 'checklist', 'clips'].forEach(part => {
-        Live.on(`task_${part}_changed`, (msg) => {
-            if (typeof refreshOpenTaskDetail === 'function') refreshOpenTaskDetail(msg.taskId, part);
-        });
-    });
-
     // ----- Catching up -----
     async function resyncReview() {
         const projectId = AppState.projectId;
@@ -291,7 +281,6 @@ window.Live = Live;
     Live.on('connected', loadUserData);
     Live.on('resync', () => {
         resyncReview();
-        if (window.TaskLive) TaskLive.reload();
         if (typeof refreshProjectsList === 'function') refreshProjectsList();
         loadUserData();
     });

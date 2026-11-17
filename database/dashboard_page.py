@@ -24,7 +24,7 @@ DASHBOARD_TITLE = "Dashboard"
 ALL_TASKS = "All tasks"  # the view the Tasks route (/p/<id>/tasks) opens full page
 FRAGMENT = "default"  # the Y.XmlFragment that Tiptap's Collaboration extension uses
 
-VISIBLE_COLUMNS = ["name", "status", "priority", "assignees", "dueDate", "stage"]
+VISIBLE_COLUMNS = ["name", "status", "priority", "assignees", "dueDate"]
 HIDDEN_COLUMNS = ["startDate", "section", "clip", "description", "createdAt", "createdBy"]
 
 OPEN = {"column": "status", "op": "notDone"}

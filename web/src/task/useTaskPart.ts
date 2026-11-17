@@ -11,10 +11,10 @@ export interface TaskPart<T> {
 }
 
 /**
- * A list that belongs to a task (comments, checklist, linked clips). It loads on mount and loads again when
+ * A list that belongs to a task (comments, linked clips). It loads on mount and loads again when
  * another user changes that part: the server sends `task_<part>_changed` with the task id to the other tabs.
  */
-export function useTaskPart<T>(taskId: string, part: 'comments' | 'checklist' | 'clips', load: (taskId: string) => Promise<T[]>): TaskPart<T> {
+export function useTaskPart<T>(taskId: string, part: 'comments' | 'clips', load: (taskId: string) => Promise<T[]>): TaskPart<T> {
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const loadRef = useRef(load);

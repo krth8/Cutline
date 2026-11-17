@@ -15,9 +15,6 @@
  *                              the bundle too (the project's Tasks view and views full page)
  *   /?project=<id>[&session=]  old link, rewritten to /p/<id>/review
  *
- * `localStorage.legacyTasks = '1'` brings the old Tasks list back: /p/<id>/tasks then opens the Projects
- * tab on that project and nothing below sends people to the new list (see legacyTasks()).
- *
  * switchTab() (navigation.js) calls Routes.sync() so choosing a tab updates the
  * URL; back/forward and `cutline:navigate` (fired by the bundle's navigate())
  * call Routes.apply() so the URL updates the tab. Share-link guests (/s/<id>)
@@ -49,17 +46,6 @@ const Routes = (function () {
         }
     }
 
-    const LEGACY_TASKS_KEY = 'legacyTasks';
-
-    /** True when this browser asked for the old Tasks list (localStorage.legacyTasks = '1'). */
-    function legacyTasks() {
-        try {
-            return localStorage.getItem(LEGACY_TASKS_KEY) === '1';
-        } catch (e) {
-            return false;
-        }
-    }
-
     /** What a URL means: {tab, projectId?} for an app route, {tab: null} for "/", null for anything else. */
     function parse(pathname, search) {
         const segments = pathname.split('/').filter(s => s !== '').map(decode);
@@ -79,7 +65,7 @@ const Routes = (function () {
             if (segments.length === 3 && segments[2] === 'lounge') return { tab: 'lounge', projectId };
             if (segments.length === 4 && segments[2] === 'page') return { tab: 'pages', projectId };
             if (segments.length === 4 && segments[2] === 'view') return { tab: 'pages', projectId };
-            if (segments.length === 3 && segments[2] === 'tasks') return legacyTasks() ? { tab: 'projects', projectId } : { tab: 'pages', projectId };
+            if (segments.length === 3 && segments[2] === 'tasks') return { tab: 'pages', projectId };
         }
         return null;
     }
@@ -133,7 +119,7 @@ const Routes = (function () {
     }
 
     function projectInContext() {
-        return AppState.projectId || window.currentTasksProjectId || null;
+        return AppState.projectId || null;
     }
 
     // ============ URL <- tab ============
@@ -254,30 +240,14 @@ const Routes = (function () {
     // ============ Tasks tab on the new table (T13) ============
 
     /** Show the project's Tasks view in the bundle (and the task panel over it when taskId is given). Returns
-     *  false, doing nothing, when the old list is switched on, so callers fall back to the old behaviour. */
+     *  false, doing nothing, for share-link guests and before login. */
     function openTasks(projectId, taskId) {
-        if (legacyTasks() || AppState.isShareLinkGuest || !AppState.adminUser) return false;
+        if (AppState.isShareLinkGuest || !AppState.adminUser) return false;
         let url = `/p/${encodeURIComponent(projectId)}/tasks`;
         if (taskId) url += `?task=${encodeURIComponent(taskId)}`;
         if (currentUrl() !== url) history.pushState({ tab: 'pages' }, '', url);
         apply();
         return true;
-    }
-
-    /** The "Use the old / new task list" links: flip the switch and reload at the matching address. */
-    function toggleLegacyTasks() {
-        const next = !legacyTasks();
-        try {
-            localStorage.setItem(LEGACY_TASKS_KEY, next ? '1' : '0');
-        } catch (e) {}
-        const pid = window.currentTasksProjectId;
-        location.href = pid ? `/p/${encodeURIComponent(pid)}/tasks` : '/';
-    }
-
-    /** Label of the switch link in the Projects tab. */
-    function refreshTasksToggle() {
-        const link = document.getElementById('tasksListToggle');
-        if (link) link.textContent = legacyTasks() ? 'Use the new task list' : 'Use the old task list';
     }
 
     // ============ Docs moved into Pages (migration 006) ============
@@ -377,7 +347,6 @@ const Routes = (function () {
         const initial = !!(options && options.initial);
         if (AppState.isShareLinkGuest || !AppState.authToken) return;
         refreshChrome();
-        refreshTasksToggle();
         hideDocsTab();
         rewriteLegacyLink();
 
@@ -390,10 +359,6 @@ const Routes = (function () {
             switchTab('pages', { history: 'none' });
         } else if (route && route.tab === 'lounge') {
             switchTab('lounge', { history: 'none' });
-        } else if (route && route.tab === 'projects') {
-            // /p/<id>/tasks with the old list switched on: the Projects tab on that project
-            window.currentTasksProjectId = route.projectId;
-            switchTab('projects', { history: 'none' });
         } else if (route) {
             // "/": the route the user was last on, or the project grid
             history.replaceState(null, '', lastRouteTarget() || '/projects');
@@ -456,7 +421,7 @@ const Routes = (function () {
     window.addEventListener('popstate', onNavigate);
     window.addEventListener('cutline:navigate', onNavigate);
 
-    return { parse, current, apply, goHome, sync, afterSwitch, refreshChrome, legacyTasks, openTasks, toggleLegacyTasks, refreshTasksToggle, docsMoved, setDocsMoved, reviewUrl, isDeepLink, remember, restore };
+    return { parse, current, apply, goHome, sync, afterSwitch, refreshChrome, openTasks, docsMoved, setDocsMoved, reviewUrl, isDeepLink, remember, restore };
 })();
 
 window.Routes = Routes;

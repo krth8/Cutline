@@ -135,11 +135,10 @@ def test_project_list_updates_on_access_grant(scene, server):
 
 def test_new_task_appears_live(scene, server):
     b = scene["b"]
-    server.create_task(scene["project"], "Grade shot")
-    b.evaluate(f"TaskManager.init('{scene['project']}')")
-    b.wait_for_timeout(2500)
+    # the live message every open task view (table, list, board ...) listens to
+    b.evaluate("window.__seenTasks = []; Live.on('task_created', m => window.__seenTasks.push(m.task && m.task.name))")
     server.create_task(scene["project"], "Conform")
-    wait_js(b, "TaskManager.getTasks().some(t => t.name === 'Conform')")
+    wait_js(b, "window.__seenTasks.includes('Conform')")
 
 
 def test_catch_up_after_offline(scene, server):

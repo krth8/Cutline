@@ -1,4 +1,4 @@
-"""Task, task comment, checklist, clip-link and section routes."""
+"""Task, task comment, follow and clip-link routes."""
 
 from fastapi import (
     APIRouter,
@@ -28,7 +28,7 @@ from database.task_trash import (
     db_trashed_descendants,
 )
 from api import activity, notify
-from api.auth import Permission, can_edit_tasks, has_permission, require_auth
+from api.auth import can_edit_tasks, require_auth
 from api.events import live
 from api.state import projects, tasks
 
@@ -93,16 +93,6 @@ async def rows_changed(project_id: str, ids: List[str], change: str) -> None:
     )
 
 
-# Common VFX/animation stages for suggestions
-COMMON_STAGES = ["Previz", "Layout", "Animation", "Lighting", "FX", "Compositing", "Review"]
-
-
-def stage_tags(project_id: str) -> dict:
-    """Stage tags used in a project, and the common ones suggested for new tasks."""
-    stages = {t["stageTag"] for t in tasks.values() if t.get("projectId") == project_id and t.get("stageTag")}
-    return {"usedStages": sorted(stages), "suggestedStages": list(COMMON_STAGES)}
-
-
 # ---- Shared by the task API and the table API (api/tables/tasks_source.py) ----
 # Permission checks stay with the callers; these validate, save to the database, bring the
 # in-memory copy in step and tell watching tabs (task_* event and rows_changed).
@@ -126,8 +116,6 @@ async def create_task_record(user: dict, project_id: str, data: dict, link: Opti
         created_by=user.get("id"),
         parent_id=parent_id,
         clip_id=data.get("clipId"),
-        section_id=data.get("sectionId"),
-        stage_tag=data.get("stageTag"),
         description=data.get("description"),
         status_id=data.get("statusId"),
         assignee_id=data.get("assigneeId"),  # Single assignee (legacy)
@@ -162,8 +150,6 @@ async def update_task_record(task: dict, data: dict, actor: Optional[dict] = Non
         "name": "name",
         "description": "description",
         "parentId": "parent_id",
-        "sectionId": "section_id",
-        "stageTag": "stage_tag",
         "statusId": "status_id",
         "priority": "priority",
         "startDate": "start_date",
@@ -459,20 +445,6 @@ async def reorder_tasks_endpoint(project_id: str, data: dict, user: dict = Depen
     return {"success": True}
 
 
-@router.get("/api/projects/{project_id}/tasks/stages")
-async def list_stage_tags(project_id: str, user: dict = Depends(require_auth)):
-    """Get all unique stage tags used in a project."""
-    # Check project existence in memory
-    if project_id not in projects:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    # Check task access permission
-    if not db_check_project_access(user["id"], project_id, require_tasks=True):
-        raise HTTPException(status_code=403, detail="Task access denied for this project")
-
-    return stage_tags(project_id)
-
-
 # ============ Task Comments API ============
 
 @router.get("/api/tasks/{task_id}/comments")
@@ -695,261 +667,3 @@ async def get_clip_tasks(clip_id: int, user: dict = Depends(require_auth)):
 
     tasks_list = db_get_clip_tasks(clip_id)
     return {"tasks": tasks_list}
-
-
-# ============ Task Checklist Items ============
-
-@router.get("/api/tasks/{task_id}/checklist")
-async def get_task_checklist(task_id: str, user: dict = Depends(require_auth)):
-    """Get all checklist items for a task."""
-    from database.tasks import db_list_checklist_items
-
-    task = tasks.get(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    if not db_check_project_access(user["id"], task["projectId"], require_tasks=True):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    items = db_list_checklist_items(task_id)
-    return {"items": items}
-
-
-@router.post("/api/tasks/{task_id}/checklist")
-async def create_checklist_item(task_id: str, request: Request, user: dict = Depends(require_auth)):
-    """Create a new checklist item."""
-    from database.tasks import db_create_checklist_item
-
-    task = tasks.get(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    if not can_edit_tasks(user, task["projectId"]):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    data = await request.json()
-    text = data.get("text", "").strip()
-    if not text:
-        raise HTTPException(status_code=400, detail="Text is required")
-
-    item = db_create_checklist_item(task_id, text)
-    await task_changed(task, "checklist")
-    return {"item": item}
-
-
-@router.patch("/api/tasks/{task_id}/checklist/{item_id}")
-async def update_checklist_item(task_id: str, item_id: str, request: Request, user: dict = Depends(require_auth)):
-    """Update a checklist item (text or checked state)."""
-    from database.tasks import db_update_checklist_item
-
-    task = tasks.get(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    if not can_edit_tasks(user, task["projectId"]):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    data = await request.json()
-    text = data.get("text")
-    is_checked = data.get("isChecked")
-
-    item = db_update_checklist_item(item_id, text=text, is_checked=is_checked)
-    if not item:
-        raise HTTPException(status_code=404, detail="Checklist item not found")
-
-    await task_changed(task, "checklist")
-    return {"item": item}
-
-
-@router.delete("/api/tasks/{task_id}/checklist/{item_id}")
-async def delete_checklist_item(task_id: str, item_id: str, user: dict = Depends(require_auth)):
-    """Delete a checklist item."""
-    from database.tasks import db_delete_checklist_item
-
-    task = tasks.get(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    if not can_edit_tasks(user, task["projectId"]):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    success = db_delete_checklist_item(item_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Checklist item not found")
-
-    await task_changed(task, "checklist")
-    return {"success": True}
-
-
-# ============ Task Sections API ============
-
-@router.get("/api/projects/{project_id}/sections")
-async def list_sections(project_id: str, user: dict = Depends(require_auth)):
-    """List all task sections for a project."""
-    from database.sections import db_list_sections
-
-    if project_id not in projects:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    if not db_check_project_access(user["id"], project_id, require_tasks=True):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    sections_list = db_list_sections(project_id)
-    return {"sections": sections_list}
-
-
-@router.post("/api/projects/{project_id}/sections")
-async def create_section(project_id: str, data: dict, user: dict = Depends(require_auth)):
-    """Create a new task section."""
-    from database.sections import db_create_section
-
-    if project_id not in projects:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    if not can_edit_tasks(user, project_id):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    name = data.get("name")
-    if not name:
-        raise HTTPException(status_code=400, detail="Section name is required")
-
-    color = data.get("color", "#6366f1")
-    section = db_create_section(project_id, name, color)
-    return section
-
-
-@router.get("/api/sections/{section_id}")
-async def get_section(section_id: str, user: dict = Depends(require_auth)):
-    """Get a section by ID."""
-    from database.sections import db_get_section
-
-    section = db_get_section(section_id)
-    if not section:
-        raise HTTPException(status_code=404, detail="Section not found")
-
-    if not db_check_project_access(user["id"], section["projectId"], require_tasks=True):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    return section
-
-
-@router.patch("/api/sections/{section_id}")
-async def update_section(section_id: str, data: dict, user: dict = Depends(require_auth)):
-    """Update a section."""
-    from database.sections import db_get_section, db_update_section
-
-    section = db_get_section(section_id)
-    if not section:
-        raise HTTPException(status_code=404, detail="Section not found")
-
-    if not can_edit_tasks(user, section["projectId"]):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    updates = {}
-    if "name" in data:
-        updates["name"] = data["name"]
-    if "color" in data:
-        updates["color"] = data["color"]
-    if "is_collapsed" in data:
-        updates["is_collapsed"] = int(data["is_collapsed"])
-    if "sort_order" in data:
-        updates["sort_order"] = data["sort_order"]
-
-    if updates:
-        db_update_section(section_id, **updates)
-
-    return db_get_section(section_id)
-
-
-@router.delete("/api/sections/{section_id}")
-async def delete_section(section_id: str, user: dict = Depends(require_auth)):
-    """Delete a section."""
-    from database.sections import db_get_section, db_delete_section
-
-    section = db_get_section(section_id)
-    if not section:
-        raise HTTPException(status_code=404, detail="Section not found")
-
-    if not can_edit_tasks(user, section["projectId"]):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    db_delete_section(section_id)
-    return {"success": True}
-
-
-@router.post("/api/projects/{project_id}/sections/reorder")
-async def reorder_sections(project_id: str, data: dict, user: dict = Depends(require_auth)):
-    """Reorder sections."""
-    from database.sections import db_reorder_sections
-
-    if project_id not in projects:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    if not can_edit_tasks(user, project_id):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    section_ids = data.get("sectionIds", [])
-    if not section_ids:
-        raise HTTPException(status_code=400, detail="Section IDs required")
-
-    db_reorder_sections(section_ids)
-    return {"success": True}
-
-
-@router.get("/api/sections/{section_id}/statuses")
-async def get_section_statuses(section_id: str, user: dict = Depends(require_auth)):
-    """Get all statuses available for a section."""
-    from database.sections import db_get_section, db_get_section_statuses
-
-    section = db_get_section(section_id)
-    if not section:
-        raise HTTPException(status_code=404, detail="Section not found")
-
-    if not db_check_project_access(user["id"], section["projectId"], require_tasks=True):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    statuses = db_get_section_statuses(section_id)
-    return {"statuses": statuses}
-
-
-@router.post("/api/sections/{section_id}/statuses")
-async def add_section_status(section_id: str, data: dict, user: dict = Depends(require_auth)):
-    """Add an existing status to a section, or create a new custom status."""
-    from database.sections import db_get_section, db_add_section_status, db_create_section_status
-
-    section = db_get_section(section_id)
-    if not section:
-        raise HTTPException(status_code=404, detail="Section not found")
-
-    if not can_edit_tasks(user, section["projectId"]):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    status_id = data.get("statusId")
-    if status_id:
-        # Add existing status to section
-        db_add_section_status(section_id, status_id)
-        return {"success": True}
-    else:
-        # Create new custom status
-        name = data.get("name")
-        if not name:
-            raise HTTPException(status_code=400, detail="Status name or statusId required")
-        color = data.get("color", "#6366f1")
-        status = db_create_section_status(section_id, name, color)
-        return status
-
-
-@router.delete("/api/sections/{section_id}/statuses/{status_id}")
-async def remove_section_status(section_id: str, status_id: str, user: dict = Depends(require_auth)):
-    """Remove a status from a section."""
-    from database.sections import db_get_section, db_remove_section_status
-
-    section = db_get_section(section_id)
-    if not section:
-        raise HTTPException(status_code=404, detail="Section not found")
-
-    if not can_edit_tasks(user, section["projectId"]):
-        raise HTTPException(status_code=403, detail="Task access denied")
-
-    db_remove_section_status(section_id, status_id)
-    return {"success": True}

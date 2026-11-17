@@ -87,7 +87,7 @@ def read_zip(res):
 
 ONLY_NAME_HIDDEN = [{"key": "status", "hidden": True}, {"key": "dueDate", "hidden": True}]
 HIDDEN = [{"key": k, "hidden": True} for k in
-          ["assignees", "priority", "stage", "startDate", "section", "clip", "description", "createdAt", "createdBy"]]
+          ["assignees", "priority", "startDate", "clip", "description", "createdAt", "createdBy"]]
 
 
 @pytest.fixture
@@ -567,7 +567,7 @@ def test_filter_sort_search_and_hidden_columns_apply(api, admin, ref):
     for name, due in [("Charlie", "2030-03-01"), ("alpha", "2030-01-01"), ("Bravo", None), ("Delta", "2030-02-01")]:
         add_row(api, admin, ref, {"name": name, **({"dueDate": due} if due else {})})
     columns = [{"key": "name"}, {"key": "dueDate"}, {"key": "status", "hidden": True}]
-    for key in ["assignees", "priority", "stage", "startDate", "section", "clip", "description", "createdAt", "createdBy"]:
+    for key in ["assignees", "priority", "startDate", "clip", "description", "createdAt", "createdBy"]:
         columns.append({"key": key, "hidden": True})
     view = make_view(api, admin, ref, {"filter": {"column": "dueDate", "op": "notEmpty"},
                                        "sort": [{"column": "dueDate", "dir": "desc"}]}, columns)
@@ -576,10 +576,10 @@ def test_filter_sort_search_and_hidden_columns_apply(api, admin, ref):
     searched = make_view(api, admin, ref, {"search": "ravo"}, columns)
     assert csv_of(api, admin, searched) == [["Name", "Due date"], ["Bravo", ""]]
     # the title column comes first even when the view lists it later, and a hidden group column is added
-    reordered = make_view(api, admin, ref, {"groupBy": "section", "sort": [{"column": "name", "dir": "asc"}]},
+    reordered = make_view(api, admin, ref, {"groupBy": "status", "sort": [{"column": "name", "dir": "asc"}]},
                           [{"key": "dueDate"}, {"key": "name"}] + columns[2:])
     table = csv_of(api, admin, reordered)
-    assert table[0] == ["Name", "Due date", "Section"]
+    assert table[0] == ["Name", "Due date", "Status"]
     assert [r[0] for r in table[1:]] == ["alpha", "Bravo", "Charlie", "Delta"]   # grouping does not reorder or split
 
 
@@ -590,7 +590,7 @@ def test_nested_rows_get_a_parent_column(api, admin, ref):
     grand = add_row(api, admin, ref, {"name": "Parent B"})
     add_row(api, admin, ref, {"name": "Child B1"}, grand["id"])
     columns = [{"key": "name"}] + [{"key": k, "hidden": True} for k in
-                                   ["status", "assignees", "priority", "stage", "startDate", "dueDate", "section",
+                                   ["status", "assignees", "priority", "startDate", "dueDate",
                                     "clip", "description", "createdAt", "createdBy"]]
     nested = make_view(api, admin, ref, {"parentId": None, "sort": [{"column": "name", "dir": "desc"}]}, columns)
     assert csv_of(api, admin, nested) == [

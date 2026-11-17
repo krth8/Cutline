@@ -1,5 +1,5 @@
 /**
- * REST calls of the task panel: the endpoints the old task detail uses (comments, checklist, linked
+ * REST calls of the task panel: the endpoints the old task detail uses (comments, linked
  * clips) plus the task page. Rows themselves go through the table API (api/tables.ts).
  */
 import { requestJson } from '../api/http';
@@ -15,13 +15,6 @@ export interface TaskComment {
   createdAt: string;
   updatedAt?: string | null;
   /** Client only: shown but not confirmed by the server yet. */
-  pending?: boolean;
-}
-
-export interface ChecklistItem {
-  id: string;
-  text: string;
-  isChecked: boolean;
   pending?: boolean;
 }
 
@@ -45,15 +38,6 @@ export const setFollow = (taskId: string, following: boolean) =>
   requestJson<{ following: boolean }>('PUT', `${task(taskId)}/follow`, { following }).then((r) => r.following);
 export const deleteComment = (taskId: string, commentId: string) =>
   requestJson<unknown>('DELETE', `${task(taskId)}/comments/${encodeURIComponent(commentId)}`);
-
-export const getChecklist = (taskId: string) =>
-  requestJson<{ items: ChecklistItem[] }>('GET', `${task(taskId)}/checklist`).then((r) => r.items ?? []);
-export const addChecklistItem = (taskId: string, text: string) =>
-  requestJson<{ item: ChecklistItem }>('POST', `${task(taskId)}/checklist`, { text }).then((r) => r.item);
-export const setChecklistItem = (taskId: string, itemId: string, isChecked: boolean) =>
-  requestJson<unknown>('PATCH', `${task(taskId)}/checklist/${encodeURIComponent(itemId)}`, { isChecked });
-export const deleteChecklistItem = (taskId: string, itemId: string) =>
-  requestJson<unknown>('DELETE', `${task(taskId)}/checklist/${encodeURIComponent(itemId)}`);
 
 export const getClips = (taskId: string) =>
   requestJson<{ clips: LinkedClip[] }>('GET', `${task(taskId)}/clips`).then((r) => r.clips ?? []);

@@ -1316,8 +1316,6 @@ async function createTaskFromComment(commentId) {
         comment.taskId = data.task.id;
         renderComments();
         if (typeof Toast !== 'undefined') Toast.success(data.created ? 'Task created' : 'This comment already has a task');
-        // The task list of this project follows the tab that made the change
-        if (window.TaskManager && TaskManager.getProjectId() === AppState.projectId) TaskManager.loadTasks();
     } catch (err) {
         console.error('Failed to create task from comment:', err);
     }

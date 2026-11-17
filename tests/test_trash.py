@@ -77,8 +77,7 @@ def trash(api, user, ref):
 
 
 def attach(api, user, task_id, clip_id=None):
-    """A checklist item, a comment and (optionally) a clip link on a task."""
-    assert api("POST", f"/api/tasks/{task_id}/checklist", user, {"text": "Step one"}).status_code == 200
+    """A comment and (optionally) a clip link on a task."""
     assert api("POST", f"/api/tasks/{task_id}/comments", user, {"text": "A remark"}).status_code == 200
     if clip_id:
         assert api("POST", f"/api/tasks/{task_id}/clips", user, {"clipId": clip_id}).status_code == 200
@@ -113,7 +112,6 @@ def test_delete_hides_the_task_on_every_read_path(client, api, add, editor, proj
     listed = api("GET", f"/api/projects/{project}/tasks", editor).json()["tasks"]
     assert [t["id"] for t in listed] == [other]                                             # old list endpoint
     assert api("GET", f"/api/tasks/{task_id}/comments", editor).status_code == 404
-    assert api("GET", f"/api/tasks/{task_id}/checklist", editor).status_code == 404
     assert api("GET", f"/api/clips/{clip_id}/tasks", editor).json()["tasks"] == []          # clip -> linked tasks
     in_memory = [c for c in server.projects[project]["comments"] if c["id"] == comment["id"]][0]
     assert "taskId" not in in_memory                                                        # review "Task" chip
@@ -157,7 +155,6 @@ def test_restore_brings_back_everything_attached(client, api, add, editor, proje
     assert api("DELETE", f"/api/tables/{ref}/rows/{parent}", editor).status_code == 200
     assert names(api, editor, ref) == ["Sibling"]
     # nothing attached is destroyed while the task is in the trash
-    assert count("SELECT COUNT(*) AS n FROM task_checklist_items WHERE task_id IN (?, ?)", parent, child) == 2
     assert count("SELECT COUNT(*) AS n FROM task_comments WHERE task_id IN (?, ?)", parent, child) == 2
     assert count("SELECT COUNT(*) AS n FROM task_clips WHERE task_id = ?", parent) == 1
     assert count("SELECT COUNT(*) AS n FROM tasks WHERE id IN (?, ?, ?)", parent, child, grandchild) == 3
@@ -176,7 +173,6 @@ def test_restore_brings_back_everything_attached(client, api, add, editor, proje
     assert task_cache[parent]["sortOrder"] == position and task_cache[parent]["priority"] == "high"
     assert task_cache[child]["parentId"] == parent and task_cache[grandchild]["parentId"] == child
     assert task_cache[parent]["childCount"] == 1
-    assert len(api("GET", f"/api/tasks/{parent}/checklist", editor).json()["items"]) == 1
     assert len(api("GET", f"/api/tasks/{parent}/comments", editor).json()["comments"]) == 1
     assert [c["id"] for c in api("GET", f"/api/tasks/{parent}/clips", editor).json()["clips"]] == [clip_id]
     assert api("GET", f"/api/clips/{clip_id}/tasks", editor).json()["tasks"][0]["id"] == parent

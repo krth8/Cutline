@@ -24,7 +24,7 @@ FRAGMENT = "default"  # the Y.XmlFragment that Tiptap's Collaboration extension 
 
 # What the old task list showed by default (PropertyRegistry.getDefaultColumns), in that order. The other
 # builtin columns are kept in the view but hidden. The old list had no grouping by default, so there is none.
-VISIBLE_COLUMNS = ["name", "status", "priority", "assignees", "dueDate", "stage"]
+VISIBLE_COLUMNS = ["name", "status", "priority", "assignees", "dueDate"]
 HIDDEN_COLUMNS = ["startDate", "section", "clip", "description", "createdAt", "createdBy"]
 
 

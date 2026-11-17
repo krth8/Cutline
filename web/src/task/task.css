@@ -147,7 +147,7 @@ button.cl-task__crumb:hover { color: var(--text); text-decoration: underline; }
 .cl-sec__chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* Subtasks */
-.cl-subtasks, .cl-clips, .cl-clippicker, .cl-comments, .cl-checklist { list-style: none; margin: 0; padding: 0; }
+.cl-subtasks, .cl-clips, .cl-clippicker, .cl-comments { list-style: none; margin: 0; padding: 0; }
 .cl-subtask { display: flex; align-items: center; gap: 8px; min-height: 28px; }
 .cl-subtask__title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0; background: none; border: 0; color: inherit; cursor: pointer; font: inherit; text-align: left; }
 .cl-subtask__title:hover { text-decoration: underline; }
@@ -166,9 +166,6 @@ button.cl-task__crumb:hover { color: var(--text); text-decoration: underline; }
 .cl-clippicker__item:hover { background: var(--bg-hover); }
 
 /* Checklist */
-.cl-checklist__item { display: flex; align-items: center; gap: 8px; min-height: 28px; }
-.cl-checklist__text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.cl-checklist__item.is-checked .cl-checklist__text { text-decoration: line-through; color: var(--text-muted); }
 
 /* Activity stream */
 .cl-comment { display: flex; gap: 10px; margin-bottom: 12px; }
