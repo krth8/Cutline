@@ -115,4 +115,12 @@
     .cl-layout.has-nav .header-global .nav-menu-btn { display: flex; }
     .cl-layout.has-nav .header-global .logo { display: flex; }
     .cl-layout.has-nav .header-global .header-search-label { display: none; }
+    /* A phone has no room for the shortcut, the user's name or a panel button outside Review (the panels are
+       hidden at this width; in Review the button opens the comments sheet) */
+    .header-global #searchBtnKey,
+    .header-global .user-name { display: none; }
+    .cl-layout .app:not([data-view="review"]) #panelToggleBtn { display: none; }
+    .header-global { gap: 4px; padding: 0 8px; }
+    .header-global .header-actions { gap: 2px; }
+    .header-global .cl-ptabs__tab { padding: 0 8px; }
 }

@@ -25,3 +25,7 @@
 .cl-pagelist__title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cl-pagelist__meta { flex: 0 0 auto; font-size: var(--font-size-sm); color: var(--text-muted); }
 .cl-pagelist__state { padding: var(--space-2-5) var(--space-2); color: var(--text-muted); font-size: var(--font-size-md); }
+/* On touch screens the settings are always shown: they sit on their own line instead of over the heading */
+@media (hover: none) {
+  .cl-pagelist__settings { position: static; justify-content: flex-end; margin-bottom: var(--space-1); }
+}
