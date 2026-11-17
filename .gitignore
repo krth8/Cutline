@@ -55,3 +55,6 @@ chat_uploads/*
 # Web bundle
 static/dist/
 web/node_modules/
+
+# Local dev server data (dev_server.py)
+.devdata/
