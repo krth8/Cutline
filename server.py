@@ -23,6 +23,7 @@ from api.trash import start_trash_job
 from api.routes.pagesync import router as pagesync_router
 from api.routes.page_history import router as page_history_router
 import secrets
+import time
 import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
@@ -1189,10 +1190,11 @@ async def upload_cover(project_id: str, file: UploadFile = File(...), user: dict
         print(f"Warning: Could not remove temp file {temp_path}: {e}")
 
     if not success:
-        return {"error": "Failed to process image"}
+        raise HTTPException(status_code=415, detail="Could not read that image")
 
-    # Update project in memory and database
-    cover_url = f"/covers/{cover_filename}"
+    # Update project in memory and database. The file name stays the same, so the address carries a version:
+    # a new cover is fetched instead of the old one from the browser's cache
+    cover_url = f"/covers/{cover_filename}?v={int(time.time())}"
     projects[project_id]["coverImage"] = cover_url
     db_update_project_cover(project_id, cover_url)
 
@@ -1238,7 +1240,7 @@ async def delete_project(project_id: str, user: dict = Depends(require_permissio
     cover = deleted_info.get("cover")
     if cover:
         # Cover URL is like "/covers/xyz_cover.jpg", extract filename
-        cover_filename = cover.split("/")[-1]
+        cover_filename = cover.split("?")[0].split("/")[-1]  # without the ?v= version
         cover_path = os.path.join(COVERS_DIR, cover_filename)
         if os.path.exists(cover_path):
             try:

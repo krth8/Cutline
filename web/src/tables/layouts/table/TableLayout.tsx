@@ -21,7 +21,7 @@ import { orderedColumns } from '../../viewColumns';
 import { AddRow } from './AddRow';
 import { BulkBar } from './BulkBar';
 import { parseTsv, planPaste, toTsv } from './clipboard';
-import { ColumnForm, type ColumnFormMode, type ColumnFormValue } from './ColumnForm';
+import { ColumnForm, columnCreateBody, type ColumnFormMode, type ColumnFormValue } from './ColumnForm';
 import { DataRow } from './DataRow';
 import { MoveUnder } from './MoveUnder';
 import {
@@ -460,14 +460,7 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
     const ref = schema.ref;
     const selectLike = v.type === 'select' || v.type === 'multiselect';
     if (form.mode === 'add') {
-      const body = {
-        name: v.name,
-        type: v.type,
-        ...(selectLike ? { options: v.options.map((label) => ({ label })) } : {}),
-        ...(v.relation ? { config: v.relation } : {}),
-        ...(v.currency ? { config: { currency: v.currency } } : {}),
-      };
-      await columnCall(() => tablesApi.createColumn(ref, body as never));
+      await columnCall(() => tablesApi.createColumn(ref, columnCreateBody(v) as never));
     } else if (form.mode === 'rename' && form.column) {
       await columnCall(() => tablesApi.updateColumn(ref, form.column!.key, { name: v.name }));
     } else if (form.column) {

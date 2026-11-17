@@ -1735,7 +1735,11 @@ function triggerCoverUpload(projectId) {
                 headers,
                 body: formData
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.coverImage) {
+                showToast(data.detail || data.error || 'Could not set the cover image', 'error');
+                return;
+            }
 
             if (data.coverImage) {
                 // Update local project data
@@ -1750,6 +1754,7 @@ function triggerCoverUpload(projectId) {
             }
         } catch (e) {
             console.error('Failed to upload cover:', e);
+            showToast('Could not set the cover image', 'error');
         }
     };
     input.click();

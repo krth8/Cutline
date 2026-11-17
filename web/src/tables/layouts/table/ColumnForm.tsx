@@ -32,6 +32,24 @@ export const CURRENCIES: ReadonlyArray<{ code: string; label: string }> = [
   { code: 'GBP', label: 'British pound (GBP)' },
 ];
 
+/** The body of a create-column request for what the form handed back. */
+export function columnCreateBody(v: ColumnFormValue): Record<string, unknown> {
+  const selectLike = v.type === 'select' || v.type === 'multiselect';
+  return {
+    name: v.name,
+    type: v.type,
+    ...(selectLike ? { options: v.options.map((label) => ({ label })) } : {}),
+    ...(v.relation ? { config: v.relation } : {}),
+    ...(v.currency ? { config: { currency: v.currency } } : {}),
+  };
+}
+
+/** The space ('me' or 'p:<projectId>') of a table, for the tables a relation column may point at. */
+export function spaceOfSchema(schema: { ref: string; space?: { type: 'project'; projectId: string } | { type: 'personal' } }): string | null {
+  if (schema.space) return schema.space.type === 'personal' ? 'me' : `p:${schema.space.projectId}`;
+  return schema.ref.startsWith('tasks:') && schema.ref !== 'tasks:*' ? `p:${schema.ref.slice('tasks:'.length)}` : null;
+}
+
 export const isSelectType = (type: ColumnType) => type === 'select' || type === 'multiselect';
 
 /** What the form hands back: a name, a type and (for select types) the option labels, one per line. */

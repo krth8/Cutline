@@ -117,3 +117,6 @@
 .cl-table__resize:hover, .cl-table__resize:focus-visible { background: transparent; box-shadow: none; }
 .cl-table__resize:hover::after, .cl-table__resize:focus-visible::after, .cl-table__resize:active::after { top: 0; bottom: 0; background: var(--accent-light); }
 @media (hover: none) { .cl-table__resize::after { background: var(--border-medium); } }
+
+/* "Add column" stays at the right edge while the columns scroll, so it can be found in a narrow table */
+.cl-table__hadd { position: sticky; right: 0; z-index: 1; background: inherit; box-shadow: -8px 0 8px -8px var(--shadow-medium); }

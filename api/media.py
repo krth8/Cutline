@@ -7,6 +7,28 @@ import os
 from api.config import FFMPEG_PATH
 
 
+def _pillow_resize(input_path: str, output_path: str, max_size: int, quality: int) -> bool:
+    """Still images through Pillow (no FFmpeg needed): orientation applied, fitted in max_size, saved as JPEG."""
+    try:
+        from PIL import Image, ImageOps
+        with Image.open(input_path) as img:
+            if img.width * img.height > 100_000_000:
+                return False
+            img = ImageOps.exif_transpose(img)
+            if img.mode in ("RGBA", "LA", "P"):
+                img = img.convert("RGBA")
+                flat = Image.new("RGB", img.size, (255, 255, 255))
+                flat.paste(img, mask=img.split()[-1])
+                img = flat
+            elif img.mode != "RGB":
+                img = img.convert("RGB")
+            img.thumbnail((max_size, max_size), Image.LANCZOS)
+            img.save(output_path, "JPEG", quality=quality, optimize=True)
+        return True
+    except Exception:
+        return False
+
+
 async def process_image(input_path: str, output_path: str, max_size: int = 256, quality: int = 85) -> bool:
     """
     Process an image file: resize to max dimension while maintaining aspect ratio.
@@ -21,6 +43,10 @@ async def process_image(input_path: str, output_path: str, max_size: int = 256, 
     Returns:
         True if successful, False otherwise
     """
+    # Ordinary pictures do not need FFmpeg (which a development machine may not have)
+    if await asyncio.to_thread(_pillow_resize, input_path, output_path, max_size, quality):
+        return True
+
     # FFmpeg scale filter: scale to fit within max_size while maintaining aspect ratio
     # -2 ensures dimensions are divisible by 2 (required for some codecs)
     scale_filter = f"scale='if(gt(iw,ih),{max_size},-2)':'if(gt(iw,ih),-2,{max_size})'"

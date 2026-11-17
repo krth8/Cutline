@@ -7,6 +7,9 @@ import { getViewSource, toLayoutProps, useView } from './store';
 import { getLayout, layoutDefaults, useLayouts } from './layouts/registry';
 import { Toolbar, type ToolbarVariant } from './toolbar';
 import { TrashDialog } from './trash';
+import * as tablesApi from '../api/tables';
+import { refreshTable } from './store';
+import { ColumnForm, columnCreateBody, spaceOfSchema } from './layouts/table/ColumnForm';
 import type { Query, View } from './types';
 import './toolbar/toolbar.css';
 
@@ -38,6 +41,7 @@ export function ViewShell({
   const layouts = useLayouts();
   const { schema, view, actions } = data;
   const [trashOpen, setTrashOpen] = useState(false);
+  const [addingColumn, setAddingColumn] = useState(false);
   const add = useAddProject(viewId, view?.tableRef ?? '');
 
   const onQuery = useCallback(
@@ -156,8 +160,28 @@ export function ViewShell({
         add={view.tableRef === 'tasks:*' ? add : undefined}
         onTrash={canUseTrash(view.tableRef) ? () => setTrashOpen(true) : undefined}
         nest={nestable ? { checked: nested, onChange: toggleNest } : undefined}
-        menuItems={[...(menuItems ?? []), viewExportItem(view)]}
+        menuItems={[
+          ...(schema.capabilities.editSchema ? [{ id: 'add-column', label: 'Add column...', onSelect: () => setAddingColumn(true) }] : []),
+          ...(menuItems ?? []),
+          viewExportItem(view),
+        ]}
       />
+      {addingColumn && (
+        <ColumnForm
+          mode="add"
+          space={spaceOfSchema(schema)}
+          onClose={() => setAddingColumn(false)}
+          onSubmit={async (v) => {
+            try {
+              await tablesApi.createColumn(schema.ref, columnCreateBody(v) as never);
+              refreshTable(schema.ref);
+            } catch (e) {
+              getPlatform().toast('error', e instanceof Error ? e.message : 'Could not add the column');
+              throw e;
+            }
+          }}
+        />
+      )}
       {canUseTrash(view.tableRef) && (
         <TrashDialog tableRef={view.tableRef} open={trashOpen} onClose={() => setTrashOpen(false)} />
       )}
