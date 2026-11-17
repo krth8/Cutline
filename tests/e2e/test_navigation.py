@@ -148,7 +148,9 @@ def test_with_no_project_open_the_tabs_are_the_general_screens(scene, server):
     tab(page, "lounge")
     page.wait_for_url("**/lounge")
     wait_js(page, "AppState.activeTab === 'lounge'")
-    expect(page.locator(".lounge-sidebar")).to_be_visible()  # every room
+    # the rooms are in the app's sidebar: the channels above the projects; the view has no list of its own
+    expect(page.locator("[data-testid=nav-channels]")).to_be_visible()
+    expect(page.locator(".lounge-sidebar")).to_be_hidden()
     assert current_tab(page) == "Lounge"
     tab(page, "main")
     page.wait_for_url("**/home")

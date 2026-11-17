@@ -230,6 +230,10 @@ def seed(api: Api) -> None:
             body["clipId"] = clip_ids[0 if "strand" in name else -1]
         api.call(f"/api/projects/{camp}/tasks", body)
 
+    # ---- Lounge channels next to the project rooms
+    for name in ("Generelt", "Salg"):
+        api.call("/api/chat/channels", {"name": name})
+
     # ---- a custom table in Flipship
     api.call("/api/tables", {"name": "Utstyr", "space": f"p:{flip}", "columns": [
         {"name": "Antall", "type": "number"}, {"name": "Pris", "type": "number"}, {"name": "Bestilt", "type": "checkbox"}]})

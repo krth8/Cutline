@@ -37,8 +37,8 @@
 /* The notifications panel: turning push on for this device */
 .notifications-footer { padding: 10px 16px; border-top: 1px solid var(--border); text-align: center; }
 
-/* The Lounge tab of a project: just that project's room */
-.cl-layout.lounge-in-project .lounge-sidebar { display: none; }
+/* The Lounge's channels and projects are in the app's sidebar: the view has no room list of its own */
+.cl-layout .lounge-sidebar { display: none; }
 
 /* Review: the sidebar chooses the project and the clip strip at the bottom chooses the clip, so the old
    left panel of clips is gone */

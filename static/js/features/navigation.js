@@ -121,10 +121,10 @@ function switchTab(tabName, options) {
     } else if (tabName === 'lounge') {
         // Initialize LoungeModule for team chat
         if (typeof LoungeModule !== 'undefined') {
-            // The Lounge tab of a project (/p/<id>/lounge) opens that project's room
+            // /p/<id>/lounge opens that project's room, /lounge/c/<id> a channel (the sidebar lists both)
             const route = Routes.current();
-            const projectId = (route && route.projectId) || AppState.projectId || currentTasksProjectId;
-            LoungeModule.init(projectId);
+            if (route && route.channelId) LoungeModule.init(null, route.channelId);
+            else LoungeModule.init((route && route.projectId) || AppState.projectId || currentTasksProjectId);
         }
     }
 }

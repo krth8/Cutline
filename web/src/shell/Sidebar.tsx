@@ -8,6 +8,7 @@ import { getPlatform } from '../platform';
 import { buildRoute, navigate, routeProjectId, type Route } from '../router';
 import { openSearch, shortcutLabel } from '../search';
 import { Button, cx, Menu } from '../ui';
+import { LoungeChannels } from './LoungeChannels';
 import { useOpenProjects } from './navState';
 import { projectMenuItems } from './projectMenu';
 import { allowedTabs, projectTabs, tabOf, tabRoute } from './ProjectTabs';
@@ -108,7 +109,8 @@ type SidebarProject = ReturnType<ReturnType<typeof getPlatform>['projects']>[num
  */
 function ProjectItem({ project, route, tree, open, onOpenChange }: { project: SidebarProject; route: Route; tree: boolean; open: boolean; onOpenChange: (open: boolean) => void }) {
   const current = routeProjectId(route) === project.id;
-  const onOverview = (route.kind === 'projectPages' || route.kind === 'projectTasks') && current;
+  // The project's own place is marked: its overview in Home, its room in the Lounge
+  const onOverview = (route.kind === 'projectPages' || route.kind === 'projectTasks' || route.kind === 'lounge') && current;
   const panelId = `cl-project-${project.id}`;
   const moreRef = useRef<HTMLButtonElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -283,6 +285,8 @@ export function Sidebar({
                 <SectionSlots space={{ kind: 'personal' }} route={route} />
               </>
             ) : null}
+
+            {tabOf(route) === 'lounge' ? <LoungeChannels route={route} /> : null}
 
             <NavLink to={{ kind: 'projects' }} active={route.kind === 'projects'} className="cl-nav__heading" testId="nav-projects">
               Projects

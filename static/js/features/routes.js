@@ -67,6 +67,7 @@ const Routes = (function () {
         if (segments.length === 0) return { tab: null };
         if (segments.length === 1 && segments[0] === 'home') return { tab: 'pages', home: true };
         if (segments.length === 1 && segments[0] === 'lounge') return { tab: 'lounge' };
+        if (segments.length === 3 && segments[0] === 'lounge' && segments[1] === 'c') return { tab: 'lounge', channelId: segments[2] };
         if (segments.length === 1 && segments[0] === 'projects') return { tab: 'pages' };
         if (segments[0] === 'me') {
             if (segments.length === 1 || (segments.length === 3 && segments[1] === 'page')) return { tab: 'pages' };
@@ -377,10 +378,6 @@ const Routes = (function () {
         if (AppState.isShareLinkGuest || !AppState.authToken) return;
         refreshChrome();
         refreshTasksToggle();
-        // The Lounge tab of a project shows that project's room only; the room list is for the general Lounge
-        const layout = document.getElementById('clLayout');
-        const here = current();
-        if (layout) layout.classList.toggle('lounge-in-project', !!(here && here.tab === 'lounge' && here.projectId));
         hideDocsTab();
         rewriteLegacyLink();
 

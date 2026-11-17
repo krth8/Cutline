@@ -42,7 +42,7 @@ const LoungeModule = {
     /**
      * Initialize the lounge module
      */
-    async init(projectId = null) {
+    async init(projectId = null, channelId = null) {
         // Get user info
         const authData = localStorage.getItem('authData');
         if (authData) {
@@ -65,7 +65,10 @@ const LoungeModule = {
         // Start both operations in parallel - channels and project are independent
         const channelsPromise = this.loadCustomChannels();
 
-        if (targetProjectId) {
+        if (channelId) {
+            await channelsPromise;
+            await this.selectCustomChannel(channelId);
+        } else if (targetProjectId) {
             // selectProject runs while channels load
             await Promise.all([channelsPromise, this.selectProject(targetProjectId)]);
         } else {
@@ -1457,6 +1460,8 @@ const LoungeModule = {
     },
 
     attachEventListeners() {
+        if (this.listening) return; // init runs on every visit to the tab
+        this.listening = true;
         // Close emoji picker on outside click
         document.addEventListener('click', (e) => {
             if (this.emojiPickerOpen && !e.target.closest('.lounge-emoji-picker') && !e.target.closest('.lounge-input-btn')) {
