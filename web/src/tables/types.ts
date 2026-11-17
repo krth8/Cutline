@@ -3,7 +3,7 @@
 
 export type ColumnType =
   | 'text' | 'longtext' | 'number' | 'checkbox' | 'date' | 'select' | 'multiselect'
-  | 'status' | 'priority' | 'person' | 'people' | 'url' | 'clip' | 'relation' | 'formula';
+  | 'status' | 'priority' | 'person' | 'people' | 'url' | 'clip' | 'relation' | 'formula' | 'image';
 
 export interface Column {
   key: string; // 'name', 'status', 'assignees', 'dueDate', 'cf_ab12' ...
@@ -76,7 +76,7 @@ export interface View {
   id: string;
   tableRef: string;
   name: string;
-  layout: 'table' | 'board' | 'list' | 'calendar' | 'gantt';
+  layout: 'table' | 'board' | 'list' | 'calendar' | 'gantt' | 'gallery';
   config: {
     query: Query;
     columns?: Array<{ key: string; width?: number; hidden?: boolean }>; // order = display order
@@ -84,6 +84,7 @@ export interface View {
     calendar?: { dateColumn: string; endColumn?: string };
     gantt?: { startColumn: string; endColumn: string; scale: 'day' | 'week' | 'month' };
     list?: { secondaryColumns: string[] };
+    gallery?: { cardColumns: string[]; cover: string; size: 'small' | 'medium' | 'large'; fit: 'cover' | 'contain' };
   };
 }
 

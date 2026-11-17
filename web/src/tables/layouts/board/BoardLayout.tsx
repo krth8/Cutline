@@ -18,6 +18,7 @@ import {
   type BoardConfig,
   type BoardLane,
 } from './model';
+import { coverOf } from '../cover';
 import './board.css';
 
 /** Pixels the pointer must travel before a press on a card becomes a drag (below that it is a click). */
@@ -229,18 +230,7 @@ function BoardLanes({ column, schema, view, result, loading, actions }: LayoutPr
   );
 }
 
-/**
- * The picture on top of a card: the thumbnail of the row's clip (a task linked to a clip shows its frame).
- * Read from the first clip column whose value carries one, shown or not.
- */
-export function coverOf(row: Row, columns: Column[]): string | null {
-  for (const c of columns) {
-    if (c.type !== 'clip') continue;
-    const value = row.values[c.key] as { thumbnail?: unknown } | null | undefined;
-    if (value && typeof value.thumbnail === 'string' && value.thumbnail) return `/thumbnail/${encodeURIComponent(value.thumbnail)}`;
-  }
-  return null;
-}
+export { coverOf } from '../cover';
 
 interface CardProps {
   row: Row;

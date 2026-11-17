@@ -18,6 +18,18 @@ export const CUSTOM_COLUMN_TYPES: ReadonlyArray<{ type: ColumnType; label: strin
   { type: 'person', label: 'Person' },
   { type: 'people', label: 'People' },
   { type: 'relation', label: 'Relation' },
+  { type: 'image', label: 'Image' },
+];
+
+/** Currencies a number column can show its values in ('' is a plain number). */
+export const CURRENCIES: ReadonlyArray<{ code: string; label: string }> = [
+  { code: '', label: 'Plain number' },
+  { code: 'NOK', label: 'Norwegian krone (NOK)' },
+  { code: 'SEK', label: 'Swedish krona (SEK)' },
+  { code: 'DKK', label: 'Danish krone (DKK)' },
+  { code: 'EUR', label: 'Euro (EUR)' },
+  { code: 'USD', label: 'US dollar (USD)' },
+  { code: 'GBP', label: 'British pound (GBP)' },
 ];
 
 export const isSelectType = (type: ColumnType) => type === 'select' || type === 'multiselect';
@@ -29,6 +41,8 @@ export interface ColumnFormValue {
   options: string[];
   /** Relation columns: the target table and the switches. */
   relation?: { target: string; multiple: boolean; twoWay: boolean };
+  /** Number columns: the currency code, '' for a plain number. */
+  currency?: string;
 }
 
 export interface TargetChoice {
@@ -81,6 +95,7 @@ export function ColumnForm({
   const [multiple, setMultiple] = useState(existing?.multiple ?? true);
   const [twoWay, setTwoWay] = useState(existing?.twoWay ?? false);
   const [targets, setTargets] = useState<TargetChoice[] | null>(null);
+  const [currency, setCurrency] = useState(typeof column?.config?.currency === 'string' ? column.config.currency : '');
   const isRelation = type === 'relation';
   useEffect(() => {
     if (!isRelation || !space || targets) return;
@@ -109,6 +124,7 @@ export function ColumnForm({
           .map((l) => l.trim())
           .filter(Boolean),
         ...(isRelation && mode !== 'rename' ? { relation: { target, multiple, twoWay } } : {}),
+        ...(type === 'number' && mode !== 'rename' ? { currency } : {}),
       });
       onClose();
     } catch {
@@ -151,6 +167,18 @@ export function ColumnForm({
               {CUSTOM_COLUMN_TYPES.map((t) => (
                 <option key={t.type} value={t.type}>
                   {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {showType && type === 'number' && (
+          <label className="cl-colform__field">
+            Format
+            <select className="cl-table__select" value={currency} onChange={(e) => setCurrency(e.target.value)} data-testid="column-form-currency">
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
                 </option>
               ))}
             </select>

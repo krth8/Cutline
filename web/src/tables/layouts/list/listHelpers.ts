@@ -82,7 +82,8 @@ export function rowInGroup(value: unknown, key: string | null): boolean {
 export function slotWidth(column: Column): number {
   switch (column.type) {
     case 'checkbox': return 28;
-    case 'number': return 72;
+    case 'number': return column.config?.currency ? 120 : 72;
+    case 'image': return 48;
     case 'date': return 96;
     case 'priority': return 84;
     case 'status': case 'select': return 124;

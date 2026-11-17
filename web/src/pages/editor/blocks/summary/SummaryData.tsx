@@ -10,11 +10,17 @@ import type { SummaryFn } from './model';
 export type SummaryState =
   | { kind: 'none' } // no view chosen yet
   | { kind: 'loading' }
-  | { kind: 'ready'; value: number | string | null }
+  | { kind: 'ready'; value: number | string | null; currency?: string | null }
   | { kind: 'denied' } // no access to the view or its table
   | { kind: 'gone' } // the view was deleted
   | { kind: 'problem'; reason: string } // the settings do not fit the table (column removed, wrong type ...)
   | { kind: 'error'; message: string };
+
+/** The currency of a number column (its config), or null. */
+function moneyOf(schema: TableSchema, column: string | null): string | null {
+  const c = schema.columns.find((col) => col.key === column)?.config?.currency;
+  return typeof c === 'string' && /^[A-Z]{3}$/.test(c) ? c : null;
+}
 
 const isDenied = (e: unknown) => e instanceof ApiError && (e.status === 401 || e.status === 403);
 const isGone = (e: unknown) => e instanceof ApiError && e.status === 404;
@@ -97,5 +103,7 @@ function WithResult({
   if (!plan.ok) return <>{children({ kind: 'problem', reason: plan.reason })}</>;
   if (data.error && !data.result) return <>{children(failure(data.error))}</>;
   if (!data.result) return <>{children({ kind: 'loading' })}</>;
-  return <>{children({ kind: 'ready', value: plan.read(data.result) })}</>;
+  // Sums, averages, minimum and maximum of a money column are money too
+  const money = fn === 'sum' || fn === 'avg' || fn === 'min' || fn === 'max' ? moneyOf(schema, column) : null;
+  return <>{children({ kind: 'ready', value: plan.read(data.result), currency: money })}</>;
 }

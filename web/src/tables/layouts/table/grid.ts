@@ -301,10 +301,11 @@ export function defaultWidth(column: Column, isTitle: boolean): number {
   if (isTitle) return 320;
   switch (column.type) {
     case 'checkbox': return 90;
-    case 'number': return 110;
+    case 'number': return column.config?.currency ? 150 : 110;
     case 'date': return 140;
     case 'longtext': return 260;
     case 'people': case 'multiselect': case 'url': case 'clip': return 180;
+    case 'image': return 96;
     default: return 160;
   }
 }

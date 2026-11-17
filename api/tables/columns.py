@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import secrets
 from datetime import date
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -34,7 +35,8 @@ from database.table_columns import (
     db_update_table_column,
 )
 
-CUSTOM_TYPES = ("text", "longtext", "number", "checkbox", "date", "select", "multiselect", "url", "person", "people", "relation")
+CUSTOM_TYPES = ("text", "longtext", "number", "checkbox", "date", "select", "multiselect", "url", "person", "people", "relation",
+                "image")
 SELECT_TYPES = ("select", "multiselect")
 MULTI_TYPES = ("multiselect", "people")
 TEXT_TYPES = ("text", "longtext", "url")
@@ -74,7 +76,12 @@ def to_column(stored: dict) -> dict:
 
 
 def list_columns(ref: str) -> List[dict]:
-    return [to_column(c) for c in db_list_table_columns(ref)]
+    columns = [to_column(c) for c in db_list_table_columns(ref)]
+    for column in columns:
+        if column["type"] == "image":
+            # Where the cell editor uploads to (not stored: the column belongs to this table)
+            column["config"] = {**column.get("config", {}), "uploadRef": ref}
+    return columns
 
 
 def empty_value(col_type: str) -> Any:
@@ -136,6 +143,10 @@ def clean_options(raw: Any, existing: Optional[List[dict]] = None) -> List[dict]
 def clean_config(raw: Any) -> dict:
     if not isinstance(raw, dict):
         raise _bad("config must be an object")
+    raw = {k: v for k, v in raw.items() if k != "uploadRef"}  # computed when the schema is read
+    currency = raw.get("currency")
+    if currency is not None and currency != "" and not (isinstance(currency, str) and re.fullmatch(r"[A-Z]{3}", currency)):
+        raise _bad("currency must be a three-letter code such as NOK")
     if "options" in raw:
         raise _bad("Send options as the top-level 'options' field, not inside config")
     try:
@@ -197,6 +208,13 @@ def validate_value(col: dict, value: Any, user_ok: Callable[[str], bool], princi
         if len(value) > TEXT_LIMITS[ctype]:
             raise _bad(f"'{name}' is too long (at most {TEXT_LIMITS[ctype]} characters)")
         return value if value.strip() else None
+    if ctype == "image":
+        if value is None or value == "":
+            return None
+        from api.routes.table_images import IMAGE_VALUE
+        if not isinstance(value, str) or not IMAGE_VALUE.match(value):
+            raise _bad(f"'{name}' must be an uploaded image or null")
+        return value
     if ctype == "number":
         if value is None or value == "":
             return None

@@ -87,12 +87,22 @@ export function formatNumber(n: number): string {
   return text.replace(/,/g, ' ');
 }
 
+/** Money in the user's locale (kept here rather than imported, so this file stays free of the cells code). */
+function formatMoney(n: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(n);
+  } catch {
+    return `${formatNumber(n)} ${currency}`;
+  }
+}
+
 /** The text of a result: a dash when there is none, whole percent, plain numbers, dates as they come. */
-export function formatValue(fn: SummaryFn, value: number | string | null | undefined): string {
+export function formatValue(fn: SummaryFn, value: number | string | null | undefined, currency?: string | null): string {
   if (value === null || value === undefined) return NO_VALUE;
   if (typeof value === 'string') return value;
   if (!Number.isFinite(value)) return NO_VALUE;
-  return isPercent(fn) ? `${Math.round(value)}%` : formatNumber(value);
+  if (isPercent(fn)) return `${Math.round(value)}%`;
+  return currency ? formatMoney(value, currency) : formatNumber(value);
 }
 
 /** How far the bar is filled (0 to 1), or null when there is nothing to measure against. */
@@ -104,7 +114,7 @@ export function progressFraction(fn: SummaryFn, value: number | string | null, t
 }
 
 /** The text beside the bar: "42%", "12 / 20", or just the number. */
-export function progressText(fn: SummaryFn, value: number | string | null, target: number | null): string {
-  const text = formatValue(fn, value);
+export function progressText(fn: SummaryFn, value: number | string | null, target: number | null, currency?: string | null): string {
+  const text = formatValue(fn, value, currency);
   return !isPercent(fn) && target && typeof value === 'number' ? `${text} / ${formatNumber(target)}` : text;
 }

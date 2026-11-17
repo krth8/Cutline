@@ -55,6 +55,7 @@ OPS_BY_TYPE: Dict[str, set] = {
     "multiselect": _COMMON | {"contains"},
     "people": _COMMON | {"contains"},
     "clip": set(_COMMON),
+    "image": {"empty", "notEmpty"},
     "relation": _COMMON | {"contains"},
     "formula": _COMMON | _COMPARE | {"contains"},
 }

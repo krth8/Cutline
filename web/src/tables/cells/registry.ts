@@ -5,6 +5,7 @@ import * as E from './editors';
 import * as P from './pickers';
 import * as C from './convert';
 import { RelationEditor } from './RelationEditor';
+import { ImageDisplay, ImageEditor, asImage } from './image';
 import { optionLabel } from './util';
 
 const text = (a: unknown) => (typeof a === 'string' ? a : '');
@@ -106,6 +107,14 @@ const cells: Record<ColumnType, CellDef> = {
     toText: C.relationToText,
     // By the first linked title, like the server sorts
     compare: (a, b) => C.compareWith(a as unknown[] | null, b as unknown[] | null, C.listIsEmpty, (x, y) => C.compareText(C.relationToText([x[0]]), C.relationToText([y[0]]))),
+  },
+  image: {
+    Display: ImageDisplay,
+    Editor: ImageEditor,
+    isEmpty: (v) => asImage(v) === null,
+    toText: (v) => asImage(v) ?? '',
+    parseText: (t) => (t.trim() === '' ? { value: null } : asImage(t.trim()) ? { value: t.trim() } : null),
+    compare: (a, b) => Number(asImage(a) === null) - Number(asImage(b) === null),
   },
   formula: {
     Display: D.FormulaDisplay,

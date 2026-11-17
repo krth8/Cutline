@@ -13,10 +13,11 @@ import { ViewBlock } from './viewBlockNode';
 export { ViewBlock } from './viewBlockNode';
 export { VIEW_BLOCK, VIEW_LAYOUTS } from './model';
 
-const ICONS: Record<string, string> = { table: '▦', board: '▥', calendar: '▤', gantt: '▬', list: '≣' };
+const ICONS: Record<string, string> = { table: '▦', board: '▥', gallery: '▣', calendar: '▤', gantt: '▬', list: '≣' };
 const DESCRIPTIONS: Record<string, string> = {
   table: 'Tasks as a table',
   board: 'Tasks as a board of cards',
+  gallery: 'Tasks as a grid of picture cards',
   calendar: 'Tasks on a calendar',
   gantt: 'Tasks on a timeline',
   list: 'Tasks as a list',

@@ -78,7 +78,7 @@ export function SummaryContent(props: SummaryContentProps) {
             </span>
           )}
           <span className="cl-summary__value" data-testid="summary-value">
-            {progress ? progressText(attrs.fn, state.value, attrs.target) : formatValue(attrs.fn, state.value)}
+            {progress ? progressText(attrs.fn, state.value, attrs.target, state.currency) : formatValue(attrs.fn, state.value, state.currency)}
           </span>
         </>
       );

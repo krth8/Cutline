@@ -36,7 +36,7 @@ from database.views import db_create_view, db_delete_view, db_get_view, db_list_
 
 router = APIRouter()
 
-LAYOUTS = ("table", "board", "list", "calendar", "gantt")
+LAYOUTS = ("table", "board", "list", "calendar", "gantt", "gallery")
 MAX_NAME = 200
 MAX_CONFIG_BYTES = 64 * 1024
 

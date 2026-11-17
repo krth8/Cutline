@@ -9,7 +9,7 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 export const VIEW_BLOCK = 'viewBlock';
 
 /** The layouts a view can have; every one gets a slash entry, registered or not. */
-export const VIEW_LAYOUTS = ['table', 'board', 'calendar', 'gantt', 'list'] as const;
+export const VIEW_LAYOUTS = ['table', 'board', 'gallery', 'calendar', 'gantt', 'list'] as const;
 
 export const MIN_HEIGHT = 160;
 export const MAX_HEIGHT = 1600;

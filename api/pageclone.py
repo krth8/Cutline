@@ -237,6 +237,14 @@ def strip_custom_columns(config: dict, allowed: set) -> dict:
         if gone(gantt.get("endColumn")):
             gantt["endColumn"] = "dueDate"
         config["gantt"] = gantt
+    gallery = config.get("gallery")
+    if isinstance(gallery, dict):
+        gallery = dict(gallery)
+        if isinstance(gallery.get("cardColumns"), list):
+            gallery["cardColumns"] = [k for k in gallery["cardColumns"] if not gone(k)]
+        if gone(gallery.get("cover")):
+            gallery["cover"] = "auto"
+        config["gallery"] = gallery
     listing = config.get("list")
     if isinstance(listing, dict) and isinstance(listing.get("secondaryColumns"), list):
         config["list"] = {**listing, "secondaryColumns": [k for k in listing["secondaryColumns"] if not gone(k)]}

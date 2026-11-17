@@ -210,7 +210,7 @@ describe('slash entries', () => {
     const titles = getRegisteredSlashItems()
       .filter((i) => i.group === 'Views')
       .map((i) => i.title);
-    expect(titles).toEqual(['Table', 'Board', 'Calendar', 'Gantt', 'List', 'New table', 'Existing view']);
+    expect(titles).toEqual(['Table', 'Board', 'Gallery', 'Calendar', 'Gantt', 'List', 'New table', 'Existing view']);
     expect(filterSlashItems(getRegisteredSlashItems(), 'board').map((i) => i.title)).toContain('Board');
   });
 

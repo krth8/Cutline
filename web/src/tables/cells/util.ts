@@ -87,7 +87,24 @@ export function parseNumber(text: string): number | null | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/** The currency a number column shows its values in (an ISO code such as NOK), or null. */
+export function currencyOf(column?: Column | null): string | null {
+  const c = column?.config?.currency;
+  return typeof c === 'string' && /^[A-Z]{3}$/.test(c) ? c : null;
+}
+
+/** A number as money: grouped digits, the currency's usual decimals, the symbol where the user's locale puts it. */
+export function formatMoney(n: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(n);
+  } catch {
+    return `${n} ${currency}`;
+  }
+}
+
 export function formatNumber(n: number, column?: Column): string {
+  const currency = currencyOf(column);
+  if (currency) return formatMoney(n, currency);
   const decimals = column?.config?.decimals;
   return new Intl.NumberFormat(undefined, {
     maximumFractionDigits: typeof decimals === 'number' ? decimals : 10,

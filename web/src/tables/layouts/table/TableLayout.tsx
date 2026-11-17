@@ -465,6 +465,7 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
         type: v.type,
         ...(selectLike ? { options: v.options.map((label) => ({ label })) } : {}),
         ...(v.relation ? { config: v.relation } : {}),
+        ...(v.currency ? { config: { currency: v.currency } } : {}),
       };
       await columnCall(() => tablesApi.createColumn(ref, body as never));
     } else if (form.mode === 'rename' && form.column) {
@@ -476,7 +477,12 @@ export function TableLayout({ schema, view, result, loading, actions }: LayoutPr
         const same = old.find((o) => o.label === label);
         return same ? { label, value: same.value } : { label };
       });
-      const body = { type: v.type, ...(selectLike ? { options } : {}), ...(v.relation ? { config: v.relation } : {}) };
+      const body = {
+        type: v.type,
+        ...(selectLike ? { options } : {}),
+        ...(v.relation ? { config: v.relation } : {}),
+        ...(v.currency !== undefined ? { config: { ...(form.column.type === 'number' ? form.column.config : {}), currency: v.currency } } : {}),
+      };
       await columnCall(() => tablesApi.updateColumn(ref, form.column!.key, body as never));
     }
   }

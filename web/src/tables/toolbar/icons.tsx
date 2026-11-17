@@ -42,6 +42,14 @@ const LAYOUT_ICONS: Record<string, ReactNode> = {
       <path d="M2 6.5h12M5.5 1.8v2.4M10.5 1.8v2.4" />
     </>
   ),
+  gallery: (
+    <>
+      <rect x="2" y="2.5" width="5.2" height="5.2" rx="1.2" />
+      <rect x="8.8" y="2.5" width="5.2" height="5.2" rx="1.2" />
+      <rect x="2" y="9.3" width="5.2" height="4.2" rx="1.2" />
+      <rect x="8.8" y="9.3" width="5.2" height="4.2" rx="1.2" />
+    </>
+  ),
   gantt: <path d="M2.5 4h5M5.5 8h6M8.5 12h5" strokeWidth="2.2" />,
 };
 
