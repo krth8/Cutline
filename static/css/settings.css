@@ -1,0 +1,429 @@
+/*
+ * The settings dialog (static/index.html #settingsModal). Loaded after main.css and look.css.
+ *
+ * Desktop: a dialog of a fixed size, a menu of sections on the left in groups (Account, Workspace,
+ * Projects), the open section on the right; only the right side scrolls, so the menu and the close
+ * button stay put. Phone: a sheet of almost the full height, the menu a row of chips that scrolls
+ * sideways, the section under it. Colours, radii and shadows come from theme.css.
+ */
+
+/* ---- the dialog ---- */
+.settings-modal {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: min(880px, calc(100vw - 48px));
+    max-width: none;
+    height: min(680px, calc(100vh - 48px));
+    height: min(680px, calc(100dvh - 48px));
+    padding: 0;
+    overflow: hidden;
+    background: var(--modal-bg);
+}
+
+.settings-head {
+    display: none; /* the title lives in the menu on desktop; the phone shows this bar */
+}
+.settings-modal .modal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+}
+.settings-modal .modal-close:hover { background: var(--bg-hover); color: var(--text); }
+.settings-modal .modal-close .icon { width: 16px; height: 16px; }
+
+.settings-layout {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ---- the menu ---- */
+.settings-tabs {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 220px;
+    padding: 20px 12px;
+    overflow-y: auto;
+    background: var(--chrome-bg);
+}
+.settings-tabs::before {
+    content: "Settings";
+    padding: 0 10px 14px;
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text);
+}
+.settings-nav-group {
+    padding: 14px 10px 6px;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.settings-nav-group:first-of-type { padding-top: 0; }
+.settings-tab {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+.settings-tab .icon { flex: none; color: var(--text-muted); }
+.settings-tab:hover { background: var(--bg-hover); color: var(--text); }
+.settings-tab.active { background: var(--accent-bg-strong); color: var(--text); border-bottom: 0; }
+.settings-tab.active .icon { color: var(--accent-light); }
+.settings-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* the close button sits in the top right corner of the section side */
+.settings-modal > .settings-head .modal-close { position: static; }
+@media (min-width: 801px) {
+    .settings-head {
+        display: block;
+        position: absolute;
+        z-index: 2;
+        top: 14px;
+        right: 14px;
+        height: 0;
+    }
+    .settings-head .settings-title { display: none; }
+}
+
+/* ---- the open section ---- */
+.settings-modal .settings-body {
+    flex: 1;
+    min-width: 0;
+    max-height: none;
+    padding: 28px 32px 32px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.settings-page-title {
+    margin: 0 0 20px;
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text);
+    letter-spacing: -0.01em;
+}
+.settings-modal .settings-section {
+    margin: 0 0 28px;
+    padding: 0;
+    border: 0;
+}
+.settings-modal .settings-section:last-child { margin-bottom: 0; }
+.settings-modal .settings-label {
+    margin-bottom: 10px;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text);
+}
+.settings-modal .settings-hint { font-size: var(--font-size-sm); color: var(--text-muted); line-height: var(--line-height-normal); }
+.settings-modal .settings-hint#settingsScopeHint { margin-top: 8px; }
+.settings-intro { margin: 0 0 14px; }
+
+/* a setting as one row: what it is on the left, the control on the right */
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--card-shadow);
+}
+.settings-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.settings-row-title { font-size: var(--font-size-md); font-weight: var(--font-weight-medium); color: var(--text); }
+.settings-row .btn { flex: none; text-decoration: none; }
+
+/* buttons in the dialog share one size */
+.settings-modal .btn-small {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: var(--control-height-sm);
+    padding: 0 12px;
+    font-size: var(--font-size-sm);
+}
+.settings-modal .btn:not(.btn-small) {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: var(--control-height-md);
+    padding: 0 16px;
+    font-size: var(--font-size-md);
+}
+
+/* fields */
+.settings-modal select,
+.settings-modal input[type="text"] {
+    height: var(--control-height-md);
+    padding: 0 12px;
+    font: inherit;
+    font-size: var(--font-size-md);
+    color: var(--text);
+    background: var(--bg-hover);
+    border: 0;
+    border-radius: var(--radius-sm);
+}
+.settings-modal select:hover,
+.settings-modal input[type="text"]:hover { background: var(--bg-active); }
+.settings-modal select:focus-visible,
+.settings-modal input[type="text"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.settings-modal .input-large { width: 100%; max-width: 360px; }
+
+/* ---- Profile ---- */
+.settings-modal .profile-account-info {
+    gap: 16px;
+    padding: 18px;
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--card-shadow);
+}
+.settings-modal .profile-account-details { flex: 1; min-width: 0; }
+.settings-modal .profile-picture-actions { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+/* ---- Appearance ---- */
+.settings-modal .theme-options {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+.settings-modal .theme-option { min-width: 0; }
+.settings-modal .theme-option-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 76px;
+    padding: 0 8px;
+    background: var(--card-bg);
+    border: 0;
+    border-radius: var(--radius-md);
+    box-shadow: var(--card-shadow);
+    color: var(--text-secondary);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+}
+.settings-modal .theme-option-label .icon { width: 20px; height: 20px; color: var(--text-muted); }
+.settings-modal .theme-option:hover .theme-option-label { color: var(--text); background: var(--card-bg); box-shadow: var(--card-shadow-hover); }
+.settings-modal .theme-option input[type="radio"]:checked + .theme-option-label {
+    color: var(--text);
+    background: var(--accent-bg-strong);
+    border: 0;
+    box-shadow: inset 0 0 0 2px var(--accent);
+}
+.settings-modal .theme-option input[type="radio"]:checked + .theme-option-label .icon { color: var(--accent-light); }
+.settings-modal .theme-option input[type="radio"]:focus-visible + .theme-option-label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.settings-modal .theme-custom-options { margin-top: 12px; padding: 14px 16px; background: var(--card-bg); border-radius: var(--radius-md); box-shadow: var(--card-shadow); }
+
+/* ---- Members ---- */
+.settings-modal .users-list { gap: 6px; }
+.settings-modal .user-card,
+.settings-modal .users-list > .user-item {
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--card-shadow);
+}
+.settings-modal .user-card > .user-item { padding: 10px 12px; }
+.settings-modal .user-role-select { height: var(--control-height-sm); padding: 0 8px; background: var(--bg-hover); border: 0; }
+
+/* ---- Invites ---- */
+.settings-modal .invite-create-form {
+    gap: 14px;
+    padding: 18px;
+    background: var(--card-bg);
+    border: 0;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--card-shadow);
+}
+.settings-modal .invite-form-row .input-label { width: 110px; color: var(--text-secondary); }
+.settings-modal .invite-form-row .input-small { flex: 1; max-width: 280px; height: var(--control-height-md); padding: 0 12px; }
+.settings-modal .invite-form-actions { padding-left: 122px; }
+.settings-modal .invite-create-form .btn { padding: 0 16px; }
+.settings-modal .checkbox-group { gap: 8px; }
+.settings-modal .checkbox-label {
+    gap: 8px;
+    height: var(--control-height-md);
+    padding: 0 12px;
+    background: var(--bg-hover);
+    border: 0;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+}
+.settings-modal .checkbox-label:hover { background: var(--bg-active); }
+.settings-modal .checkbox-label:has(input:checked) { background: var(--accent-bg-strong); color: var(--text); }
+.settings-modal .checkbox-label input[type="checkbox"] { accent-color: var(--accent); }
+.settings-modal .invite-links-list { max-height: none; padding: 0; background: transparent; border: 0; overflow: visible; }
+.settings-modal .invite-link-item {
+    padding: 14px 16px;
+    background: var(--card-bg);
+    border: 0;
+    border-radius: var(--radius-md);
+    box-shadow: var(--card-shadow);
+}
+.settings-modal .invite-link-item:hover { background: var(--card-bg); box-shadow: var(--card-shadow-hover); }
+.settings-modal .invite-link-url { background: var(--bg-hover); border: 0; border-radius: var(--radius-sm); }
+.settings-modal .invite-links-empty,
+.settings-modal .share-links-empty,
+.settings-modal .users-list-empty,
+.settings-modal .status-list-empty {
+    padding: 18px 16px;
+    text-align: left;
+    color: var(--text-muted);
+    font-size: var(--font-size-md);
+    background: var(--bg-hover);
+    border: 0;
+    border-radius: var(--radius-md);
+}
+
+/* ---- Share links ---- */
+.settings-modal .share-link-item { border: 0; border-radius: var(--radius-md); }
+
+/* ---- Statuses & presets ---- */
+.settings-modal .settings-scope-toggle {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+}
+.settings-modal .scope-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    height: 28px;
+    padding: 0 12px;
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+}
+.settings-modal .scope-btn:hover:not(:disabled) { color: var(--text); background: var(--bg-hover); }
+.settings-modal .scope-btn.active { background: var(--modal-elevated); color: var(--text); box-shadow: var(--shadow-sm); border: 0; }
+.settings-modal .preset-selector { margin-bottom: 10px; }
+.settings-modal .preset-preview {
+    gap: 6px;
+    min-height: 0;
+    margin-bottom: 6px;
+    padding: 12px;
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--card-shadow);
+}
+/* every option as the app's tinted pill: a wash of its colour, the colour as text */
+.settings-modal .preset-preview-item {
+    gap: 6px;
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: color-mix(in srgb, var(--pill, var(--text-muted)) 62%, var(--text)) !important;
+    background: color-mix(in srgb, var(--pill, var(--text-muted)) 17%, transparent) !important;
+}
+.settings-modal .preset-preview-dot { display: none; }
+.settings-modal .preset-actions .btn { padding-left: 4px; }
+.settings-modal .status-add-form { display: flex; gap: 8px; margin-top: 10px; }
+.settings-modal .status-add-form .input-small { flex: 1; max-width: 280px; }
+.settings-modal .input-color { width: 36px; height: var(--control-height-md); padding: 2px; background: var(--bg-hover); border: 0; border-radius: var(--radius-sm); }
+
+/* ---- tablets: a narrower menu ---- */
+@media (max-width: 960px) and (min-width: 801px) {
+    .settings-tabs { width: 188px; }
+    .settings-modal .settings-body { padding: 24px; }
+    .settings-modal .theme-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---- phones: a tall sheet, the menu a row of chips ---- */
+@media (max-width: 800px) {
+    .settings-modal {
+        width: 100%;
+        height: 92vh;
+        height: 92dvh;
+        max-height: none;
+        border-radius: 20px 20px 0 0;
+    }
+    .settings-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 16px 6px 20px;
+    }
+    .settings-title { margin: 0; font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); color: var(--text); }
+    .settings-layout { flex-direction: column; }
+    .settings-tabs {
+        flex-direction: row;
+        width: auto;
+        gap: 6px;
+        padding: 8px 16px 12px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        background: transparent;
+        scrollbar-width: none;
+    }
+    .settings-tabs::-webkit-scrollbar { display: none; }
+    .settings-tabs::before, .settings-nav-group { display: none !important; }
+    .settings-tab {
+        flex: none;
+        width: auto;
+        gap: 6px;
+        height: 34px;
+        padding: 0 12px;
+        background: var(--bg-hover);
+        border-radius: var(--radius-full);
+        font-size: var(--font-size-md);
+    }
+    .settings-modal .settings-body {
+        padding: 8px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+        max-height: none;
+    }
+    .settings-page-title { display: none; } /* the chip says which section is open */
+    .settings-modal .settings-section { margin-bottom: 22px; }
+    .settings-modal .theme-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .settings-modal .theme-option-label { height: 64px; }
+    .settings-modal .profile-account-info { flex-wrap: wrap; }
+    .settings-modal .profile-picture-actions { width: 100%; justify-content: flex-start; }
+    .settings-row { flex-wrap: wrap; }
+    .settings-modal .invite-form-row { flex-direction: column; align-items: stretch; gap: 6px; }
+    .settings-modal .invite-form-row .input-label { width: auto; }
+    .settings-modal .invite-form-row .input-small { max-width: none; }
+    .settings-modal .invite-form-actions { padding-left: 0; }
+    .settings-modal .invite-create-form .btn { width: 100%; justify-content: center; }
+    .settings-modal .input-large { max-width: none; }
+    .settings-modal .modal-header::before { display: none; }
+    /* full-height fields, and 16px text so iOS does not zoom in on focus */
+    .settings-modal select,
+    .settings-modal input[type="text"],
+    .settings-modal .invite-form-row .input-small {
+        height: 42px;
+        min-height: 42px;
+        padding: 0 12px;
+        font-size: 16px;
+    }
+}

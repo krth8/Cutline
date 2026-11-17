@@ -94,6 +94,7 @@
 .btn-ghost:hover { background: var(--bg-hover); }
 
 /* ---- dialogs and menus ---- */
+.modal-overlay { background: var(--bg-overlay-dark); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 .modal {
     background: var(--modal-bg);
     border-color: var(--border-medium);

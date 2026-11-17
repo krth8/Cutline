@@ -112,14 +112,14 @@ const UsersAdmin = (() => {
                         <span>${escapeHtml(p.name)}</span>
                         ${owner ? '<span class="access-owner">Owner</span>' : ''}
                     </label>
-                    <label class="access-flag"><input type="checkbox" data-action="tasks" ${a?.canTasks ? 'checked' : ''} ${a ? '' : 'disabled'}> Main</label>
+                    <label class="access-flag"><input type="checkbox" data-action="tasks" ${a?.canTasks ? 'checked' : ''} ${a ? '' : 'disabled'}> Home</label>
                     <label class="access-flag"><input type="checkbox" data-action="review" ${a?.canReview ? 'checked' : ''} ${a ? '' : 'disabled'}> Review</label>
                     <label class="access-flag"><input type="checkbox" data-action="lounge" ${a?.canLounge !== false && a ? 'checked' : ''} ${a ? '' : 'disabled'}> Lounge</label>
                 </div>`;
         }).join('');
         return `
             <div class="access-list">${rows}</div>
-            <div class="user-access-note">One switch per tab. Main is the project's pages and tasks, Review its clips and comments, Lounge its chat. A person sees only the tabs they have.</div>`;
+            <div class="user-access-note">One switch per tab. Home is the project's pages and tasks, Review its clips and comments, Lounge its chat. A person sees only the tabs they have.</div>`;
     }
 
     async function changeRole(user, select) {

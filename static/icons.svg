@@ -341,4 +341,39 @@
   <symbol id="icon-download" viewBox="0 0 256 256">
     <path fill="currentColor" d="M224 144v64a8 8 0 0 1-8 8H40a8 8 0 0 1-8-8v-64a8 8 0 0 1 16 0v56h160v-56a8 8 0 0 1 16 0m-101.66 5.66a8 8 0 0 0 11.32 0l40-40a8 8 0 0 0-11.32-11.32L136 124.69V32a8 8 0 0 0-16 0v92.69L93.66 98.34a8 8 0 0 0-11.32 11.32Z"/>
   </symbol>
+
+  <!-- Drawn as strokes (fill none) to sit with the Phosphor regular set -->
+  <symbol id="icon-moon" viewBox="0 0 256 256">
+    <path fill="none" stroke="currentColor" stroke-width="16" stroke-linejoin="round" d="M216 152A88 88 0 1 1 104 40a72 72 0 0 0 112 112Z"/>
+  </symbol>
+
+  <symbol id="icon-sun" viewBox="0 0 256 256">
+    <g fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round">
+      <circle cx="128" cy="128" r="52"/>
+      <path d="M128 24v20M128 212v20M24 128h20M212 128h20M54.5 54.5l14 14M187.5 187.5l14 14M54.5 201.5l14-14M187.5 68.5l14-14"/>
+    </g>
+  </symbol>
+
+  <symbol id="icon-palette" viewBox="0 0 256 256">
+    <path fill="none" stroke="currentColor" stroke-width="16" stroke-linejoin="round" d="M128 32a96 96 0 0 0 0 192c13 0 20-9 20-20c0-14-12-18-12-30c0-11 9-20 20-20h28c22 0 40-18 40-40c0-46-43-82-96-82Z"/>
+    <circle cx="84" cy="108" r="12" fill="currentColor"/>
+    <circle cx="120" cy="76" r="12" fill="currentColor"/>
+    <circle cx="164" cy="88" r="12" fill="currentColor"/>
+    <circle cx="80" cy="152" r="12" fill="currentColor"/>
+  </symbol>
+
+  <symbol id="icon-globe" viewBox="0 0 256 256">
+    <g fill="none" stroke="currentColor" stroke-width="16">
+      <circle cx="128" cy="128" r="96"/>
+      <ellipse cx="128" cy="128" rx="40" ry="96"/>
+      <path d="M32 128h192"/>
+    </g>
+  </symbol>
+
+  <symbol id="icon-arrow-counter-clockwise" viewBox="0 0 256 256">
+    <g fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M48 104a88 88 0 1 1 8 72"/>
+      <path d="M40 56v48h48"/>
+    </g>
+  </symbol>
 </svg>

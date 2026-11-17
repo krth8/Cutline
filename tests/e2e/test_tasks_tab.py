@@ -158,8 +158,9 @@ def test_the_old_task_list_comes_back_with_the_switch(server, scene, new_page):
     assert page.locator("[data-testid=tasks-tab]").count() == 0
     wait_js(page, "AppState.activeTab === 'projects'", 10000)
     page.wait_for_selector("#projectsTableBody .task-row", timeout=10000)
-    # the switch lives in the user menu (Settings, Profile)
+    # the switch lives in the user menu (Settings, Appearance)
     page.click("#userMenuBtn")
+    page.click("[data-settings-tab=appearance]")
     expect(page.locator("#tasksListToggle")).to_have_text("Use the new task list")
     # switching back brings the new table
     page.click("#tasksListToggle")

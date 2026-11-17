@@ -2936,11 +2936,11 @@ function showSettingsPanel(initialTab = 'profile') {
     const modal = document.getElementById('settingsModal');
     modal.classList.remove('hidden');
 
-    // Show/hide admin-only tabs based on admin status
-    const usersTab = document.querySelector('.settings-tab[data-settings-tab="users"]');
-    if (usersTab) {
-        usersTab.style.display = AppState.isAdmin ? 'block' : 'none';
-    }
+    // The Workspace sections (members, invites) are for admins only
+    document.querySelectorAll('#settingsModal .admin-only-tab').forEach(el => {
+        el.style.display = AppState.isAdmin ? '' : 'none';
+    });
+    if (!AppState.isAdmin && (initialTab === 'users' || initialTab === 'invites')) initialTab = 'profile';
 
     // Initialize tab switching
     initSettingsTabs();
@@ -2981,6 +2981,9 @@ function switchSettingsTab(tabName) {
     if (tabContent) {
         tabContent.classList.add('active');
     }
+    const body = document.querySelector('#settingsModal .settings-body');
+    if (body) body.scrollTop = 0;
+    document.querySelector(`.settings-tab[data-settings-tab="${tabName}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 
     // Load data for the tab
     loadSettingsTabData(tabName);
@@ -2994,6 +2997,8 @@ function loadSettingsTabData(tabName) {
         case 'users':
             loadSettingsUsers();
             loadSettingsGuests();
+            break;
+        case 'invites':
             loadInviteLinks();
             loadProjectsForInvite();
             updateInviteAccessVisibility();
@@ -3864,7 +3869,7 @@ async function loadInviteLinks() {
                         <div class="invite-link-access">
                             <span class="invite-link-access-pill ${invite.canTasks ? 'active' : ''}">
                                 <svg class="icon"><use href="/static/icons.svg#icon-check"/></svg>
-                                Main
+                                Home
                             </span>
                             <span class="invite-link-access-pill ${invite.canReview ? 'active' : ''}">
                                 <svg class="icon"><use href="/static/icons.svg#icon-eye"/></svg>

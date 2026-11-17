@@ -105,7 +105,7 @@ function updatePriorityPresetPreview(presetId) {
     }
 
     preview.innerHTML = preset.options.map(opt => `
-        <span class="preset-preview-item" style="background: ${opt.color}20; color: ${opt.color}">
+        <span class="preset-preview-item" style="--pill: ${opt.color}">
             <span class="preset-preview-dot" style="background: ${opt.color}"></span>
             ${opt.label}
         </span>
@@ -154,7 +154,7 @@ function updateStatusPresetPreview(presetId) {
     }
 
     preview.innerHTML = preset.statuses.map(status => `
-        <span class="preset-preview-item" style="background: ${status.color}20; color: ${status.color}">
+        <span class="preset-preview-item" style="--pill: ${status.color}">
             <span class="preset-preview-dot" style="background: ${status.color}"></span>
             ${status.name}
         </span>
@@ -227,7 +227,7 @@ function updateStagePresetPreview(presetId) {
     };
 
     preview.innerHTML = preset.stages.map(stage => `
-        <span class="preset-preview-item stage-badge" style="background: ${stage.color}; color: ${getContrastColor(stage.color)}">
+        <span class="preset-preview-item" style="--pill: ${stage.color}">
             ${stage.label}
         </span>
     `).join('');

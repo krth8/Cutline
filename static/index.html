@@ -50,7 +50,8 @@
     <link rel="stylesheet" href="/static/css/main.css?v=199">
     <link rel="stylesheet" href="/static/css/comment-tasks.css?v=2">
     <link rel="stylesheet" href="/static/css/nav-layout.css?v=5">
-    <link rel="stylesheet" href="/static/css/look.css?v=5">
+    <link rel="stylesheet" href="/static/css/look.css?v=6">
+    <link rel="stylesheet" href="/static/css/settings.css?v=2">
     <link rel="stylesheet" href="/static/dist/pages.css">
 </head>
 <body>
@@ -287,283 +288,316 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
+    <!-- Settings Modal: a menu of sections on the left (chips on a phone), one section at a time on the right -->
     <div class="modal-overlay hidden" id="settingsModal">
-        <div class="modal settings-modal">
-            <div class="modal-header">
-                <nav class="settings-tabs">
-                    <button class="settings-tab active" data-settings-tab="profile">Profile</button>
-                    <button class="settings-tab admin-only-tab" data-settings-tab="users">Users</button>
-                    <button class="settings-tab" data-settings-tab="sharing">Sharing</button>
-                    <button class="settings-tab" data-settings-tab="settings">Settings</button>
-                </nav>
-                <button class="modal-close" onclick="hideSettingsPanel()">&times;</button>
+        <div class="modal settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+            <div class="settings-head">
+                <h3 class="settings-title" id="settingsTitle">Settings</h3>
+                <button class="modal-close" onclick="hideSettingsPanel()" aria-label="Close settings">
+                    <svg class="icon"><use href="/static/icons.svg#icon-x"/></svg>
+                </button>
             </div>
-            <div class="modal-body">
-                <!-- Profile Tab -->
-                <div class="settings-tab-content active" id="settingsTabProfile">
-                    <div class="settings-section">
-                        <label class="settings-label">Account</label>
-                        <div class="profile-account-info">
-                            <div class="profile-picture-preview" id="profilePicturePreview">
-                                <span class="profile-initials" id="profileInitials">?</span>
-                            </div>
-                            <div class="profile-account-details">
-                                <span class="profile-username" id="profileUsername">Username</span>
-                                <span class="profile-role" id="profileRole">User</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="settings-section">
-                        <label class="settings-label">Profile Picture</label>
-                        <div class="profile-picture-actions">
-                            <label class="btn btn-secondary btn-small profile-upload-btn">
-                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-upload"/></svg>
-                                Upload Photo
-                                <input type="file" id="profileImageInput" accept="image/*" onchange="uploadProfileImage(this)" hidden>
-                            </label>
-                            <button class="btn btn-ghost btn-small" onclick="deleteProfileImage()" id="deleteProfileBtn" style="display:none;">
-                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-trash"/></svg>
-                                Remove
-                            </button>
-                        </div>
-                    </div>
-                    <div class="settings-section">
-                        <label class="settings-label">Theme</label>
-                        <div class="theme-options">
-                            <label class="theme-option">
-                                <input type="radio" name="theme" value="system" checked onchange="setTheme('system')">
-                                <span class="theme-option-label">
-                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-gear"/></svg>
-                                    System
-                                </span>
-                            </label>
-                            <label class="theme-option">
-                                <input type="radio" name="theme" value="dark" onchange="setTheme('dark')">
-                                <span class="theme-option-label">
-                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-moon"/></svg>
-                                    Dark
-                                </span>
-                            </label>
-                            <label class="theme-option">
-                                <input type="radio" name="theme" value="light" onchange="setTheme('light')">
-                                <span class="theme-option-label">
-                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-sun"/></svg>
-                                    Light
-                                </span>
-                            </label>
-                            <label class="theme-option">
-                                <input type="radio" name="theme" value="custom" onchange="setTheme('custom')">
-                                <span class="theme-option-label">
-                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-palette"/></svg>
-                                    Custom
-                                </span>
-                            </label>
-                        </div>
-                        <div class="theme-custom-options hidden" id="themeCustomOptions">
-                            <div class="color-picker-row">
-                                <label>Background</label>
-                                <input type="color" id="customBgColor" value="#111722" onchange="updateCustomTheme()">
-                            </div>
-                            <div class="color-picker-row">
-                                <label>Panels</label>
-                                <input type="color" id="customPanelColor" value="#1e1a2e" onchange="updateCustomTheme()">
-                            </div>
-                            <div class="color-picker-row">
-                                <label>Accent</label>
-                                <input type="color" id="customAccentColor" value="#5f5de5" onchange="updateCustomTheme()">
-                            </div>
-                            <div class="color-picker-row">
-                                <label>Text</label>
-                                <input type="color" id="customTextColor" value="#f0ebd8" onchange="updateCustomTheme()">
-                            </div>
-                            <button class="btn btn-ghost btn-small" onclick="resetCustomTheme()">
-                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-arrow-counter-clockwise"/></svg>
-                                Reset to defaults
-                            </button>
-                        </div>
-                    </div>
-                    <div class="settings-section">
-                        <label class="settings-label">Tasks</label>
-                        <a href="#" id="tasksListToggle" data-testid="use-old-tasks" onclick="Routes.toggleLegacyTasks(); return false;">Use the old task list</a>
-                    </div>
-                    <div class="settings-section settings-section-footer">
-                        <button class="btn btn-ghost" onclick="logout()">
-                            <svg class="icon"><use href="/static/icons.svg#icon-sign-out"/></svg>
-                            Log out
-                        </button>
-                    </div>
-                </div>
+            <div class="settings-layout">
+                <nav class="settings-tabs" aria-label="Settings sections">
+                    <div class="settings-nav-group">Account</div>
+                    <button class="settings-tab active" data-settings-tab="profile">
+                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-user"/></svg><span>Profile</span>
+                    </button>
+                    <button class="settings-tab" data-settings-tab="appearance">
+                        <svg class="icon icon-sm"><use href="/static/icons.svg?v=4#icon-palette"/></svg><span>Appearance</span>
+                    </button>
+                    <div class="settings-nav-group admin-only-tab">Workspace</div>
+                    <button class="settings-tab admin-only-tab" data-settings-tab="users">
+                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-users"/></svg><span>Members</span>
+                    </button>
+                    <button class="settings-tab admin-only-tab" data-settings-tab="invites">
+                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-link"/></svg><span>Invites</span>
+                    </button>
+                    <div class="settings-nav-group">Projects</div>
+                    <button class="settings-tab" data-settings-tab="sharing">
+                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-share"/></svg><span>Share links</span>
+                    </button>
+                    <button class="settings-tab" data-settings-tab="settings">
+                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-stack"/></svg><span>Statuses &amp; presets</span>
+                    </button>
+                </nav>
 
-                <!-- Users Tab (admin only) -->
-                <div class="settings-tab-content" id="settingsTabUsers">
-                    <div class="settings-section">
-                        <label class="settings-label">Registered Users</label>
-                        <div class="users-list" id="settingsUsersList">
-                            <div class="users-list-empty">Loading...</div>
-                        </div>
-                    </div>
-                    <div class="settings-section">
-                        <label class="settings-label">Guests</label>
-                        <div class="users-list" id="settingsGuestsList">
-                            <div class="users-list-empty">No guests yet</div>
-                        </div>
-                    </div>
-                    <div class="settings-section">
-                        <label class="settings-label">Active Invite Links</label>
-                        <div class="invite-links-list" id="inviteLinksList">
-                            <div class="invite-links-empty">No pending invites</div>
-                        </div>
-                    </div>
-                    <div class="settings-section">
-                        <label class="settings-label">Create New Invite</label>
-                        <div class="invite-create-form">
-                            <div class="invite-form-row">
-                                <label class="input-label">Role</label>
-                                <select id="inviteRole" class="input-small" onchange="updateInviteAccessVisibility()">
-                                    <option value="viewer">Viewer</option>
-                                    <option value="editor">Editor</option>
-                                    <option value="admin">Admin</option>
-                                </select>
-                            </div>
-                            <div class="invite-form-row">
-                                <label class="input-label">Project</label>
-                                <select id="inviteProject" class="input-small">
-                                    <option value="">All accessible projects</option>
-                                </select>
-                            </div>
-                            <div class="invite-form-row" id="inviteAccessOptions">
-                                <label class="input-label">Tabs they get</label>
-                                <div class="checkbox-group">
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="inviteCanTasks">
-                                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-check"/></svg>
-                                        <span>Main</span>
+                <div class="modal-body settings-body">
+                    <!-- Profile -->
+                    <div class="settings-tab-content active" id="settingsTabProfile">
+                        <h2 class="settings-page-title">Profile</h2>
+                        <div class="settings-section">
+                            <div class="profile-account-info">
+                                <div class="profile-picture-preview" id="profilePicturePreview">
+                                    <span class="profile-initials" id="profileInitials">?</span>
+                                </div>
+                                <div class="profile-account-details">
+                                    <span class="profile-username" id="profileUsername">Username</span>
+                                    <span class="profile-role" id="profileRole">User</span>
+                                </div>
+                                <div class="profile-picture-actions">
+                                    <label class="btn btn-secondary btn-small profile-upload-btn">
+                                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-upload"/></svg>
+                                        Upload photo
+                                        <input type="file" id="profileImageInput" accept="image/*" onchange="uploadProfileImage(this)" hidden>
                                     </label>
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="inviteCanReview" checked>
-                                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-eye"/></svg>
-                                        <span>Review</span>
-                                    </label>
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="inviteCanLounge" checked>
-                                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-chat-circle"/></svg>
-                                        <span>Lounge</span>
-                                    </label>
+                                    <button class="btn btn-ghost btn-small" onclick="deleteProfileImage()" id="deleteProfileBtn" style="display:none;">
+                                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-trash"/></svg>
+                                        Remove
+                                    </button>
                                 </div>
                             </div>
-                            <div class="invite-form-row">
-                                <label class="input-label">Max uses</label>
-                                <select id="inviteMaxUses" class="input-small">
-                                    <option value="1">Single use</option>
-                                    <option value="5">5 uses</option>
-                                    <option value="10">10 uses</option>
-                                    <option value="0">Unlimited</option>
+                        </div>
+                        <div class="settings-section settings-section-footer">
+                            <div class="settings-row">
+                                <div class="settings-row-text">
+                                    <span class="settings-row-title">Log out</span>
+                                    <span class="settings-hint">End your session on this device.</span>
+                                </div>
+                                <button class="btn btn-secondary btn-small" onclick="logout()">
+                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-sign-out"/></svg>
+                                    Log out
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Appearance -->
+                    <div class="settings-tab-content" id="settingsTabAppearance">
+                        <h2 class="settings-page-title">Appearance</h2>
+                        <div class="settings-section">
+                            <label class="settings-label">Theme</label>
+                            <div class="theme-options">
+                                <label class="theme-option">
+                                    <input type="radio" name="theme" value="system" checked onchange="setTheme('system')">
+                                    <span class="theme-option-label">
+                                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-gear"/></svg>
+                                        System
+                                    </span>
+                                </label>
+                                <label class="theme-option">
+                                    <input type="radio" name="theme" value="dark" onchange="setTheme('dark')">
+                                    <span class="theme-option-label">
+                                        <svg class="icon icon-sm"><use href="/static/icons.svg?v=4#icon-moon"/></svg>
+                                        Dark
+                                    </span>
+                                </label>
+                                <label class="theme-option">
+                                    <input type="radio" name="theme" value="light" onchange="setTheme('light')">
+                                    <span class="theme-option-label">
+                                        <svg class="icon icon-sm"><use href="/static/icons.svg?v=4#icon-sun"/></svg>
+                                        Light
+                                    </span>
+                                </label>
+                                <label class="theme-option">
+                                    <input type="radio" name="theme" value="custom" onchange="setTheme('custom')">
+                                    <span class="theme-option-label">
+                                        <svg class="icon icon-sm"><use href="/static/icons.svg?v=4#icon-palette"/></svg>
+                                        Custom
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="theme-custom-options hidden" id="themeCustomOptions">
+                                <div class="color-picker-row">
+                                    <label>Background</label>
+                                    <input type="color" id="customBgColor" value="#111722" onchange="updateCustomTheme()">
+                                </div>
+                                <div class="color-picker-row">
+                                    <label>Panels</label>
+                                    <input type="color" id="customPanelColor" value="#171e2b" onchange="updateCustomTheme()">
+                                </div>
+                                <div class="color-picker-row">
+                                    <label>Accent</label>
+                                    <input type="color" id="customAccentColor" value="#4d78a3" onchange="updateCustomTheme()">
+                                </div>
+                                <div class="color-picker-row">
+                                    <label>Text</label>
+                                    <input type="color" id="customTextColor" value="#e7edf6" onchange="updateCustomTheme()">
+                                </div>
+                                <button class="btn btn-ghost btn-small" onclick="resetCustomTheme()">
+                                    <svg class="icon icon-sm"><use href="/static/icons.svg?v=4#icon-arrow-counter-clockwise"/></svg>
+                                    Reset to defaults
+                                </button>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <label class="settings-label">Tasks</label>
+                            <div class="settings-row">
+                                <div class="settings-row-text">
+                                    <span class="settings-row-title">Old task list</span>
+                                    <span class="settings-hint">The task list from before pages and views.</span>
+                                </div>
+                                <a href="#" class="btn btn-secondary btn-small" id="tasksListToggle" data-testid="use-old-tasks" onclick="Routes.toggleLegacyTasks(); return false;">Use the old task list</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Members (admin only) -->
+                    <div class="settings-tab-content" id="settingsTabUsers">
+                        <h2 class="settings-page-title">Members</h2>
+                        <div class="settings-section">
+                            <label class="settings-label">Registered users</label>
+                            <div class="users-list" id="settingsUsersList">
+                                <div class="users-list-empty">Loading...</div>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <label class="settings-label">Guests</label>
+                            <div class="users-list" id="settingsGuestsList">
+                                <div class="users-list-empty">No guests yet</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Invites (admin only) -->
+                    <div class="settings-tab-content" id="settingsTabInvites">
+                        <h2 class="settings-page-title">Invites</h2>
+                        <div class="settings-section">
+                            <label class="settings-label">New invite link</label>
+                            <div class="invite-create-form">
+                                <div class="invite-form-row">
+                                    <label class="input-label" for="inviteRole">Role</label>
+                                    <select id="inviteRole" class="input-small" onchange="updateInviteAccessVisibility()">
+                                        <option value="viewer">Viewer</option>
+                                        <option value="editor">Editor</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+                                <div class="invite-form-row">
+                                    <label class="input-label" for="inviteProject">Project</label>
+                                    <select id="inviteProject" class="input-small">
+                                        <option value="">All accessible projects</option>
+                                    </select>
+                                </div>
+                                <div class="invite-form-row" id="inviteAccessOptions">
+                                    <label class="input-label">Tabs they get</label>
+                                    <div class="checkbox-group">
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="inviteCanTasks">
+                                            <span>Home</span>
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="inviteCanReview" checked>
+                                            <span>Review</span>
+                                        </label>
+                                        <label class="checkbox-label">
+                                            <input type="checkbox" id="inviteCanLounge" checked>
+                                            <span>Lounge</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="invite-form-row">
+                                    <label class="input-label" for="inviteMaxUses">Max uses</label>
+                                    <select id="inviteMaxUses" class="input-small">
+                                        <option value="1">Single use</option>
+                                        <option value="5">5 uses</option>
+                                        <option value="10">10 uses</option>
+                                        <option value="0">Unlimited</option>
+                                    </select>
+                                </div>
+                                <div class="invite-form-actions">
+                                    <button class="btn btn-primary" onclick="createInviteLink()">
+                                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
+                                        Create invite link
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <label class="settings-label">Active invite links</label>
+                            <div class="invite-links-list" id="inviteLinksList">
+                                <div class="invite-links-empty">No pending invites</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Share links -->
+                    <div class="settings-tab-content" id="settingsTabSharing">
+                        <h2 class="settings-page-title">Share links</h2>
+                        <div class="settings-section">
+                            <p class="settings-hint settings-intro">Links that let people outside the workspace review clips.</p>
+                            <div class="share-links-grouped" id="settingsShareLinks">
+                                <div class="share-links-empty">No share links</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statuses & presets -->
+                    <div class="settings-tab-content" id="settingsTabSettings">
+                        <h2 class="settings-page-title">Statuses &amp; presets</h2>
+                        <div class="settings-section">
+                            <label class="settings-label">Applies to</label>
+                            <div class="settings-scope-toggle">
+                                <button class="scope-btn active" id="scopeGlobalBtn" onclick="setSettingsScope('global')">
+                                    <svg class="icon icon-sm"><use href="/static/icons.svg?v=4#icon-globe"/></svg>
+                                    All projects
+                                </button>
+                                <button class="scope-btn" id="scopeProjectBtn" onclick="setSettingsScope('project')" disabled>
+                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-folder"/></svg>
+                                    This project
+                                </button>
+                            </div>
+                            <p class="settings-hint" id="settingsScopeHint">Global settings apply to all projects</p>
+                        </div>
+
+                        <div class="settings-section">
+                            <label class="settings-label">Priorities</label>
+                            <div class="preset-selector">
+                                <select class="input-large" id="priorityPresetSelect" onchange="changePriorityPreset(this.value)">
+                                    <option value="">Loading...</option>
                                 </select>
                             </div>
-                            <button class="btn btn-primary" onclick="createInviteLink()">
-                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
-                                Create Invite Link
-                            </button>
+                            <div class="preset-preview" id="priorityPresetPreview"></div>
+                            <div class="preset-actions">
+                                <button class="btn btn-ghost btn-small" onclick="showCreatePriorityPreset()">
+                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
+                                    New preset
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Sharing Tab -->
-                <div class="settings-tab-content" id="settingsTabSharing">
-                    <div class="settings-section">
-                        <label class="settings-label">Share Links</label>
-                        <div class="share-links-grouped" id="settingsShareLinks">
-                            <div class="share-links-empty">No share links</div>
+                        <div class="settings-section">
+                            <label class="settings-label">Task statuses</label>
+                            <div class="preset-selector">
+                                <select class="input-large" id="statusPresetSelect" onchange="changeStatusPreset(this.value)">
+                                    <option value="">Loading...</option>
+                                </select>
+                            </div>
+                            <div class="preset-preview" id="statusPresetPreview"></div>
+                            <div class="preset-actions">
+                                <button class="btn btn-ghost btn-small" onclick="showCreateStatusPreset()">
+                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
+                                    New preset
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Settings Tab -->
-                <div class="settings-tab-content" id="settingsTabSettings">
-                    <!-- Scope Toggle -->
-                    <div class="settings-section">
-                        <label class="settings-label">Settings Scope</label>
-                        <div class="settings-scope-toggle">
-                            <button class="scope-btn active" id="scopeGlobalBtn" onclick="setSettingsScope('global')">
-                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-globe"/></svg>
-                                Global
-                            </button>
-                            <button class="scope-btn" id="scopeProjectBtn" onclick="setSettingsScope('project')" disabled>
-                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-folder"/></svg>
-                                Project
-                            </button>
+                        <div class="settings-section">
+                            <label class="settings-label">Stages</label>
+                            <div class="preset-selector">
+                                <select class="input-large" id="stagePresetSelect" onchange="changeStagePreset(this.value)">
+                                    <option value="">Loading...</option>
+                                </select>
+                            </div>
+                            <div class="preset-preview" id="stagePresetPreview"></div>
+                            <div class="preset-actions">
+                                <button class="btn btn-ghost btn-small" onclick="showCreateStagePreset()">
+                                    <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
+                                    New preset
+                                </button>
+                            </div>
                         </div>
-                        <p class="settings-hint" id="settingsScopeHint">Global settings apply to all projects</p>
-                    </div>
 
-                    <!-- Priority Preset -->
-                    <div class="settings-section">
-                        <label class="settings-label">Priority Preset</label>
-                        <div class="preset-selector">
-                            <select class="input-large" id="priorityPresetSelect" onchange="changePriorityPreset(this.value)">
-                                <option value="">Loading...</option>
-                            </select>
-                        </div>
-                        <div class="preset-preview" id="priorityPresetPreview">
-                            <!-- Priority options preview -->
-                        </div>
-                        <div class="preset-actions">
-                            <button class="btn btn-ghost btn-small" onclick="showCreatePriorityPreset()">
-                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
-                                Create Custom
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Status Preset -->
-                    <div class="settings-section">
-                        <label class="settings-label">Status Preset</label>
-                        <div class="preset-selector">
-                            <select class="input-large" id="statusPresetSelect" onchange="changeStatusPreset(this.value)">
-                                <option value="">Loading...</option>
-                            </select>
-                        </div>
-                        <div class="preset-preview" id="statusPresetPreview">
-                            <!-- Status options preview -->
-                        </div>
-                        <div class="preset-actions">
-                            <button class="btn btn-ghost btn-small" onclick="showCreateStatusPreset()">
-                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
-                                Create Custom
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Stage Preset -->
-                    <div class="settings-section">
-                        <label class="settings-label">Stage Preset</label>
-                        <div class="preset-selector">
-                            <select class="input-large" id="stagePresetSelect" onchange="changeStagePreset(this.value)">
-                                <option value="">Loading...</option>
-                            </select>
-                        </div>
-                        <div class="preset-preview" id="stagePresetPreview">
-                            <!-- Stage options preview -->
-                        </div>
-                        <div class="preset-actions">
-                            <button class="btn btn-ghost btn-small" onclick="showCreateStagePreset()">
-                                <svg class="icon icon-sm"><use href="/static/icons.svg#icon-plus"/></svg>
-                                Create Custom
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Clip Statuses (legacy) -->
-                    <div class="settings-section">
-                        <label class="settings-label">Clip Statuses</label>
-                        <div class="status-list" id="settingsStatusList">
-                            <div class="status-list-empty">No statuses defined</div>
-                        </div>
-                        <div class="status-add-form" id="statusAddForm">
-                            <input type="text" id="newStatusName" placeholder="Status name" class="input-small">
-                            <input type="color" id="newStatusColor" value="#6366f1" class="input-color">
-                            <button class="btn btn-primary btn-small" onclick="addStatus()">Add</button>
+                        <div class="settings-section">
+                            <label class="settings-label">Clip statuses</label>
+                            <div class="status-list" id="settingsStatusList">
+                                <div class="status-list-empty">No statuses defined</div>
+                            </div>
+                            <div class="status-add-form" id="statusAddForm">
+                                <input type="text" id="newStatusName" placeholder="Status name" class="input-small">
+                                <input type="color" id="newStatusColor" value="#4d78a3" class="input-color">
+                                <button class="btn btn-primary btn-small" onclick="addStatus()">Add</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1259,14 +1293,14 @@
     <!-- Lounge Module -->
     <script src="/static/js/modules/lounge/LoungeModule.js?v=8"></script>
     <!-- Feature modules -->
-    <script src="/static/js/features/settingsUI.js?v=2"></script>
+    <script src="/static/js/features/settingsUI.js?v=3"></script>
     <script src="/static/js/features/routes.js?v=6"></script>
     <script src="/static/js/features/navigation.js?v=21"></script>
-    <script src="/static/js/features/usersAdmin.js?v=2"></script>
+    <script src="/static/js/features/usersAdmin.js?v=3"></script>
     <script src="/static/js/features/push.js?v=1"></script>
     <script src="/static/js/features/panel.js?v=1"></script>
     <!-- Main application -->
-    <script src="/static/js/app.js?v=88"></script>
+    <script src="/static/js/app.js?v=89"></script>
     <script src="/static/js/video-player.js?v=31"></script>
     <script src="/static/js/websocket.js?v=23"></script>
     <script src="/static/js/html-review.js?v=2"></script>
