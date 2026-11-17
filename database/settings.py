@@ -453,13 +453,20 @@ def db_apply_status_preset_to_project(preset_id: str, project_id: str = None) ->
     if not preset:
         raise ValueError(f"Preset not found: {preset_id}")
 
+    # Statuses are shared by every project: one that already exists (same name) is not made twice.
+    # New ones are added in the preset's order (statuses are listed in the order they were made).
+    existing = {st['name'].strip().lower() for st in db_list_statuses()}
     created_statuses = []
-    for i, status_template in enumerate(preset['statuses']):
+    for status_template in preset['statuses']:
+        name = (status_template.get('name') or '').strip()
+        if not name or name.lower() in existing:
+            continue
         status = db_create_status(
-            name=status_template['name'],
+            name=name,
             color=status_template.get('color', '#6366f1'),
-            sort_order=i
+            is_done=status_template.get('isDone') if isinstance(status_template.get('isDone'), bool) else None,
         )
+        existing.add(name.lower())
         created_statuses.append(status)
 
     return created_statuses

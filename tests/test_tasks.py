@@ -472,3 +472,22 @@ def test_clip_status_change_reaches_other_tabs(client, admin, project, connect):
         event = watcher.receive_json()
         assert event["type"] == "clip_updated" and event["clip"]["statusId"] == status["id"]
         assert nothing_pending(writer)
+
+
+def test_applying_a_status_preset_makes_its_statuses_once(client, admin):
+    def names():
+        return [s["name"] for s in client.get("/api/statuses").json()["statuses"]]
+
+    before = names()
+    res = client.post("/api/status-presets/kanban/apply", json={}, headers=auth(admin["token"]))
+    assert res.status_code == 200, res.text
+    made = [s["name"] for s in res.json()["statuses"]]
+    new = [n for n in ["Backlog", "To Do", "In Progress", "Review", "Done"] if n not in before]
+    assert made == new
+    assert names()[-len(made):] == made if made else True
+    done = next((s for s in client.get("/api/statuses").json()["statuses"] if s["name"] == "Done"), None)
+    assert done and done.get("isDone") is True
+    # applying it again adds nothing
+    again = client.post("/api/status-presets/kanban/apply", json={}, headers=auth(admin["token"]))
+    assert again.status_code == 200 and again.json()["statuses"] == []
+    assert client.post("/api/status-presets/nope/apply", json={}, headers=auth(admin["token"])).status_code == 400

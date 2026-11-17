@@ -223,3 +223,11 @@ def test_list_views_filters_and_permissions(api, admin, project, editor, make_us
 
 def test_list_views_needs_login_and_refuses_guests(api, share):
     assert api("GET", "/api/views", None).status_code == 401
+
+
+def test_a_view_stored_without_a_query_is_served_with_an_empty_one(api, editor, project):
+    made = api("POST", "/api/views", editor, {"tableRef": f"tasks:{project}", "name": "Raw", "layout": "board",
+                                              "config": {"board": {"cardColumns": []}}}).json()
+    assert made["config"]["query"] == {}
+    got = api("GET", f"/api/views/{made['id']}", editor).json()
+    assert got["config"]["query"] == {} and got["config"]["board"] == {"cardColumns": []}

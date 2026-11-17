@@ -83,7 +83,9 @@ def _body(view: dict, user: dict) -> dict:
         "tableRef": view["tableRef"],
         "name": view["name"],
         "layout": view["layout"],
-        "config": view["config"],
+        # Every layout reads config.query: a view stored without one gets an empty query
+        "config": view["config"] if isinstance((view["config"] or {}).get("query"), dict)
+        else {**(view["config"] or {}), "query": {}},
         "ownerPageId": view["ownerPageId"],
         "canEdit": _may(user, view, True),
     }

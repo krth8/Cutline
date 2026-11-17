@@ -14,8 +14,18 @@ export interface CreateViewBody {
 }
 export type UpdateViewBody = Partial<Pick<View, 'name' | 'layout'>> & { config?: Partial<View['config']> };
 
-export const getView = (id: string) => requestJson<View>('GET', `/api/views/${encodeURIComponent(id)}`);
-export const createView = (body: CreateViewBody) => requestJson<View>('POST', '/api/views', body);
-export const updateView = (id: string, patch: UpdateViewBody) =>
-  requestJson<View>('PATCH', `/api/views/${encodeURIComponent(id)}`, patch);
+/**
+ * A view as the layouts expect it: `config.query` always an object. A view made through the API without a
+ * query (scripts, old data) would otherwise crash every layout that reads `config.query.groupBy`.
+ */
+export function withQuery(view: View): View {
+  const config = (view.config ?? {}) as View['config'];
+  if (config.query && typeof config.query === 'object') return view;
+  return { ...view, config: { ...config, query: {} } };
+}
+
+export const getView = async (id: string) => withQuery(await requestJson<View>('GET', `/api/views/${encodeURIComponent(id)}`));
+export const createView = async (body: CreateViewBody) => withQuery(await requestJson<View>('POST', '/api/views', body));
+export const updateView = async (id: string, patch: UpdateViewBody) =>
+  withQuery(await requestJson<View>('PATCH', `/api/views/${encodeURIComponent(id)}`, patch));
 export const deleteView = (id: string) => requestJson<unknown>('DELETE', `/api/views/${encodeURIComponent(id)}`);

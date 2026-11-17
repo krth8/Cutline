@@ -1607,6 +1607,8 @@ function backToProjectsGrid() {
 let projectSelectionModal = null;
 
 function showProjectSelectionModal() {
+    // The sidebar and the grid of projects choose the project now: no picker on top of them
+    if (document.getElementById('clLayout')?.classList.contains('has-nav')) return;
     // Don't show if already has a project selected
     if (AppState.projectId) return;
 
