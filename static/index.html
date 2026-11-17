@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cutline</title>
     <meta name="application-name" content="Cutline">
-    <meta name="theme-color" content="#0f1829">
+    <meta name="theme-color" content="#111722">
     <link rel="icon" href="/favicon.ico" sizes="48x48">
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -26,7 +26,7 @@
             var r = resolve(read());
             root.setAttribute('data-theme', r);
             var meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.setAttribute('content', r === 'light' ? '#ebe8e4' : '#0f1829');
+            if (meta) meta.setAttribute('content', r === 'light' ? '#ebe8e4' : '#111722');
             return r;
         }
         apply();
@@ -46,11 +46,11 @@
         };
     })();
     </script>
-    <link rel="stylesheet" href="/static/css/theme.css?v=6">
-    <link rel="stylesheet" href="/static/css/main.css?v=198">
+    <link rel="stylesheet" href="/static/css/theme.css?v=7">
+    <link rel="stylesheet" href="/static/css/main.css?v=199">
     <link rel="stylesheet" href="/static/css/comment-tasks.css?v=2">
     <link rel="stylesheet" href="/static/css/nav-layout.css?v=5">
-    <link rel="stylesheet" href="/static/css/look.css?v=4">
+    <link rel="stylesheet" href="/static/css/look.css?v=5">
     <link rel="stylesheet" href="/static/dist/pages.css">
 </head>
 <body>
@@ -363,7 +363,7 @@
                         <div class="theme-custom-options hidden" id="themeCustomOptions">
                             <div class="color-picker-row">
                                 <label>Background</label>
-                                <input type="color" id="customBgColor" value="#0f1829" onchange="updateCustomTheme()">
+                                <input type="color" id="customBgColor" value="#111722" onchange="updateCustomTheme()">
                             </div>
                             <div class="color-picker-row">
                                 <label>Panels</label>
@@ -1266,7 +1266,7 @@
     <script src="/static/js/features/push.js?v=1"></script>
     <script src="/static/js/features/panel.js?v=1"></script>
     <!-- Main application -->
-    <script src="/static/js/app.js?v=87"></script>
+    <script src="/static/js/app.js?v=88"></script>
     <script src="/static/js/video-player.js?v=31"></script>
     <script src="/static/js/websocket.js?v=23"></script>
     <script src="/static/js/html-review.js?v=2"></script>

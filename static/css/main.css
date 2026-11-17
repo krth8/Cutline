@@ -6988,7 +6988,7 @@ video,
 /* Invite Links */
 .invite-links-list {
     background: var(--bg);
-    border: 1px solid rgba(255,255,255,0.05);
+    border: 1px solid transparent;
     border-radius: 10px;
     padding: 12px;
     max-height: 320px;
@@ -7002,7 +7002,7 @@ video,
     font-size: 13px;
     background: var(--bg-elevated);
     border-radius: 8px;
-    border: 1px dashed rgba(255,255,255,0.1);
+    border: 1px dashed transparent;
 }
 
 .invite-link-item {
@@ -7013,13 +7013,13 @@ video,
     border-radius: 10px;
     background: var(--bg-solid);
     margin-bottom: 10px;
-    border: 1px solid rgba(255,255,255,0.05);
+    border: 1px solid transparent;
     transition: all 0.15s ease;
 }
 
 .invite-link-item:hover {
     background: var(--bg-hover);
-    border-color: rgba(255,255,255,0.1);
+    border-color: transparent;
 }
 
 .invite-link-item:last-child {
@@ -7044,7 +7044,7 @@ video,
     background: var(--bg-elevated);
     padding: 6px 10px;
     border-radius: 6px;
-    border: 1px solid rgba(255,255,255,0.05);
+    border: 1px solid transparent;
 }
 
 .invite-link-meta {
@@ -7070,7 +7070,7 @@ video,
 .invite-link-role-badge.admin {
     background: rgba(129, 140, 248, 0.2);
     color: var(--accent-lighter);
-    border: 1px solid rgba(129, 140, 248, 0.3);
+    border: 1px solid transparent;
 }
 
 .invite-link-role-badge.editor {
@@ -7082,7 +7082,7 @@ video,
 .invite-link-role-badge.viewer {
     background: rgba(148, 163, 184, 0.15);
     color: var(--text-secondary);
-    border: 1px solid rgba(148, 163, 184, 0.2);
+    border: 1px solid transparent;
 }
 
 /* Legacy classes for backwards compat */
@@ -7111,7 +7111,7 @@ video,
     background: rgba(95, 93, 229, 0.15);
     padding: 4px 10px;
     border-radius: 6px;
-    border: 1px solid rgba(95, 93, 229, 0.25);
+    border: 1px solid transparent;
     font-weight: 500;
 }
 
@@ -7137,13 +7137,13 @@ video,
     font-weight: 500;
     background: var(--bg-elevated);
     color: var(--text-muted);
-    border: 1px solid rgba(255,255,255,0.05);
+    border: 1px solid transparent;
 }
 
 .invite-link-access-pill.active {
     background: rgba(74, 222, 128, 0.12);
     color: var(--success-lighter);
-    border-color: rgba(74, 222, 128, 0.2);
+    border-color: transparent;
 }
 
 .invite-link-access-pill .icon {
@@ -7185,7 +7185,7 @@ video,
     background: var(--bg-elevated);
     padding: 20px;
     border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.05);
+    border: 1px solid transparent;
 }
 
 .invite-form-section-title {
@@ -7238,18 +7238,18 @@ video,
     padding: 8px 14px;
     border-radius: 8px;
     background: var(--bg-solid);
-    border: 1px solid rgba(255,255,255,0.05);
+    border: 1px solid transparent;
     transition: all 0.15s ease;
 }
 
 .checkbox-label:hover {
     background: var(--bg-hover);
-    border-color: rgba(255,255,255,0.1);
+    border-color: transparent;
 }
 
 .checkbox-label:has(input:checked) {
     background: rgba(74, 222, 128, 0.1);
-    border-color: rgba(74, 222, 128, 0.25);
+    border-color: transparent;
     color: var(--success-lighter);
 }
 
@@ -8692,7 +8692,7 @@ video,
     background: var(--bg-secondary);
     overflow: hidden;
     border-radius: 0 0 20px 0;
-    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    border-left: 1px solid transparent;
     padding: 16px;
     gap: 12px;
 }
@@ -12039,7 +12039,7 @@ body.ui-modal-open {
     appearance: none;
     -webkit-appearance: none;
     background: var(--bg-elevated, rgba(32, 30, 50, 0.95));
-    border: 1px solid var(--border-medium, rgba(255, 255, 255, 0.15));
+    border: 1px solid var(--border-medium, transparent);
     border-radius: 4px;
     position: relative;
     transition: all 0.15s ease;
@@ -12048,7 +12048,7 @@ body.ui-modal-open {
 
 .cb-dark:hover {
     background: rgba(255, 255, 255, 0.08);
-    border-color: var(--text-muted, rgba(255, 255, 255, 0.4));
+    border-color: var(--text-muted, transparent);
 }
 
 .cb-dark:checked {

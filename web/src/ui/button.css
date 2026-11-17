@@ -32,6 +32,7 @@
 .cl-btn--loading { cursor: progress; }
 
 /* ---- the common look: quiet outlined secondary buttons ---- */
-.cl-btn--secondary { background: transparent; color: var(--text-secondary); border-color: var(--border-medium); }
-.cl-btn--secondary:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); border-color: var(--border-medium); }
+/* no outlines in the common look: a secondary button is a soft fill */
+.cl-btn--secondary { background: var(--bg-hover); color: var(--text-secondary); border-color: transparent; }
+.cl-btn--secondary:hover:not(:disabled) { background: var(--bg-active); color: var(--text); border-color: transparent; }
 .cl-btn--primary { box-shadow: var(--accent-shadow); }

@@ -31,27 +31,27 @@
     --text-on-accent: #ffffff;                 /* text and icons placed on an accent or status fill */
 
     /* ---- Surfaces / backgrounds ---- */
-    --bg-dark: #0f1829;                        /* page background, lowest layer */
-    --bg-panel: rgba(18, 28, 47, 0.96);         /* translucent panel (glass look) */
-    --bg-secondary: #16213a;                   /* card and section surface */
-    --bg-elevated: rgba(26, 38, 64, 0.98);     /* floating surface above panels */
-    --bg-hover: rgba(150, 180, 230, 0.06);        /* hover and selected-row fill */
-    --bg-active: rgba(150, 180, 230, 0.1);    /* pressed or subtle hover fill on small controls */
-    --bg-solid: #121c2f;                       /* opaque surface: inputs, sidebars, table body */
+    --bg-dark: #111722;                        /* page background, lowest layer */
+    --bg-panel: rgba(20, 27, 39, 0.96);         /* translucent panel (glass look) */
+    --bg-secondary: #171e2b;                   /* card and section surface */
+    --bg-elevated: rgba(31, 40, 55, 0.98);     /* floating surface above panels */
+    --bg-hover: rgba(160, 175, 200, 0.055);        /* hover and selected-row fill */
+    --bg-active: rgba(160, 175, 200, 0.09);    /* pressed or subtle hover fill on small controls */
+    --bg-solid: #141b27;                       /* opaque surface: inputs, sidebars, table body */
     --bg-overlay: rgba(3, 7, 16, 0.5);          /* scrim behind light overlays */
     --bg-overlay-dark: rgba(3, 7, 16, 0.62);     /* scrim behind dialogs */
     --bg-overlay-heavy: rgba(3, 7, 16, 0.82);    /* scrim for full-screen viewers */
 
     /* ---- Modal surfaces (3 levels: dialog, raised block inside it, field inside that) ---- */
-    --modal-bg: #16213a;                       /* dialog background */
-    --modal-elevated: #1c2843;                 /* raised block inside a dialog; menus; popovers */
-    --modal-field: #243250;                    /* field inside a raised block */
+    --modal-bg: #171e2b;                       /* dialog background */
+    --modal-elevated: #1d2533;                 /* raised block inside a dialog; menus; popovers */
+    --modal-field: #252e3e;                    /* field inside a raised block */
 
     /* ---- Borders ---- */
-    --border: rgba(150, 175, 220, 0.09);       /* default hairline */
-    --border-light: rgba(150, 175, 220, 0.055); /* faint divider between rows */
-    --border-medium: rgba(150, 175, 220, 0.16); /* control outline, stronger divider */
-    --border-glow: rgba(74, 127, 181, 0.35);     /* accent-tinted outline */
+    --border: transparent;       /* default hairline */
+    --border-light: transparent; /* faint divider between rows */
+    --border-medium: transparent; /* control outline, stronger divider */
+    --border-glow: rgba(77, 120, 163, 0.3);     /* accent-tinted outline */
 
     /* ---- Text ---- */
     --text: #e7edf6;                           /* primary text */
@@ -59,14 +59,14 @@
     --text-secondary: #bcc7d8;                 /* body text one step below primary */
 
     /* ---- Accent (muted steel blue) ---- */
-    --accent: #4a7fb5;                         /* brand colour: primary buttons, selection, links */
-    --accent-hover: #5b8ec2;                   /* accent on hover */
-    --accent-light: #8fb4d8;                   /* accent used as text or outline on dark surfaces */
-    --accent-lighter: #b4cce4;                 /* lightest accent tint */
-    --accent-glow: rgba(74, 127, 181, 0.35);     /* accent glow around focused items */
-    --accent-bg: rgba(74, 127, 181, 0.13);      /* faint accent wash (selected row) */
-    --accent-bg-hover: rgba(74, 127, 181, 0.19);  /* accent wash on hover */
-    --accent-bg-strong: rgba(74, 127, 181, 0.25);  /* stronger accent wash (chips, drop targets) */
+    --accent: #4d78a3;                         /* brand colour: primary buttons, selection, links */
+    --accent-hover: #5a86b2;                   /* accent on hover */
+    --accent-light: #9cb2c9;                   /* accent used as text or outline on dark surfaces */
+    --accent-lighter: #b9c8d8;                 /* lightest accent tint */
+    --accent-glow: rgba(77, 120, 163, 0.3);     /* accent glow around focused items */
+    --accent-bg: rgba(120, 145, 175, 0.09);      /* faint accent wash (selected row) */
+    --accent-bg-hover: rgba(120, 145, 175, 0.13);  /* accent wash on hover */
+    --accent-bg-strong: rgba(120, 145, 175, 0.17);  /* stronger accent wash (chips, drop targets) */
 
     /* ---- Status: success (green) ---- */
     --success: #3fb98a;                        /* success */
@@ -119,13 +119,13 @@
     --cat-8: #5f3dc4;                          /* violet */
 
     /* ---- Depth: soft light on the page, a gradient on the side panels, a glow under primary buttons ---- */
-    --page-glow: radial-gradient(1200px 600px at 15% -10%, rgba(110, 150, 200, 0.06), transparent 60%), radial-gradient(900px 500px at 100% 0%, rgba(120, 130, 190, 0.04), transparent 60%);  /* light over the page */
-    --chrome-bg: linear-gradient(180deg, #131d31 0%, #101a2c 100%);  /* side panels and sidebar */
-    --accent-shadow: 0 4px 14px rgba(74, 127, 181, 0.28);  /* glow under a primary button */
+    --page-glow: radial-gradient(1200px 600px at 15% -10%, rgba(140, 160, 190, 0.04), transparent 60%), radial-gradient(900px 500px at 100% 0%, rgba(140, 150, 190, 0.025), transparent 60%);  /* light over the page */
+    --chrome-bg: linear-gradient(180deg, #151c28 0%, #121924 100%);  /* side panels and sidebar */
+    --accent-shadow: 0 4px 14px rgba(77, 120, 163, 0.22);  /* glow under a primary button */
 
     /* ---- Cards: a faint sheen at the top, a hairline and a soft drop ---- */
-    --card-bg: linear-gradient(180deg, rgba(150, 180, 230, 0.035), rgba(150, 180, 230, 0) 70%), #16213a;  /* card surface */
-    --card-border: rgba(150, 175, 220, 0.1);   /* card outline */
+    --card-bg: linear-gradient(180deg, rgba(170, 185, 210, 0.03), rgba(170, 185, 210, 0) 70%), #171e2b;  /* card surface */
+    --card-border: transparent;   /* card outline */
     --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(2, 6, 16, 0.22);  /* card lift */
     --card-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 32px rgba(2, 6, 16, 0.4);  /* card lift on hover */
 
@@ -165,9 +165,9 @@
     --modal-field: #efece7;                    /* field inside a raised block */
 
     /* ---- Borders ---- */
-    --border: rgba(60, 45, 30, 0.09);          /* default hairline */
-    --border-light: rgba(60, 45, 30, 0.06);    /* faint divider between rows */
-    --border-medium: rgba(60, 45, 30, 0.15);   /* control outline, stronger divider */
+    --border: transparent;          /* default hairline */
+    --border-light: transparent;    /* faint divider between rows */
+    --border-medium: transparent;   /* control outline, stronger divider */
     --border-glow: rgba(31, 29, 27, 0.25);     /* accent-tinted outline */
 
     /* ---- Text ---- */
@@ -227,7 +227,7 @@
 
     /* ---- Cards ---- */
     --card-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 70%), #f6f4f1;  /* card surface */
-    --card-border: rgba(60, 45, 30, 0.07);     /* card outline */
+    --card-border: transparent;     /* card outline */
     --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 1px 2px rgba(70, 55, 40, 0.05), 0 6px 18px rgba(70, 55, 40, 0.05);  /* card lift */
     --card-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 2px 4px rgba(70, 55, 40, 0.06), 0 10px 26px rgba(70, 55, 40, 0.08);  /* card lift on hover */
 

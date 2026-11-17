@@ -86,7 +86,7 @@
 .btn { border-radius: var(--radius-sm); font-weight: var(--font-weight-semibold); }
 .btn-primary { box-shadow: var(--accent-shadow); }
 .btn-secondary {
-    background: transparent;
+    background: var(--bg-hover);
     color: var(--text-secondary);
     border: 1px solid var(--border-medium);
 }
