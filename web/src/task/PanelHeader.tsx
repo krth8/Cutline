@@ -35,6 +35,13 @@ export const CloseIcon = () => (
     <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
   </svg>
 );
+export const BellIcon = ({ off }: { off?: boolean }) => (
+  <svg {...svg}>
+    <path d="M4 11.5V7.5a4 4 0 0 1 8 0v4l1 1.5H3z" />
+    <path d="M6.8 14.2a1.4 1.4 0 0 0 2.4 0" />
+    {off ? <path d="M2.5 2.5l11 11" /> : null}
+  </svg>
+);
 export const CheckIcon = () => (
   <svg {...svg} strokeWidth={2}>
     <path d="M3.5 8.5l3 3 6-7" />
@@ -132,10 +139,12 @@ export interface PanelHeaderProps {
   /** Entries of the "more" menu (History, Delete, ...). */
   menu: MenuItem[];
   closeLabel: string;
+  /** Actions of this kind of panel, before the common ones (the task panel's Follow). */
+  actions?: ReactNode;
 }
 
 /** Breadcrumb and a quiet row of icon buttons on top, the large title (with the done control) below. */
-export function PanelHeader({ crumbs, title, done, status, menu, closeLabel }: PanelHeaderProps) {
+export function PanelHeader({ crumbs, title, done, status, menu, closeLabel, actions }: PanelHeaderProps) {
   const { wide, toggleWide, close } = usePanel();
   const moreRef = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -160,6 +169,7 @@ export function PanelHeader({ crumbs, title, done, status, menu, closeLabel }: P
         <div className="cl-task__crumbs">{crumbs}</div>
         {status ? <div className="cl-task__status">{status}</div> : null}
         <div className="cl-task__actions">
+          {actions}
           <IconButton label="Copy link" onClick={copyLink}>
             <LinkIcon />
           </IconButton>

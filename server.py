@@ -174,6 +174,8 @@ async def startup_event():
     print(f"Upload cleanup worker started (interval: {UPLOAD_CLEANUP_INTERVAL_HOURS}h, max age: {UPLOAD_FILE_MAX_AGE_HOURS}h)")
     asyncio.create_task(backfill_html_previews())
     asyncio.create_task(end_idle_logins())
+    from api.notify import reminder_loop
+    asyncio.create_task(reminder_loop())
     start_snapshot_job()
     start_trash_job()
 
@@ -2345,7 +2347,8 @@ async def websocket_endpoint(
                     message=f"{joining_user_name} joined {project.get('name', 'your project')}",
                     project_id=project_id
                 )
-                await live.to_user(owner["id"], {"type": "notification", "notification": notification})
+                if notification:  # None: the owner has not turned this kind on
+                    await live.to_user(owner["id"], {"type": "notification", "notification": notification})
     except Exception as e:
         print(f"Error creating join notification: {e}")
 

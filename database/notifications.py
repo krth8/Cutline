@@ -4,7 +4,7 @@ Notification database operations
 
 import secrets
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from .engine import execute, fetchone, fetchall
 from .utils import get_db
 
@@ -12,10 +12,21 @@ from .utils import get_db
 # Called with every new notification (api/push.py sends it on as a push message). A listener must not raise.
 listeners: list = []
 
+# Kinds a person gets only after turning them on (api/notify.py lists every kind)
+DEFAULT_OFF = {"session_joined"}
+
+
+def wants_notification(user_id: str, kind: str) -> bool:
+    """Whether this person gets notifications of this kind (their choice, else the default)."""
+    from .task_notify import db_get_notification_prefs
+    return db_get_notification_prefs(user_id).get(kind, kind not in DEFAULT_OFF)
+
 
 def db_create_notification(user_id: str, notification_type: str, title: str,
-                          message: str = None, project_id: str = None, link: str = None) -> dict:
-    """Create a new notification for a user."""
+                          message: str = None, project_id: str = None, link: str = None) -> Optional[dict]:
+    """Create a new notification for a user. None when the person turned this kind off (nothing is stored)."""
+    if not wants_notification(user_id, notification_type):
+        return None
     notification_id = secrets.token_urlsafe(8)
     created_at = datetime.now().isoformat()
 

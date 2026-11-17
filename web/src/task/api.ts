@@ -13,6 +13,7 @@ export interface TaskComment {
   userProfileImage?: string | null;
   text: string;
   createdAt: string;
+  updatedAt?: string | null;
   /** Client only: shown but not confirmed by the server yet. */
   pending?: boolean;
 }
@@ -37,6 +38,11 @@ export const getComments = (taskId: string) =>
   requestJson<{ comments: TaskComment[] }>('GET', `${task(taskId)}/comments`).then((r) => r.comments ?? []);
 export const addComment = (taskId: string, text: string) =>
   requestJson<{ comment: TaskComment }>('POST', `${task(taskId)}/comments`, { text }).then((r) => r.comment);
+export const editComment = (taskId: string, commentId: string, text: string) =>
+  requestJson<{ comment: TaskComment }>('PATCH', `${task(taskId)}/comments/${encodeURIComponent(commentId)}`, { text }).then((r) => r.comment);
+export const getFollow = (taskId: string) => requestJson<{ following: boolean }>('GET', `${task(taskId)}/follow`).then((r) => r.following);
+export const setFollow = (taskId: string, following: boolean) =>
+  requestJson<{ following: boolean }>('PUT', `${task(taskId)}/follow`, { following }).then((r) => r.following);
 export const deleteComment = (taskId: string, commentId: string) =>
   requestJson<unknown>('DELETE', `${task(taskId)}/comments/${encodeURIComponent(commentId)}`);
 

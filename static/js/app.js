@@ -3011,6 +3011,9 @@ function loadSettingsTabData(tabName) {
         case 'sharing':
             loadSettingsShareLinks();
             break;
+        case 'notifications':
+            loadNotificationPrefs();
+            break;
         case 'settings':
             loadStatuses();
             break;
@@ -3018,6 +3021,35 @@ function loadSettingsTabData(tabName) {
 }
 
 // Users and guests lists live in features/usersAdmin.js
+
+/** The kinds of notification with a switch each; a change is saved at once. */
+async function loadNotificationPrefs() {
+    const list = document.getElementById('settingsNotifyList');
+    if (!list) return;
+    const { data, error } = await API.request('/notifications/prefs');
+    if (error || !data) {
+        list.innerHTML = '<p class="settings-hint">Could not load your notification settings.</p>';
+        return;
+    }
+    list.innerHTML = data.kinds.map(k => `
+        <label class="settings-row settings-notify-row">
+            <span class="settings-row-title">${escapeHtml(k.label)}</span>
+            <input type="checkbox" class="settings-switch" data-kind="${escapeHtml(k.kind)}" ${k.enabled ? 'checked' : ''}>
+        </label>
+    `).join('');
+    list.querySelectorAll('input[data-kind]').forEach(input => {
+        input.addEventListener('change', async () => {
+            const { error: saveError } = await API.request('/notifications/prefs', {
+                method: 'PUT',
+                body: JSON.stringify({ [input.dataset.kind]: input.checked })
+            });
+            if (saveError) {
+                input.checked = !input.checked;
+                showToast('Could not save that setting', 'error');
+            }
+        });
+    });
+}
 
 function formatRelativeTime(dateStr) {
     if (!dateStr) return 'unknown';
@@ -4357,6 +4389,7 @@ function renderNotificationsList() {
             </div>
             <div class="notification-content">
                 <div class="notification-title">${escapeHtml(n.title)}</div>
+                ${n.message ? `<div class="notification-message">${escapeHtml(n.message)}</div>` : ''}
                 <div class="notification-time">${formatRelativeTime(n.createdAt)}</div>
             </div>
         </div>

@@ -150,8 +150,10 @@ def _create_notifications(page_id: str, user_ids: Set[str], authors: Set[str]) -
             continue
         if db_find_notification(user_id, NOTIFICATION_TYPE, link):
             continue  # once per (page, person)
-        made.append(db_create_notification(user_id, NOTIFICATION_TYPE, f"You were mentioned in {title}",
-                                           project_id=page["projectId"], link=link))
+        notification = db_create_notification(user_id, NOTIFICATION_TYPE, f"You were mentioned in {title}",
+                                              project_id=page["projectId"], link=link)
+        if notification:
+            made.append(notification)
     return made
 
 

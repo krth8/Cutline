@@ -12,11 +12,11 @@ import type { MenuItem } from '../ui';
 import { Checklist } from './Checklist';
 import { Clips } from './Clips';
 import { Activity, Composer, useComments } from './Comments';
-import { DoneToggle, PanelHeader, Title } from './PanelHeader';
+import { BellIcon, DoneToggle, IconButton, PanelHeader, Title } from './PanelHeader';
 import { PanelShell, PanelSkeleton, Unavailable } from './PanelShell';
 import { Properties } from './Properties';
 import { Subtasks } from './Subtasks';
-import { getTaskPage } from './api';
+import { getFollow, getTaskPage, setFollow } from './api';
 import './task.css';
 
 // Shared with the row panel
@@ -158,6 +158,7 @@ function TaskContent({ taskId, tableRef }: { taskId: string; tableRef: string })
         status={pageReady && status ? <SyncStatus status={status} quiet /> : null}
         menu={menu}
         closeLabel="Close task"
+        actions={<FollowButton taskId={taskId} />}
       />
       <div className="cl-task__scroll">
         <div className="cl-task__main">
@@ -170,7 +171,7 @@ function TaskContent({ taskId, tableRef }: { taskId: string; tableRef: string })
           <Activity state={comments} />
         </div>
       </div>
-      <Composer state={comments} />
+      <Composer state={comments} projectId={projectId} />
       {historyOpen && pageReady ? <HistoryDialog open pageId={pageReady.id} canEdit={row.canEdit} onClose={() => setHistoryOpen(false)} /> : null}
     </>
   );
@@ -197,4 +198,38 @@ export function TaskPanelHost() {
   const taskId = useTaskId();
   if (!taskId || !getPlatform().user()) return null;
   return <Panel taskId={taskId} />;
+}
+
+/** Follow or unfollow the task: followers hear about its comments and status changes. */
+function FollowButton({ taskId }: { taskId: string }) {
+  const [following, setFollowing] = useState<boolean | null>(null);
+  useEffect(() => {
+    let current = true;
+    getFollow(taskId).then(
+      (f) => current && setFollowing(f),
+      () => current && setFollowing(null),
+    );
+    return () => {
+      current = false;
+    };
+  }, [taskId]);
+  if (following === null) return null;
+  async function toggle() {
+    const next = !following;
+    setFollowing(next);
+    try {
+      setFollowing(await setFollow(taskId, next));
+      getPlatform().toast('success', next ? 'You follow this task' : 'You no longer follow this task');
+    } catch {
+      setFollowing(!next);
+      getPlatform().toast('error', 'Could not change that');
+    }
+  }
+  return (
+    <span data-testid="task-follow" data-following={following ? 'true' : 'false'}>
+      <IconButton label={following ? 'Following: click to stop notifications' : 'Follow: get notified about comments and status'} pressed={following} onClick={() => void toggle()}>
+        <BellIcon off={!following} />
+      </IconButton>
+    </span>
+  );
 }

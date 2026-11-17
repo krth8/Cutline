@@ -206,3 +206,15 @@ button.cl-task__crumb:hover { color: var(--text); text-decoration: underline; }
 .cl-skel--short { width: 55%; }
 @keyframes cl-skel-pulse { 50% { opacity: 0.5; } }
 @media (prefers-reduced-motion: reduce) { .cl-skel { animation: none; } }
+
+/* Comments: @names, the edited mark, editing in place, and @ suggestions in the composer */
+.cl-comment__mention { color: var(--accent-light); font-weight: var(--font-weight-semibold); }
+.cl-comment__edited { font-size: var(--font-size-xs); color: var(--text-muted); }
+.cl-comment__editor { width: 100%; min-height: 60px; margin-top: 2px; }
+.cl-composer { position: relative; }
+.cl-composer__mentions {
+  position: absolute; left: 40px; bottom: calc(100% + 4px); z-index: var(--z-local-popup); min-width: 200px; margin: 0; padding: 4px;
+  list-style: none; background: var(--modal-elevated); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+}
+.cl-composer__mentions li { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: var(--radius-sm); cursor: pointer; font-size: var(--font-size-sm); }
+.cl-composer__mentions li.is-active, .cl-composer__mentions li:hover { background: var(--bg-hover); }

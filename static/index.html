@@ -51,7 +51,7 @@
     <link rel="stylesheet" href="/static/css/comment-tasks.css?v=2">
     <link rel="stylesheet" href="/static/css/nav-layout.css?v=6">
     <link rel="stylesheet" href="/static/css/look.css?v=6">
-    <link rel="stylesheet" href="/static/css/settings.css?v=2">
+    <link rel="stylesheet" href="/static/css/settings.css?v=3">
     <link rel="stylesheet" href="/static/dist/pages.css">
 </head>
 <body>
@@ -306,6 +306,9 @@
                     <button class="settings-tab" data-settings-tab="appearance">
                         <svg class="icon icon-sm"><use href="/static/icons.svg?v=4#icon-palette"/></svg><span>Appearance</span>
                     </button>
+                    <button class="settings-tab" data-settings-tab="notifications">
+                        <svg class="icon icon-sm"><use href="/static/icons.svg#icon-bell"/></svg><span>Notifications</span>
+                    </button>
                     <div class="settings-nav-group admin-only-tab">Workspace</div>
                     <button class="settings-tab admin-only-tab" data-settings-tab="users">
                         <svg class="icon icon-sm"><use href="/static/icons.svg#icon-users"/></svg><span>Members</span>
@@ -360,6 +363,13 @@
                                 </button>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Notifications -->
+                    <div class="settings-tab-content" id="settingsTabNotifications">
+                        <h2 class="settings-page-title">Notifications</h2>
+                        <p class="settings-hint settings-intro">What you are told about, in the bell and as push messages on the devices where you turned them on. You follow the tasks you made, are assigned to or commented on; the bell button in a task changes that.</p>
+                        <div class="settings-section settings-notify-list" id="settingsNotifyList"></div>
                     </div>
 
                     <!-- Appearance -->
@@ -1300,7 +1310,7 @@
     <script src="/static/js/features/push.js?v=1"></script>
     <script src="/static/js/features/panel.js?v=1"></script>
     <!-- Main application -->
-    <script src="/static/js/app.js?v=90"></script>
+    <script src="/static/js/app.js?v=91"></script>
     <script src="/static/js/video-player.js?v=31"></script>
     <script src="/static/js/websocket.js?v=23"></script>
     <script src="/static/js/html-review.js?v=2"></script>

@@ -27,7 +27,7 @@ from database.task_trash import (
     db_soft_delete_tasks,
     db_trashed_descendants,
 )
-from api import activity
+from api import activity, notify
 from api.auth import Permission, can_edit_tasks, has_permission, require_auth
 from api.events import live
 from api.state import projects, tasks
@@ -147,6 +147,7 @@ async def create_task_record(user: dict, project_id: str, data: dict, link: Opti
     await live.to_project(project_id, {"type": "task_created", "task": full_task or task}, tasks_only=True)
     await rows_changed(project_id, [task["id"]], "created")
     await activity.task_created(user, full_task or task)
+    await notify.task_created(user, full_task or task)
     return full_task or task
 
 
@@ -199,6 +200,7 @@ async def update_task_record(task: dict, data: dict, actor: Optional[dict] = Non
     await live.to_project(task["projectId"], {"type": "task_updated", "task": task}, tasks_only=True)
     await rows_changed(task["projectId"], [task_id], "updated")
     await activity.task_changed(actor, before, task)
+    await notify.task_changed(actor, before, task)
     return task
 
 
@@ -518,7 +520,59 @@ async def create_task_comment(task_id: str, data: dict, user: dict = Depends(req
     )
 
     await task_changed(task, "comments")
+    await notify.comment_added(user, task, comment)
     return {"comment": comment}
+
+
+@router.patch("/api/tasks/{task_id}/comments/{comment_id}")
+async def edit_task_comment(task_id: str, comment_id: str, data: dict, user: dict = Depends(require_auth)):
+    """Change the text of your own comment."""
+    from database.task_comments import db_get_task_comment, db_update_task_comment
+
+    task = tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if not db_check_project_access(user["id"], task["projectId"], require_tasks=True):
+        raise HTTPException(status_code=403, detail="Task access denied")
+    comment = db_get_task_comment(comment_id)
+    if not comment or comment["taskId"] != task_id:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if comment["userId"] != user["id"]:
+        raise HTTPException(status_code=403, detail="You can only edit your own comments")
+    text = (data.get("text") or "").strip() if isinstance(data, dict) else ""
+    if not text:
+        raise HTTPException(status_code=400, detail="Comment text is required")
+    db_update_task_comment(comment_id, text)
+    await task_changed(task, "comments")
+    return {"comment": db_get_task_comment(comment_id)}
+
+
+@router.get("/api/tasks/{task_id}/follow")
+async def get_task_follow(task_id: str, user: dict = Depends(require_auth)):
+    """Whether you follow the task (you hear about its comments and status changes)."""
+    task = tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if not db_check_project_access(user["id"], task["projectId"], require_tasks=True):
+        raise HTTPException(status_code=403, detail="Task access denied")
+    return {"following": notify.is_following(task, user["id"])}
+
+
+@router.put("/api/tasks/{task_id}/follow")
+async def set_task_follow(task_id: str, data: dict, user: dict = Depends(require_auth)):
+    """Body ``{following: bool}``: follow or unfollow the task."""
+    from database.task_notify import db_set_task_follow
+
+    task = tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if user.get("is_guest") or not db_check_project_access(user["id"], task["projectId"], require_tasks=True):
+        raise HTTPException(status_code=403, detail="Task access denied")
+    following = data.get("following") if isinstance(data, dict) else None
+    if not isinstance(following, bool):
+        raise HTTPException(status_code=400, detail="following must be true or false")
+    db_set_task_follow(task_id, user["id"], following)
+    return {"following": notify.is_following(task, user["id"])}
 
 
 @router.delete("/api/tasks/{task_id}/comments/{comment_id}")

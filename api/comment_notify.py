@@ -47,8 +47,10 @@ def notify_about_comment(project_id: str, comment: dict, parent: Optional[dict],
         if not user or user["id"] in told or not can_use_review(user, project_id):
             return
         told.add(user["id"])
-        made.append(db_create_notification(user["id"], "mention", title, message=preview or None,
-                                           project_id=project_id, link=link))
+        notification = db_create_notification(user["id"], "mention", title, message=preview or None,
+                                              project_id=project_id, link=link)
+        if notification:
+            made.append(notification)
 
     names = tagged_usernames(text)
     if names:
