@@ -422,7 +422,7 @@ function renderSessionsList() {
         const usersHtml = (s.users || []).map(u => {
             const userName = u.name || u.id?.substr(-4) || 'User';
             const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase().substr(0, 2) || 'U';
-            const color = u.color || '#2f86dd';
+            const color = u.color || '#4a7fb5';
             return `
                 <div class="session-user-item">
                     <span class="session-user-avatar" style="background: ${color}">${initials}</span>
@@ -2177,7 +2177,7 @@ function showSyncFlash(userId, action, targetElement = null) {
 
     if (toast && toastAvatar && toastUser && toastAction) {
         toastAvatar.textContent = initials;
-        toastAvatar.style.background = user.color || '#2f86dd';
+        toastAvatar.style.background = user.color || '#4a7fb5';
         toastUser.textContent = displayName;
         toastAction.textContent = action;
 
@@ -3202,9 +3202,9 @@ function applyCustomTheme(colors) {
 }
 
 function updateCustomTheme() {
-    const bgColor = document.getElementById('customBgColor')?.value || '#0a111e';
+    const bgColor = document.getElementById('customBgColor')?.value || '#0f1829';
     const panelsColor = document.getElementById('customPanelsColor')?.value || '#1e1a2e';
-    const accentColor = document.getElementById('customAccentColor')?.value || '#2f86dd';
+    const accentColor = document.getElementById('customAccentColor')?.value || '#4a7fb5';
     const textColor = document.getElementById('customTextColor')?.value || '#e7edf6';
 
     const customColors = {
@@ -3220,9 +3220,9 @@ function updateCustomTheme() {
 
 function resetCustomTheme() {
     const defaults = {
-        background: '#0a111e',
+        background: '#0f1829',
         panels: '#1e1a2e',
-        accent: '#2f86dd',
+        accent: '#4a7fb5',
         text: '#e7edf6'
     };
 
@@ -3262,9 +3262,9 @@ function initTheme() {
     const accentPicker = document.getElementById('customAccentColor');
     const textPicker = document.getElementById('customTextColor');
 
-    if (bgPicker) bgPicker.value = customColors.background || '#0a111e';
+    if (bgPicker) bgPicker.value = customColors.background || '#0f1829';
     if (panelsPicker) panelsPicker.value = customColors.panels || '#1e1a2e';
-    if (accentPicker) accentPicker.value = customColors.accent || '#2f86dd';
+    if (accentPicker) accentPicker.value = customColors.accent || '#4a7fb5';
     if (textPicker) textPicker.value = customColors.text || '#e7edf6';
 }
 
@@ -3324,7 +3324,7 @@ function updateSettingsOnlineUsers() {
 
     container.innerHTML = usersList.map(user => `
         <div class="online-user-item">
-            <div class="online-user-avatar" style="background: ${user.color || '#2f86dd'}">
+            <div class="online-user-avatar" style="background: ${user.color || '#4a7fb5'}">
                 ${(user.name || 'U').substring(0, 2).toUpperCase()}
             </div>
             <span class="online-user-name">${escapeHtml(user.name || 'Anonymous')}</span>
