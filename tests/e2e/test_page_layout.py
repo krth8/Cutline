@@ -45,7 +45,9 @@ def test_the_dashboard_has_its_blocks_side_by_side(scene):
     page = scene["page"]
     columns = page.locator(f"{PROSE} .cl-columns > .cl-column")
     expect(columns).to_have_count(2)
-    left, right = columns.nth(0).bounding_box(), columns.nth(1).bounding_box()
+    # both measured in one go: the page still moves while it loads
+    left, right = page.evaluate("""[...document.querySelectorAll('.cl-editor__prose .cl-columns > .cl-column')]
+        .map(c => { const r = c.getBoundingClientRect(); return {x: r.x, y: r.y, width: r.width}; })""")
     assert right["x"] >= left["x"] + left["width"], "the columns are beside each other, not stacked"
     assert abs(left["y"] - right["y"]) < 4
     expect(columns.nth(0).locator(".cl-chart")).to_be_visible(timeout=15000)
@@ -102,6 +104,27 @@ def test_the_slash_menu_makes_columns(scene, server):
     assert right["x"] >= left["x"] + left["width"]
 
 
+def test_dragging_the_gap_between_columns_changes_their_widths(scene):
+    page = scene["page"]
+    columns = page.locator(f"{PROSE} .cl-columns > .cl-column")
+    left, right = columns.nth(0).bounding_box(), columns.nth(1).bounding_box()
+    gap_x = (left["x"] + left["width"] + right["x"]) / 2
+    y = right["y"] + min(left["height"], right["height"]) / 2  # below the block handle, which sits at the top
+    page.mouse.move(gap_x, y)
+    page.mouse.down()
+    page.mouse.move(gap_x + 150, y, steps=5)
+    page.mouse.up()
+    page.wait_for_function("([sel, w]) => document.querySelectorAll(sel)[0].getBoundingClientRect().width > w + 100",
+                           arg=[f"{PROSE} .cl-columns > .cl-column", left["width"]])
+    grow = columns.nth(0).get_attribute("data-grow")
+    assert grow and float(grow) > 1
+    # a double-click on the gap shares the width equally again
+    left2, right2 = columns.nth(0).bounding_box(), columns.nth(1).bounding_box()
+    page.mouse.dblclick((left2["x"] + left2["width"] + right2["x"]) / 2, y)
+    page.wait_for_function("([sel]) => { const c = document.querySelectorAll(sel); return Math.abs(c[0].getBoundingClientRect().width - c[1].getBoundingClientRect().width) < 3 }",
+                           arg=[f"{PROSE} .cl-columns > .cl-column"])
+
+
 def test_delete_in_the_tree_menu_removes_a_page_after_asking(scene, server):
     page, spot = scene["page"], scene["spot"]
     row = page.locator(f"{SIDEBAR} [role=treeitem][aria-label=Scrap]")
@@ -127,3 +150,27 @@ def test_delete_in_the_page_menu_takes_the_sub_pages_and_leaves_the_page(scene, 
     page.wait_for_selector(f"{PROSE} .cl-columns", timeout=20000)
     page.get_by_role("button", name="Page menu").click()
     assert page.get_by_role("menuitem", name="Delete", exact=True).count() == 0
+
+
+def test_a_block_inside_a_column_moves_to_the_other_column(scene, server):
+    page, spot = scene["page"], scene["spot"]
+    page.goto(f"{server.base_url}/p/{spot}/pages")
+    page.wait_for_selector(f"{PROSE} .cl-columns", timeout=20000)
+    columns = page.locator(f"{PROSE} .cl-columns > .cl-column")
+    expect(columns.nth(1).locator("[data-testid=view-block]")).to_have_count(2, timeout=15000)
+    expect(columns.nth(1).get_by_text("No tasks yet")).to_have_count(2, timeout=15000)  # loaded: the blocks have their height
+    page.wait_for_timeout(300)
+    block = columns.nth(1).locator(":scope > *").nth(1).bounding_box()
+    page.mouse.move(block["x"] + 60, block["y"] + 40)
+    grip = page.locator(".cl-handle__grip")
+    expect(grip).to_be_visible()
+    g = grip.bounding_box()
+    assert abs(g["y"] - block["y"]) < 4, "the handle sits by the block in the column, not by the whole columns block"
+    left = columns.nth(0).bounding_box()
+    page.mouse.move(g["x"] + g["width"] / 2, g["y"] + g["height"] / 2)
+    page.mouse.down()
+    page.mouse.move(left["x"] + 60, left["y"] + 5, steps=12)
+    page.wait_for_timeout(300)  # let the drop indicator settle, like a person does
+    page.mouse.up()
+    expect(columns.nth(0).locator("[data-testid=view-block]")).to_have_count(1)
+    expect(columns.nth(1).locator("[data-testid=view-block]")).to_have_count(1)

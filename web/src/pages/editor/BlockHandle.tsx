@@ -14,6 +14,22 @@ import { BLOCK_WIDTHS, WIDTH_LABELS, WIDTH_TYPES, cleanWidth, type BlockWidth } 
 const HANDLE_POSITION = { placement: 'left-start', strategy: 'absolute' } as const;
 
 /**
+ * Blocks inside columns get their own handle (so they move within a column, between columns and out of them);
+ * a column itself is never a drag target, and near a block's left edge the handle grabs the whole columns block.
+ * A constant for the same reason as HANDLE_POSITION.
+ */
+const NESTED = {
+  rules: [
+    {
+      // Drag targets: top-level blocks, and the blocks directly inside a column (never a column itself, never deeper)
+      id: 'topLevelOrInColumn',
+      evaluate: ({ node, depth, parent }: { node: PMNode; depth: number; parent: PMNode | null }) =>
+        node.type.name === 'column' || (depth > 1 && parent?.type.name !== 'column') ? 1000 : 0,
+    },
+  ],
+};
+
+/**
  * The handle beside the hovered top-level block: drag it to reorder; click it for
  * delete, duplicate and turn into.
  */
@@ -104,6 +120,7 @@ export function BlockHandle({ editor }: { editor: Editor }) {
           target.current = node ? { node, pos } : null;
         }}
         computePositionConfig={HANDLE_POSITION}
+        nested={NESTED}
       >
         <button
           type="button"

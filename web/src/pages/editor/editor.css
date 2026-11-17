@@ -392,7 +392,17 @@ span.cl-unsupported .cl-unsupported__label { display: inline; }
 
 /* ---- columns: blocks side by side ---- */
 .cl-columns { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px 24px; margin: 12px 0; }
-.cl-column { flex: 1 1 260px; min-width: 0; }
+.cl-column { position: relative; flex: var(--cl-col-grow, 1) 1 calc(260px * var(--cl-col-grow, 1)); min-width: 0; }
+/* while editing, the gap between two columns is a handle that moves the split (layout.ts) */
+.cl-editor__prose[contenteditable="true"] .cl-column + .cl-column::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: -18px; width: 12px; cursor: col-resize; border-radius: 6px;
+  background: linear-gradient(transparent, transparent) center / 2px 100% no-repeat;
+}
+.cl-editor__prose[contenteditable="true"] .cl-columns:hover > .cl-column + .cl-column::before {
+  background-image: linear-gradient(color-mix(in srgb, var(--text-muted) 30%, transparent), color-mix(in srgb, var(--text-muted) 30%, transparent));
+}
+body.cl-col-resizing, body.cl-col-resizing * { cursor: col-resize !important; user-select: none; }
+@media (max-width: 700px) { .cl-editor__prose .cl-column + .cl-column::before { display: none; } }
 .cl-column > :first-child { margin-top: 0; }
 .cl-column > :last-child { margin-bottom: 0; }
 /* while editing, the columns show where they are */

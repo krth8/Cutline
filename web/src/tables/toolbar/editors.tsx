@@ -93,7 +93,7 @@ export function ColumnsEditor({
     emit(next);
   };
   return (
-    <div className="cl-columns" data-testid="columns-editor">
+    <div className="cl-colpicker" data-testid="columns-editor">
       {list.map((c, i) => (
         <div key={c.column.key} className="cl-columns__row" data-testid="column-row" data-key={c.column.key}>
           <label className="cl-columns__label">
