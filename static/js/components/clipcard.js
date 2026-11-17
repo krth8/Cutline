@@ -76,7 +76,8 @@ class ClipCard {
             const escapedBaseName = ClipCard.escapeHtml(baseName).replace(/'/g, "\\'");
             statusDropdown = `
                 <div class="clip-status-wrapper" onclick="event.stopPropagation()">
-                    <div class="clip-status-trigger"
+                    <div class="clip-status-trigger ${currentStatusColor ? 'has-status' : ''}"
+                         ${currentStatusColor ? `style="--pill: ${ClipCard.escapeHtml(currentStatusColor)}"` : ''}
                          data-clip-name="${ClipCard.escapeHtml(baseName)}"
                          data-current-id="${currentStatusId}"
                          onclick="openClipStatusDropdown(event, '${escapedBaseName}')">

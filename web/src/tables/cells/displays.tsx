@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { ReactNode } from 'react';
 import { Avatar, cx } from '../../ui';
 import type { Column } from '../types';
@@ -158,12 +159,15 @@ export function DateDisplay({ column, value, compact }: CellDisplayProps) {
 
 // ---- select-like ------------------------------------------------------------------
 
+/**
+ * An option as a pill: tinted with the option's colour (a faint wash and the colour as text, see cells.css),
+ * the same look everywhere a status, priority or tag is shown.
+ */
 export function Pill({ option, fallback }: { option?: Option | undefined; fallback?: string }) {
   const label = option?.label ?? fallback ?? '';
-  const text = option?.color ? readableTextColor(option.color) : null;
-  if (option?.color && text) {
+  if (option?.color && readableTextColor(option.color)) {
     return (
-      <span className="cl-pill" style={{ background: option.color, color: text }} title={label}>
+      <span className="cl-pill cl-pill--tint" style={{ '--pill': option.color } as CSSProperties} title={label}>
         <span className="cl-pill__label">{label}</span>
       </span>
     );

@@ -23,8 +23,10 @@
 .cl-cell__input { width: 100%; min-width: 0; height: 28px; box-sizing: border-box; }
 .cl-cell__textarea { display: block; height: auto; min-height: 28px; max-height: 240px; padding: 5px var(--space-2-5); line-height: 1.4; resize: none; overflow-y: auto; }
 
-.cl-pill { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 1px 9px; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); line-height: 18px; border-radius: var(--radius-full); white-space: nowrap; }
+.cl-pill { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 1px 9px; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); line-height: 18px; border-radius: var(--radius-full); white-space: nowrap; }
 .cl-pill--neutral { color: var(--text); background: var(--bg-hover); }
+/* A coloured option: a wash of its colour, and the colour (pulled towards the text colour so it reads) as text */
+.cl-pill--tint { color: color-mix(in srgb, var(--pill) 62%, var(--text)); background: color-mix(in srgb, var(--pill) 17%, transparent); }
 .cl-pill__dot { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; }
 .cl-pill__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 

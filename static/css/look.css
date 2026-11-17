@@ -1,0 +1,128 @@
+/*
+ * The common look of the app (docs/mockups/project-home.html) on the legacy screens: Review, Lounge, the
+ * header, dialogs and menus. Loaded after main.css. Colours, radii and shadows come from theme.css; this file
+ * only makes the old components use the same surfaces as the new ones: flat panels, faint borders, cards
+ * on the panel colour, pills for states. Layout is not changed here.
+ */
+
+/* ---- the frame: header, toolbar and side panels are flat, one surface, one hairline ---- */
+.header-global,
+.context-toolbar,
+.sidebar-right,
+.clip-bin,
+.lounge-sidebar-right {
+    background: var(--bg-solid);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+}
+.header-global,
+.context-toolbar { border-bottom-color: var(--border); }
+.sidebar-right { border-left-color: var(--border); }
+.clip-bin { border-top-color: var(--border); }
+
+/* ---- Review: comments are cards on the panel ---- */
+.comment-item {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+.comment-item:hover { border-color: var(--border-medium); }
+.comment-item.selected,
+.comment-item.is-reply-target { border-color: var(--accent); background: var(--accent-bg); }
+.comment-item.comment-reply { background: transparent; border-color: transparent; border-left: 2px solid var(--border-medium); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.comment-frame-badge {
+    font-family: var(--font-mono);
+    color: var(--accent-light);
+    background: var(--accent-bg);
+    border-radius: var(--radius-xs);
+}
+.comment-input {
+    background: var(--bg-secondary);
+    border-color: var(--border-medium);
+    border-radius: var(--radius-md);
+}
+.comment-input:focus { border-color: var(--accent); }
+.sidebar-right-tabs { border-bottom: 1px solid var(--border); }
+.sidebar-tab.active { color: var(--text); }
+
+/* ---- Review: the clips at the bottom ---- */
+.clip-thumbnail {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.clip-thumbnail:hover { border-color: var(--border-medium); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.clip-thumbnail.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg-strong); }
+.clip-add { border-radius: var(--radius-md); border-color: var(--border-medium); }
+.clip-status-bar { display: none; } /* the status is the pill under the name */
+
+/* ---- states as tinted pills: the clip status in the clip cards and the player ---- */
+.clip-status-trigger.has-status,
+.status-trigger.has-status {
+    color: color-mix(in srgb, var(--pill) 62%, var(--text));
+    background: color-mix(in srgb, var(--pill) 17%, transparent);
+    border-color: transparent;
+    border-radius: var(--radius-full);
+    font-weight: var(--font-weight-semibold);
+    text-align: center;
+}
+.clip-status-trigger { border-radius: var(--radius-full); }
+
+/* ---- the player's controls ---- */
+.player-dropdown-trigger {
+    background: var(--bg-hover);
+    border-color: transparent;
+    border-radius: var(--radius-sm);
+}
+.player-dropdown-trigger:hover { background: var(--bg-active); border-color: var(--border-medium); }
+
+/* ---- buttons ---- */
+.btn { border-radius: var(--radius-sm); font-weight: var(--font-weight-semibold); }
+.btn-primary { box-shadow: 0 1px 2px var(--shadow); }
+.btn-secondary {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-medium);
+}
+.btn-secondary:hover { background: var(--bg-hover); color: var(--text); }
+.btn-ghost:hover { background: var(--bg-hover); }
+
+/* ---- dialogs and menus ---- */
+.modal {
+    background: var(--modal-bg);
+    border-color: var(--border-medium);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+.dropdown,
+.custom-dropdown,
+.notifications-panel {
+    background: var(--modal-elevated);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+.dropdown-item,
+.custom-dropdown-item { border-radius: var(--radius-sm); }
+
+/* ---- Lounge: messages sit on the page, the composer is a card ---- */
+.lounge-message { border-radius: var(--radius-md); }
+.lounge-message:hover { background: var(--bg-hover); }
+.lounge-chat-header { border-bottom-color: var(--border); }
+.lounge-input { background: transparent; border-top: 0; }
+.lounge-input-wrapper,
+.lounge-input-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-medium);
+    border-radius: 12px;
+}
+.lounge-input-wrapper:focus-within,
+.lounge-input-container:focus-within { border-color: var(--accent); }

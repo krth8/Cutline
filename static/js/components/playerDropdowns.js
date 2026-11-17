@@ -213,8 +213,7 @@ function updateStatusDropdownUI() {
     if (!valueEl) return;
 
     // Reset styling
-    trigger.style.backgroundColor = '';
-    trigger.style.color = '';
+    trigger.style.removeProperty('--pill');
     trigger.classList.remove('has-status');
 
     if (!AppState.currentClip) {
@@ -225,8 +224,8 @@ function updateStatusDropdownUI() {
     const clipData = AppState.clips[AppState.currentClip.baseName];
     if (clipData && clipData.status) {
         valueEl.textContent = clipData.status.name;
-        trigger.style.backgroundColor = clipData.status.color;
-        trigger.style.color = getContrastTextColor(clipData.status.color);
+        // A pill tinted with the status colour (static/css/look.css)
+        trigger.style.setProperty('--pill', clipData.status.color);
         trigger.classList.add('has-status');
     } else {
         valueEl.textContent = 'No status';

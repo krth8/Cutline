@@ -97,3 +97,10 @@
 .cl-colform__note { margin: 0; font-size: var(--font-size-sm); color: var(--text-muted); }
 
 .cl-table__empty--blank { flex-direction: column; justify-content: center; padding: var(--space-4) var(--space-3) var(--space-2-5); color: var(--text-muted); }
+
+/* ---- the common look (docs/mockups/project-home.html) ---- */
+.cl-table__header { background: var(--bg-dark); }
+.cl-table__hcell { color: var(--text-muted); font-weight: var(--font-weight-medium); }
+.cl-table__row:hover { background: var(--bg-hover); }
+.cl-viewblock .cl-table { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-secondary); }
+.cl-viewblock .cl-table__header { background: var(--bg-secondary); }

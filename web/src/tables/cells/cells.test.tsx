@@ -80,15 +80,11 @@ describe('displays', () => {
     expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true);
   });
 
-  it('status pill uses the option colour with a readable text colour', () => {
+  it('status pill is tinted with the option colour', () => {
     renderDisplay(col('status', { options: STATUS }), 'doing');
     const pill = screen.getByText('In progress').closest('.cl-pill') as HTMLElement;
-    expect(pill.style.background).toBe('rgb(59, 130, 246)');
-    expect(pill.style.color).toBe('rgb(0, 0, 0)'); // black beats white on this blue
-    renderDisplay(col('status', { options: STATUS }), 'done');
-    expect((screen.getByText('Done').closest('.cl-pill') as HTMLElement).style.color).toBe('rgb(0, 0, 0)');
-    renderDisplay(col('status', { options: STATUS }), 'todo');
-    expect((screen.getByText('To do').closest('.cl-pill') as HTMLElement).style.color).toBe('rgb(255, 255, 255)');
+    expect(pill.classList.contains('cl-pill--tint')).toBe(true);
+    expect(pill.style.getPropertyValue('--pill').toLowerCase()).toBe(STATUS.find((o) => o.value === 'doing')!.color!.toLowerCase());
   });
 
   it('shows an unknown option value as plain text', () => {

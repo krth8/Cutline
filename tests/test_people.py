@@ -27,7 +27,9 @@ def test_people_are_the_members_and_the_admins_with_their_place(client, admin, m
     rname, lname = rita["user"]["username"], lars["user"]["username"]
 
     seen = people(client, admin["token"], project_id)
-    assert set(seen) == {"admin", rname, lname}  # the admin is in every project; the stranger is not
+    # the members and every admin (other tests may have made more admins); the stranger is not one of them
+    assert {"admin", rname, lname} <= set(seen)
+    assert all(p["role"] == "admin" for name, p in seen.items() if name not in ("admin", rname, lname))  # (admin owns it)
     assert stranger["user"]["username"] not in seen
     assert not any(p["online"] for p in seen.values())
 

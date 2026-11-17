@@ -50,3 +50,7 @@
 .cl-list__new:focus { border-bottom-color: var(--accent); }
 /* the picker itself is .cl-addproject */
 .cl-list__project { flex: 0 1 40%; min-width: 0; }
+
+/* ---- the common look ---- */
+.cl-list__row { min-height: 36px; padding: 4px var(--space-2); border-radius: 0; }
+.cl-list__row:hover { background: var(--bg-hover); border-radius: var(--radius-sm); }

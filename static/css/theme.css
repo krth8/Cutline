@@ -30,72 +30,72 @@
 
     /* ---- Surfaces / backgrounds ---- */
     --bg-dark: #0f0c14;                        /* page background, lowest layer */
-    --bg-panel: rgba(24, 22, 36, 0.9);         /* translucent panel (glass look) */
-    --bg-secondary: #1e1a2e;                   /* card and section surface */
-    --bg-elevated: rgba(32, 30, 50, 0.95);     /* floating surface above panels */
-    --bg-hover: rgba(48, 44, 72, 0.85);        /* hover and selected-row fill */
-    --bg-active: rgba(255, 255, 255, 0.08);    /* pressed or subtle hover fill on small controls */
-    --bg-solid: #181628;                       /* opaque surface: inputs, sidebars, table body */
+    --bg-panel: rgba(22, 19, 31, 0.96);         /* translucent panel (glass look) */
+    --bg-secondary: #1a1726;                   /* card and section surface */
+    --bg-elevated: rgba(34, 31, 49, 0.98);     /* floating surface above panels */
+    --bg-hover: rgba(255, 255, 255, 0.055);        /* hover and selected-row fill */
+    --bg-active: rgba(255, 255, 255, 0.09);    /* pressed or subtle hover fill on small controls */
+    --bg-solid: #16131f;                       /* opaque surface: inputs, sidebars, table body */
     --bg-overlay: rgba(0, 0, 0, 0.5);          /* scrim behind light overlays */
     --bg-overlay-dark: rgba(0, 0, 0, 0.6);     /* scrim behind dialogs */
     --bg-overlay-heavy: rgba(0, 0, 0, 0.8);    /* scrim for full-screen viewers */
 
     /* ---- Modal surfaces (3 levels: dialog, raised block inside it, field inside that) ---- */
     --modal-bg: #1a1726;                       /* dialog background */
-    --modal-elevated: #242136;                 /* raised block inside a dialog; menus; popovers */
-    --modal-field: #2e2a42;                    /* field inside a raised block */
+    --modal-elevated: #221f31;                 /* raised block inside a dialog; menus; popovers */
+    --modal-field: #2a2640;                    /* field inside a raised block */
 
     /* ---- Borders ---- */
-    --border: rgba(255, 255, 255, 0.08);       /* default hairline */
-    --border-light: rgba(255, 255, 255, 0.05); /* faint divider between rows */
-    --border-medium: rgba(255, 255, 255, 0.1); /* control outline, stronger divider */
-    --border-glow: rgba(95, 93, 229, 0.3);     /* accent-tinted outline */
+    --border: rgba(255, 255, 255, 0.07);       /* default hairline */
+    --border-light: rgba(255, 255, 255, 0.045); /* faint divider between rows */
+    --border-medium: rgba(255, 255, 255, 0.12); /* control outline, stronger divider */
+    --border-glow: rgba(109, 93, 240, 0.3);     /* accent-tinted outline */
 
     /* ---- Text ---- */
-    --text: #f0ebd8;                           /* primary text */
-    --text-muted: #a8a8a8;                     /* secondary and placeholder text */
-    --text-secondary: #cbd5e1;                 /* body text one step below primary */
+    --text: #ecebf5;                           /* primary text */
+    --text-muted: #9d9ab2;                     /* secondary and placeholder text */
+    --text-secondary: #c9c7d6;                 /* body text one step below primary */
 
     /* ---- Accent (indigo) ---- */
-    --accent: #5f5de5;                         /* brand colour: primary buttons, selection, links */
-    --accent-hover: #7d7bfc;                   /* accent on hover */
-    --accent-light: #818cf8;                   /* accent used as text or outline on dark surfaces */
-    --accent-lighter: #a5b4fc;                 /* lightest accent tint */
-    --accent-glow: rgba(95, 93, 229, 0.4);     /* accent glow around focused items */
-    --accent-bg: rgba(99, 102, 241, 0.1);      /* faint accent wash (selected row) */
-    --accent-bg-hover: rgba(99, 102, 241, 0.15);  /* accent wash on hover */
-    --accent-bg-strong: rgba(99, 102, 241, 0.2);  /* stronger accent wash (chips, drop targets) */
+    --accent: #6d5df0;                         /* brand colour: primary buttons, selection, links */
+    --accent-hover: #8072f5;                   /* accent on hover */
+    --accent-light: #aba1fc;                   /* accent used as text or outline on dark surfaces */
+    --accent-lighter: #c4bcfd;                 /* lightest accent tint */
+    --accent-glow: rgba(109, 93, 240, 0.4);     /* accent glow around focused items */
+    --accent-bg: rgba(109, 93, 240, 0.12);      /* faint accent wash (selected row) */
+    --accent-bg-hover: rgba(109, 93, 240, 0.17);  /* accent wash on hover */
+    --accent-bg-strong: rgba(109, 93, 240, 0.22);  /* stronger accent wash (chips, drop targets) */
 
     /* ---- Status: success (green) ---- */
-    --success: #22c55e;                        /* success */
-    --success-light: #4ade80;                  /* success as text on dark */
-    --success-lighter: #86efac;                /* lightest success tint */
-    --success-glow: rgba(74, 222, 128, 0.3);   /* success glow */
-    --success-bg: rgba(34, 197, 94, 0.1);      /* success wash */
-    --success-bg-hover: rgba(34, 197, 94, 0.15);  /* success wash on hover */
-    --success-border: rgba(34, 197, 94, 0.3);  /* success outline */
+    --success: #3fb98a;                        /* success */
+    --success-light: #5fd0a3;                  /* success as text on dark */
+    --success-lighter: #8fe0c0;                /* lightest success tint */
+    --success-glow: rgba(63, 185, 138, 0.3);   /* success glow */
+    --success-bg: rgba(63, 185, 138, 0.14);      /* success wash */
+    --success-bg-hover: rgba(63, 185, 138, 0.2);  /* success wash on hover */
+    --success-border: rgba(63, 185, 138, 0.35);  /* success outline */
     --green: var(--success-light);             /* legacy alias of success-light */
     --green-glow: var(--success-glow);         /* legacy alias of success-glow */
 
     /* ---- Status: warning (amber) ---- */
-    --warning: #f59e0b;                        /* warning */
-    --warning-light: #fbbf24;                  /* warning as text on dark */
-    --warning-bg: rgba(245, 158, 11, 0.15);    /* warning wash */
+    --warning: #e0a23c;                        /* warning */
+    --warning-light: #ecb75c;                  /* warning as text on dark */
+    --warning-bg: rgba(224, 162, 60, 0.15);    /* warning wash */
     --orange: #f97316;                         /* orange accent for urgent items */
 
     /* ---- Status: danger (red) ---- */
-    --danger: #ef4444;                         /* danger and errors */
-    --danger-dark: #dc2626;                    /* danger, darker (pressed) */
-    --danger-bg: rgba(239, 68, 68, 0.1);       /* danger wash */
-    --danger-bg-hover: rgba(239, 68, 68, 0.15);   /* danger wash on hover */
-    --danger-bg-strong: rgba(239, 68, 68, 0.2);   /* stronger danger wash */
-    --danger-border: rgba(239, 68, 68, 0.3);   /* danger outline */
+    --danger: #e5636f;                         /* danger and errors */
+    --danger-dark: #cf4a57;                    /* danger, darker (pressed) */
+    --danger-bg: rgba(229, 99, 111, 0.12);       /* danger wash */
+    --danger-bg-hover: rgba(229, 99, 111, 0.17);   /* danger wash on hover */
+    --danger-bg-strong: rgba(229, 99, 111, 0.22);   /* stronger danger wash */
+    --danger-border: rgba(229, 99, 111, 0.35);   /* danger outline */
     --red: var(--danger);                      /* legacy alias of danger */
 
     /* ---- Status: info (blue) ---- */
-    --info: #3b82f6;                           /* info */
-    --info-light: #60a5fa;                     /* info as text on dark */
-    --info-bg: rgba(59, 130, 246, 0.15);       /* info wash */
+    --info: #4d9fe0;                           /* info */
+    --info-light: #74b4ea;                     /* info as text on dark */
+    --info-bg: rgba(77, 159, 224, 0.15);       /* info wash */
 
     /* ---- Neutral greys ---- */
     --gray-400: #9ca3af;                       /* light grey */
@@ -117,8 +117,8 @@
     --cat-8: #5f3dc4;                          /* violet */
 
     /* ---- Shadow colours (used inside box-shadow below) ---- */
-    --shadow: rgba(0, 0, 0, 0.3);              /* soft shadow colour */
-    --shadow-medium: rgba(0, 0, 0, 0.4);       /* medium shadow colour */
+    --shadow: rgba(0, 0, 0, 0.25);              /* soft shadow colour */
+    --shadow-medium: rgba(0, 0, 0, 0.38);       /* medium shadow colour */
     --shadow-heavy: rgba(0, 0, 0, 0.5);        /* strong shadow colour (dialogs) */
 }
 
@@ -155,7 +155,7 @@
     --border: rgba(20, 20, 50, 0.12);          /* default hairline */
     --border-light: rgba(20, 20, 50, 0.07);    /* faint divider between rows */
     --border-medium: rgba(20, 20, 50, 0.18);   /* control outline, stronger divider */
-    --border-glow: rgba(79, 70, 229, 0.3);     /* accent-tinted outline */
+    --border-glow: rgba(91, 75, 220, 0.3);     /* accent-tinted outline */
 
     /* ---- Text ---- */
     --text: #1a1a2e;                           /* primary text */
@@ -163,14 +163,14 @@
     --text-secondary: #404656;                 /* body text one step below primary */
 
     /* ---- Accent: darker so it holds contrast on white ---- */
-    --accent: #4f46e5;                         /* brand colour */
-    --accent-hover: #4338ca;                   /* accent on hover (darker on light) */
-    --accent-light: #4f46e5;                   /* accent used as text or outline */
-    --accent-lighter: #6366f1;                 /* lighter accent tint */
-    --accent-glow: rgba(79, 70, 229, 0.3);     /* accent glow */
-    --accent-bg: rgba(79, 70, 229, 0.08);      /* faint accent wash */
-    --accent-bg-hover: rgba(79, 70, 229, 0.12);   /* accent wash on hover */
-    --accent-bg-strong: rgba(79, 70, 229, 0.18);  /* stronger accent wash */
+    --accent: #5b4bdc;                         /* brand colour */
+    --accent-hover: #4c3dc9;                   /* accent on hover (darker on light) */
+    --accent-light: #5b4bdc;                   /* accent used as text or outline */
+    --accent-lighter: #6d5df0;                 /* lighter accent tint */
+    --accent-glow: rgba(91, 75, 220, 0.3);     /* accent glow */
+    --accent-bg: rgba(91, 75, 220, 0.08);      /* faint accent wash */
+    --accent-bg-hover: rgba(91, 75, 220, 0.12);   /* accent wash on hover */
+    --accent-bg-strong: rgba(91, 75, 220, 0.18);  /* stronger accent wash */
 
     /* ---- Status: success ---- */
     --success: #15803d;                        /* success */
@@ -224,7 +224,7 @@
 
     /* ---- Radii ---- */
     --radius-xs: 4px;                          /* small chips, checkboxes */
-    --radius-sm: 6px;                          /* buttons, inputs, menu items */
+    --radius-sm: 8px;                          /* buttons, inputs, menu items */
     --radius-md: 10px;                         /* cards, tables, popovers */
     --radius-lg: 14px;                         /* dialogs */
     --radius-xl: 16px;                         /* large surfaces */
@@ -364,7 +364,7 @@
 
     /* Elevation shadows, built from the palette's shadow colours */
     --shadow-sm: 0 1px 2px var(--shadow);                       /* resting card */
-    --shadow-md: 0 4px 16px var(--shadow-medium);               /* menus and popovers */
+    --shadow-md: 0 8px 24px var(--shadow-medium);               /* menus and popovers */
     --shadow-lg: 0 16px 48px var(--shadow-heavy);               /* dialogs */
     --shadow-panel: -12px 0 32px var(--shadow-medium);          /* side panel over the page */
 

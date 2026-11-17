@@ -24,3 +24,7 @@
 .cl-menu__item--danger:hover:not(:disabled) { background: var(--danger-bg); }
 .cl-menu__icon { display: inline-flex; width: 16px; justify-content: center; color: var(--text-muted); }
 .cl-menu__separator { height: 1px; margin: var(--space-1) var(--space-0-5); background: var(--border-medium); }
+
+/* ---- the common look ---- */
+.cl-menu__item { padding: 6px var(--space-2-5); }
+.cl-menu__separator { background: var(--border); }
