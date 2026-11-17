@@ -118,7 +118,9 @@ export function DataTable({
   percents?: Array<number | null>;
 }) {
   return (
-    <table className="cl-chart__sr" data-testid="chart-table">
+    // A table ignores a 1 px height and would make the chart body scroll: the wrapper keeps it small
+    <div className="cl-chart__sr">
+    <table data-testid="chart-table">
       <caption>{caption}</caption>
       <thead>
         <tr>
@@ -137,5 +139,6 @@ export function DataTable({
         ))}
       </tbody>
     </table>
+    </div>
   );
 }

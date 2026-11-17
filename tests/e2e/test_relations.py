@@ -64,6 +64,12 @@ def scene(server, new_page):
     return {"admin": admin, "bob": bob, "project": project, "tasks": tasks, "state": {}}
 
 
+
+def add_row(page, name):
+    """A new row through the table's own "Add new row..." line (the toolbar has no New for tables)."""
+    page.fill(f"{BLOCK} [data-testid=table-quick-add]", name)
+    page.press(f"{BLOCK} [data-testid=table-quick-add]", "Enter")
+
 def test_a_relation_column_to_the_projects_tasks_is_added_to_a_table(scene, server):
     admin, bob = scene["admin"], scene["bob"]
     admin.click(PROSE)
@@ -88,7 +94,7 @@ def test_a_relation_column_to_the_projects_tasks_is_added_to_a_table(scene, serv
 def test_two_tasks_are_linked_and_the_other_person_sees_the_chips_live(scene, server):
     admin, bob = scene["admin"], scene["bob"]
     key = scene["state"]["key"]
-    admin.click(f"{BLOCK} [data-testid=new-row]")
+    add_row(admin, "Untitled")
     wait_for(lambda: len(row_names(admin)) == 1)
     admin.click(f"{ROW} [data-col={key}] .cl-cellhost")
     admin.wait_for_selector("[data-testid=relation-search]", timeout=10000)

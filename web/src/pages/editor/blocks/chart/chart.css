@@ -126,6 +126,8 @@
 /* Only assistive technology sees the data table */
 .cl-chart__sr {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   margin: -1px;

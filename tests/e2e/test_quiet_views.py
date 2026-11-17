@@ -57,7 +57,9 @@ def test_no_controls_are_visible_at_rest_and_hover_shows_them(scene):
     first(scene).locator("[data-testid=viewblock-name]").hover()
     page.wait_for_function(f"getComputedStyle(document.querySelector('{BLOCK} {STRIP}')).opacity === '1'")
     expect(first(scene).locator("[data-testid=layout-switch]")).to_be_visible()
-    expect(first(scene).locator("[data-testid=new-row]")).to_be_visible()
+    expect(first(scene).locator("[data-testid=toolbar-more]")).to_be_visible()
+    # a list adds rows at its end, so the strip has no New of its own
+    assert first(scene).locator("[data-testid=new-row]").count() == 0
 
 
 def test_the_strip_shows_on_keyboard_focus_too(scene):
@@ -115,10 +117,6 @@ def test_adding_a_task_asks_for_the_project_only_after_clicking_new(scene):
     block.locator("[data-testid=viewblock-name]").hover()
     assert block.locator(".cl-addproject").count() == 0
     assert page.locator("[data-testid=new-row-project]").count() == 0
-    block.locator("[data-testid=new-row]").click()
-    expect(page.locator("[data-testid=new-row-title]")).to_be_visible()
-    expect(page.locator("[data-testid=new-row-project]")).to_be_visible()
-    page.keyboard.press("Escape")
     # the quick-add line of the list shows the picker once it has focus
     block.locator("[data-testid=list-new]").click()
     expect(block.locator(".cl-addproject")).to_be_visible()

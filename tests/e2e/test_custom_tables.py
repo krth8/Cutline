@@ -72,6 +72,12 @@ def set_layout(page, name):
     page.click(f"{BLOCK} [data-testid=layout-switch]")
     page.click(f"[data-testid=layout-{name}]")
 
+
+def add_row(page, name):
+    """A new row through the table's own "Add new row..." line (the toolbar has no New for tables)."""
+    page.fill(f"{BLOCK} [data-testid=table-quick-add]", name)
+    page.press(f"{BLOCK} [data-testid=table-quick-add]", "Enter")
+
 def test_a_table_is_created_in_the_page_with_the_slash_menu(scene, server):
     admin, bob = scene["admin"], scene["bob"]
     admin.click(PROSE)
@@ -115,11 +121,11 @@ def test_a_column_is_added_from_the_header_by_someone_who_may_change_the_schema(
 def test_rows_are_added_and_edited_and_the_other_person_sees_them_live(scene, server):
     admin, bob = scene["admin"], scene["bob"]
     ref = scene["state"]["ref"]
-    admin.click(f"{BLOCK} [data-testid=new-row]")
+    add_row(admin, "Untitled")
     wait_for(lambda: len(names(admin)) == 1 and len(names(bob)) == 1)
     edit_cell(admin, "Untitled", "name", "Shot A")
     wait_for(lambda: names(bob) == ["Shot A"])
-    admin.click(f"{BLOCK} [data-testid=new-row]")
+    add_row(admin, "Untitled")
     wait_for(lambda: len(names(admin)) == 2 and len(names(bob)) == 2)
     edit_cell(admin, "Untitled", "name", "Shot B")
     wait_for(lambda: sorted(names(bob)) == ["Shot A", "Shot B"])

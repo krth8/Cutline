@@ -201,6 +201,9 @@ describe('ViewShell', () => {
   });
 
   it('renames the view and creates a row', async () => {
+    // New in the toolbar is for layouts without a "+ New" of their own, such as the calendar
+    registerLayout('calendar', FallbackLayout);
+    stored = { ...stored, layout: 'calendar' };
     backend.on('POST /api/tables/tasks:p1/rows', () => ({ body: rowOf('t3', 'Untitled') }));
     render(<ViewShell viewId="v1" />);
     const input = await screen.findByLabelText('View name');
@@ -210,6 +213,12 @@ describe('ViewShell', () => {
     fireEvent.click(screen.getByTestId('new-row'));
     await waitFor(() => expect(backend.count('POST /api/tables/tasks:p1/rows')).toBe(1));
     expect(backend.calls.find((c) => c.path.endsWith('/rows'))?.body.values).toEqual({ name: 'Untitled' });
+  });
+
+  it('has no New in the toolbar when the layout has a "+ New" of its own', async () => {
+    render(<ViewShell viewId="v1" />);
+    await screen.findByText('Alpha');
+    expect(screen.queryByTestId('new-row')).toBeNull();
   });
 
   it('says so when the layout is not registered', async () => {
@@ -227,6 +236,8 @@ describe('ViewShell', () => {
 
 describe('ViewShell embedded in a page', () => {
   it('has every control in the strip, reachable by keyboard, with the view name as plain title', async () => {
+    registerLayout('calendar', FallbackLayout);
+    stored = { ...stored, layout: 'calendar' };
     render(<ViewShell viewId="v1" variant="embedded" />);
     await screen.findByText('Alpha');
     const strip = screen.getByTestId('view-toolbar');
@@ -299,7 +310,8 @@ describe('New in a tasks:* view', () => {
       { id: 'p1', name: 'One', canTasks: true, isOwner: true },
       { id: 'p2', name: 'Two', canTasks: true, isOwner: false },
     ];
-    stored = { ...stored, tableRef: 'tasks:*' };
+    registerLayout('calendar', FallbackLayout);
+    stored = { ...stored, tableRef: 'tasks:*', layout: 'calendar' };
     backend.on('GET /api/tables/tasks:*/schema', () => ({ body: schemaOf('tasks:*') }));
     backend.on('POST /api/tables/tasks:*/query', () => ({ body: resultOf([rowOf('t1', 'Alpha')]) }));
     backend.on('POST /api/tables/tasks:*/rows', () => ({ body: rowOf('t9', 'X') }));

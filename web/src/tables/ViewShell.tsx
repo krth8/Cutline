@@ -10,6 +10,9 @@ import { TrashDialog } from './trash';
 import type { Query, View } from './types';
 import './toolbar/toolbar.css';
 
+
+/** Layouts with their own "+ New" at the end of the rows: the toolbar's New would be a second way to do the same. */
+const INLINE_ADD: ReadonlySet<string> = new Set(['table', 'list', 'board', 'gallery', 'gantt']);
 /**
  * The frame around every layout: view name, toolbar (layout switcher, filter, sort, group, columns,
  * summaries, search, new row) and the layout component itself. Changes to the query and the columns go
@@ -149,7 +152,7 @@ export function ViewShell({
         onQuery={onQuery}
         onColumns={onColumns}
         onLayout={switchLayout}
-        onNewRow={schema.capabilities.create ? newRow : undefined}
+        onNewRow={schema.capabilities.create && !INLINE_ADD.has(view.layout) ? newRow : undefined}
         add={view.tableRef === 'tasks:*' ? add : undefined}
         onTrash={canUseTrash(view.tableRef) ? () => setTrashOpen(true) : undefined}
         nest={nestable ? { checked: nested, onChange: toggleNest } : undefined}
