@@ -5,7 +5,7 @@
   max-width: calc(100vw - 16px);
   padding: var(--space-1);
   color: var(--text);
-  background: var(--modal-elevated);
+  background: var(--raised-bg);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-md);
   box-shadow: 0 8px 28px var(--shadow-medium);

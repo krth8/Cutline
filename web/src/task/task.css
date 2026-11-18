@@ -28,7 +28,7 @@
   flex-direction: column;
   width: var(--cl-task-w, var(--cl-task-width));
   max-width: 100vw;
-  background: var(--bg-solid);
+  background: var(--chrome-bg);
   color: var(--text);
   border-left: 1px solid var(--border-medium);
   box-shadow: -12px 0 32px var(--shadow-medium);

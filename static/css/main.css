@@ -8590,7 +8590,7 @@ video,
     width: 980px;
     max-width: 95vw;
     max-height: 90vh;
-    background: var(--modal-bg);
+    background: var(--raised-bg);
     border: none;
     border-radius: 20px;
     z-index: 1000;

@@ -11,7 +11,7 @@
 .sidebar-right,
 .clip-bin,
 .lounge-sidebar-right {
-    background: var(--bg-solid);
+    background: var(--chrome-bg);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     box-shadow: none;
@@ -96,7 +96,7 @@
 /* ---- dialogs and menus ---- */
 .modal-overlay { background: var(--bg-overlay-dark); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 .modal {
-    background: var(--modal-bg);
+    background: var(--raised-bg);
     border-color: var(--border-medium);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
@@ -191,4 +191,14 @@
 .sidebar-right,
 .lounge-sidebar-right { background: var(--chrome-bg); }
 .lounge-main,
-.lounge-container { background: var(--page-glow), var(--bg-dark); }
+.lounge-container,
+.main { background: var(--page-glow), var(--bg-dark); }
+.notifications-panel,
+.context-menu,
+.dropdown,
+.custom-dropdown,
+.assignee-dropdown,
+.ui-modal,
+.confirm-dialog,
+.shortcuts-modal { background: var(--raised-bg); }
+.player-controls { background: var(--chrome-bg); }
