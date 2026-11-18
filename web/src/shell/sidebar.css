@@ -17,6 +17,15 @@
   font-size: 13px;
 }
 .cl-sidebar.is-collapsed { flex-basis: 44px; width: 44px; }
+/* Opening and closing slide: the width eases, and the full list keeps its width so it is uncovered, not squeezed */
+.cl-sidebar { overflow: hidden; transition: flex-basis var(--panel-motion), width var(--panel-motion); }
+.cl-sidebar:not(.is-collapsed):not(.is-drawer) > * { min-width: 247px; }
+.cl-sidebar:not(.is-collapsed) > * { animation: cl-sidebar-in var(--panel-motion) both; }
+@keyframes cl-sidebar-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .cl-sidebar { transition: none; }
+  .cl-sidebar > * { animation: none !important; }
+}
 .cl-sidebar__bar { display: flex; align-items: center; justify-content: space-between; height: 48px; padding: 0 8px 0 14px; flex: none; }
 .cl-sidebar.is-collapsed .cl-sidebar__bar { justify-content: center; padding: 0; }
 .cl-sidebar__logo { display: flex; align-items: center; gap: var(--space-2); color: var(--text); text-decoration: none; }

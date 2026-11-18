@@ -13,7 +13,19 @@
   color: var(--text);
   font-size: 13px;
 }
-.cl-layout.panel-off-home .cl-panel { display: none; }
+/* Off: the panel slides shut (its width eases to nothing) instead of vanishing; the content keeps its width */
+.cl-panel { overflow: hidden; transition: width var(--panel-motion), border-color var(--panel-motion), box-shadow var(--panel-motion), visibility 0s linear 0s; }
+.cl-panel > * { min-width: calc(var(--sidebar-right, 304px) - 1px); }
+.cl-layout.panel-off-home .cl-panel {
+  width: 0;
+  border-left-color: transparent;
+  box-shadow: none;
+  visibility: hidden;
+  transition: width var(--panel-motion), border-color var(--panel-motion), box-shadow var(--panel-motion), visibility 0s linear 0.28s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cl-panel, .cl-layout.panel-off-home .cl-panel { transition: none; }
+}
 @media (max-width: 1000px) {
   .cl-panel { display: none; }
 }

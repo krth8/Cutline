@@ -54,7 +54,18 @@
 
 /* Lounge: the people, in the same container and width as the comments of Review */
 .lounge-sidebar-right { width: var(--sidebar-right); background: var(--bg-panel); }
-.cl-layout.panel-off-lounge .lounge-sidebar-right { display: none; }
+.lounge-sidebar-right { overflow: hidden; transition: width var(--panel-motion), border-color var(--panel-motion), box-shadow var(--panel-motion), visibility 0s linear 0s; }
+.lounge-sidebar-right > * { min-width: calc(var(--sidebar-right) - 1px); }
+.cl-layout.panel-off-lounge .lounge-sidebar-right {
+    width: 0;
+    border-left-color: transparent;
+    box-shadow: none;
+    visibility: hidden;
+    transition: width var(--panel-motion), border-color var(--panel-motion), box-shadow var(--panel-motion), visibility 0s linear 0.28s;
+}
+@media (prefers-reduced-motion: reduce) {
+    .lounge-sidebar-right, .cl-layout.panel-off-lounge .lounge-sidebar-right { transition: none; }
+}
 .lounge-sidebar-right .lounge-online-section { padding: 14px 16px; }
 .lounge-sidebar-right .lounge-online-header { font-size: 14px; font-weight: 650; text-transform: none; color: var(--text); margin-bottom: 12px; }
 .lounge-sidebar-right .lounge-online-count { background: none; color: var(--text-muted); font-size: 12px; font-weight: 500; padding: 0; }

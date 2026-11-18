@@ -122,6 +122,7 @@
     /* One light over the whole window: the page and every card take it from the same place (fixed to the
        viewport), so a card is lit like the page around it instead of each box having its own gradient */
     --light-shape: 2400px 1700px at 22% -18%;
+    --panel-motion: 0.28s cubic-bezier(0.4, 0, 0.2, 1);  /* how a sidebar or side panel opens and closes */
     --page-glow: radial-gradient(var(--light-shape), rgba(140, 165, 200, 0.15), transparent 72%) fixed, radial-gradient(1500px 1100px at 100% 0%, rgba(140, 150, 195, 0.06), transparent 65%) fixed;  /* light over the page */
     --chrome-bg: radial-gradient(var(--light-shape), rgba(140, 165, 200, 0.12), transparent 72%) fixed, #131a25;  /* side panels, sidebars, header: lit by the page light */
     --chrome-edge: rgba(255, 255, 255, 0.05);  /* the lit inner edge of a side panel */
@@ -229,6 +230,7 @@
 
     /* ---- Depth ---- */
     --light-shape: 2400px 1700px at 22% -18%;
+    --panel-motion: 0.28s cubic-bezier(0.4, 0, 0.2, 1);  /* how a sidebar or side panel opens and closes */
     --page-glow: radial-gradient(var(--light-shape), rgba(255, 253, 250, 1), rgba(255, 253, 250, 0.35) 40%, transparent 75%) fixed, radial-gradient(1800px 1200px at 100% 110%, rgba(120, 95, 70, 0.11), transparent 70%) fixed;  /* light over the page, a little shade in the far corner */
     --chrome-bg: radial-gradient(var(--light-shape), rgba(255, 253, 250, 0.85), rgba(255, 253, 250, 0.25) 40%, transparent 75%) fixed, #e8e4de;  /* side panels, sidebars, header: lit by the page light */
     --chrome-edge: rgba(255, 255, 255, 0.9);  /* the lit inner edge of a side panel */
