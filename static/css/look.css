@@ -57,7 +57,7 @@
     overflow: hidden;
     transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
 }
-.clip-thumbnail:hover { border-color: var(--border-medium); transform: translateY(-1px); box-shadow: var(--card-shadow-hover); }
+.clip-thumbnail:hover { border-color: var(--border-medium); box-shadow: var(--card-shadow-hover); }
 .clip-thumbnail.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg-strong); }
 .clip-add { border-radius: var(--radius-md); border-color: var(--border-medium); }
 .clip-status-bar { display: none; } /* the status is the pill under the name */

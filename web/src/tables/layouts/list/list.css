@@ -62,3 +62,7 @@
 .cl-list__row { min-height: 36px; padding: 4px var(--space-2); border-radius: 0; }
 .cl-list__row:hover { background: var(--bg-hover); border-radius: var(--radius-sm); }
 .cl-list__value .cl-pill { overflow: hidden; text-overflow: ellipsis; }
+
+/* Rows are parted by a faint line; the last one has none */
+.cl-list__row { border-bottom: 1px solid var(--row-divider); }
+.cl-list__rows > :last-child .cl-list__row, .cl-list__rows > .cl-list__row:last-child { border-bottom-color: transparent; }

@@ -3,7 +3,7 @@
 .cl-table__scroll { position: relative; overflow: auto; height: var(--cl-table-height, auto); min-height: 160px; max-height: var(--cl-table-max-height, calc(100vh - 190px)); border: 1px solid var(--border-light); border-radius: var(--radius-md); background: transparent; }
 
 .cl-table__header, .cl-table__row, .cl-table__group, .cl-table__addrow, .cl-table__footer { display: grid; grid-template-columns: var(--cl-table-cols) var(--cl-table-tail, 0px); width: calc(var(--cl-table-width) + var(--cl-table-tail, 0px)); min-width: 100%; box-sizing: border-box; }
-.cl-table__row, .cl-table__group, .cl-table__addrow { height: var(--cl-table-row-h); border-bottom: 1px solid var(--border-light); }
+.cl-table__row, .cl-table__group, .cl-table__addrow { height: var(--cl-table-row-h); border-bottom: 1px solid var(--row-divider); }
 
 .cl-table__header { position: sticky; top: 0; z-index: var(--z-sticky); height: var(--cl-table-head-h); background: var(--bg-solid); border-bottom: 1px solid var(--border-light); }
 .cl-table__footer { position: sticky; bottom: 0; z-index: var(--z-sticky); height: var(--cl-table-foot-h); background: var(--bg-solid); border-top: 1px solid var(--border-light); }
@@ -120,3 +120,8 @@
 
 /* "Add column" stays at the right edge while the columns scroll, so it can be found in a narrow table */
 .cl-table__hadd { position: sticky; right: 0; z-index: 1; background: inherit; box-shadow: -8px 0 8px -8px var(--shadow-medium); }
+
+/* Rows are parted by a faint line (the rest of the app has no borders) */
+.cl-table__header { border-bottom-color: var(--row-divider); }
+.cl-table__footer { border-top-color: var(--row-divider); }
+.cl-table__addrow { border-bottom-color: transparent; }

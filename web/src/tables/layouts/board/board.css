@@ -61,7 +61,7 @@
   box-shadow: var(--card-shadow);
   transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
 }
-.cl-board__card:hover { border-color: var(--border-medium); transform: translateY(-1px); box-shadow: var(--card-shadow-hover); }
+.cl-board__card:hover { border-color: var(--border-medium); box-shadow: var(--card-shadow-hover); }
 .cl-board__card.is-dragged { opacity: 0.35; transform: none; }
 .cl-board__cover {
   display: block;
