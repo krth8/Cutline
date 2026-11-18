@@ -85,5 +85,12 @@
 /* The common look: a view in a page is a soft card (the table inside drops its own card) */
 .cl-viewblock { padding: var(--space-3) var(--space-4) var(--space-2); background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-lg); box-shadow: var(--card-shadow); }
 .cl-viewblock .cl-table__scroll { background: transparent; border-color: transparent; box-shadow: none; border-radius: 0; }
-.cl-viewblock .cl-table__header { background: transparent; }
+.cl-viewblock .cl-table__header { background: var(--sticky-glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+/* Gantt and calendar inside a card: no box of their own, the card's light runs through; the parts that stay put are frosted */
+.cl-viewblock .cl-gantt__scroll,
+.cl-viewblock .cl-cal__grid { background: transparent; border-color: transparent; border-radius: 0; }
+.cl-viewblock .cl-gantt__head { background: transparent; }
+.cl-viewblock .cl-gantt__corner,
+.cl-viewblock .cl-gantt__axis,
+.cl-viewblock .cl-gantt__list { background: var(--sticky-glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
 .ProseMirror-selectednode .cl-viewblock { outline-offset: 2px; border-radius: var(--radius-lg); }

@@ -134,6 +134,7 @@
     /* ---- Cards: a faint sheen at the top, a hairline and a soft drop ---- */
     --card-bg: radial-gradient(130% 150% at 8% -45%, rgba(190, 205, 230, 0.15), rgba(190, 205, 230, 0.05) 60%, rgba(190, 205, 230, 0) 100%), #1c2433;  /* card surface: its own clear light, from the same place as the page light */
     --row-divider: rgba(160, 175, 200, 0.07);  /* the faint line between rows of a table or a list */
+    --sticky-glass: rgba(31, 39, 54, 0.94);  /* a header or column that stays put inside a card: frosted, so the card's light shows through */
     --card-border: transparent;   /* card outline */
     --card-shadow: none;  /* no edge and no shade: the light sets a card off the page */
     --card-shadow-hover: none;  /* on hover the background brightens instead */
@@ -243,6 +244,7 @@
     /* ---- Cards ---- */
     --card-bg: radial-gradient(130% 150% at 8% -45%, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.5) 55%, rgba(255, 255, 255, 0) 100%), #f2efea;  /* card surface: its own clear light, from the same place as the page light */
     --row-divider: rgba(60, 45, 30, 0.08);  /* the faint line between rows of a table or a list */
+    --sticky-glass: rgba(247, 245, 241, 0.94);  /* a header or column that stays put inside a card: frosted, so the card's light shows through */
     --card-border: transparent;     /* card outline */
     --card-shadow: none;  /* no edge and no shade: the light sets a card off the page */
     --card-shadow-hover: none;  /* on hover the background brightens instead */
