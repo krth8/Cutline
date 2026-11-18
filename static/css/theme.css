@@ -132,11 +132,11 @@
     --accent-shadow: 0 4px 14px rgba(77, 120, 163, 0.22);  /* glow under a primary button */
 
     /* ---- Cards: a faint sheen at the top, a hairline and a soft drop ---- */
-    --card-bg: radial-gradient(var(--light-shape), rgba(175, 190, 215, 0.09), rgba(175, 190, 215, 0) 72%) fixed, #171e2b;  /* card surface, lit by the page light */
+    --card-bg: radial-gradient(130% 150% at 8% -45%, rgba(190, 205, 230, 0.15), rgba(190, 205, 230, 0.05) 60%, rgba(190, 205, 230, 0) 100%), #171f2c;  /* card surface: its own clear light, from the same place as the page light */
     --row-divider: rgba(160, 175, 200, 0.07);  /* the faint line between rows of a table or a list */
     --card-border: transparent;   /* card outline */
-    --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 0 0 1px rgba(255, 255, 255, 0.035);  /* card edge: light, not shade, sets it off the page */
-    --card-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 0 0 1px rgba(255, 255, 255, 0.06);  /* card edge on hover */
+    --card-shadow: none;  /* no edge and no shade: the light sets a card off the page */
+    --card-shadow-hover: none;  /* on hover the background brightens instead */
 
     /* ---- Shadow colours (used inside box-shadow below) ---- */
     --shadow: rgba(2, 6, 16, 0.3);              /* soft shadow colour */
@@ -241,11 +241,11 @@
     --accent-shadow: 0 4px 12px rgba(31, 29, 27, 0.18);  /* shadow under a primary button */
 
     /* ---- Cards ---- */
-    --card-bg: radial-gradient(var(--light-shape), rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.3) 40%, rgba(255, 255, 255, 0) 75%) fixed, #f0ede8;  /* card surface, lit by the page light */
+    --card-bg: radial-gradient(130% 150% at 8% -45%, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.5) 55%, rgba(255, 255, 255, 0) 100%), #ece8e2;  /* card surface: its own clear light, from the same place as the page light */
     --row-divider: rgba(60, 45, 30, 0.08);  /* the faint line between rows of a table or a list */
     --card-border: transparent;     /* card outline */
-    --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.55);  /* card edge: light, not shade, sets it off the page */
-    --card-shadow-hover: inset 0 1px 0 rgba(255, 255, 255, 1), inset 0 0 0 1px rgba(255, 255, 255, 0.85);  /* card edge on hover */
+    --card-shadow: none;  /* no edge and no shade: the light sets a card off the page */
+    --card-shadow-hover: none;  /* on hover the background brightens instead */
 
     /* ---- Shadow colours ---- */
     --shadow: rgba(70, 55, 40, 0.07);           /* soft shadow colour */
