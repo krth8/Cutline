@@ -5,8 +5,11 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  position: relative;
+  z-index: 1;
   background: var(--chrome-bg);
   border-left: 1px solid var(--border);
+  box-shadow: inset 1px 0 0 var(--chrome-edge), -6px 0 24px -8px var(--chrome-shadow);  /* a lit edge and a soft shade, so it stands off the page */
   color: var(--text);
   font-size: 13px;
 }

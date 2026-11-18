@@ -124,6 +124,8 @@
     --light-shape: 2400px 1700px at 22% -18%;
     --page-glow: radial-gradient(var(--light-shape), rgba(140, 165, 200, 0.15), transparent 72%) fixed, radial-gradient(1500px 1100px at 100% 0%, rgba(140, 150, 195, 0.06), transparent 65%) fixed;  /* light over the page */
     --chrome-bg: radial-gradient(var(--light-shape), rgba(140, 165, 200, 0.12), transparent 72%) fixed, #131a25;  /* side panels, sidebars, header: lit by the page light */
+    --chrome-edge: rgba(255, 255, 255, 0.05);  /* the lit inner edge of a side panel */
+    --chrome-shadow: rgba(2, 6, 16, 0.4);  /* the soft shade a side panel casts on the page */
     --raised-bg: radial-gradient(var(--light-shape), rgba(175, 190, 215, 0.1), rgba(175, 190, 215, 0) 72%) fixed, #1b2331;  /* dialogs, menus, popovers: lit by the page light */
     --accent-shadow: 0 4px 14px rgba(77, 120, 163, 0.22);  /* glow under a primary button */
 
@@ -229,6 +231,8 @@
     --light-shape: 2400px 1700px at 22% -18%;
     --page-glow: radial-gradient(var(--light-shape), rgba(255, 253, 250, 1), rgba(255, 253, 250, 0.35) 40%, transparent 75%) fixed, radial-gradient(1800px 1200px at 100% 110%, rgba(120, 95, 70, 0.11), transparent 70%) fixed;  /* light over the page, a little shade in the far corner */
     --chrome-bg: radial-gradient(var(--light-shape), rgba(255, 253, 250, 0.85), rgba(255, 253, 250, 0.25) 40%, transparent 75%) fixed, #e8e4de;  /* side panels, sidebars, header: lit by the page light */
+    --chrome-edge: rgba(255, 255, 255, 0.9);  /* the lit inner edge of a side panel */
+    --chrome-shadow: rgba(70, 55, 40, 0.09);  /* the soft shade a side panel casts on the page */
     --raised-bg: radial-gradient(var(--light-shape), rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.35) 40%, rgba(255, 255, 255, 0) 75%) fixed, #f2efea;  /* dialogs, menus, popovers: lit by the page light */
     --accent-shadow: 0 4px 12px rgba(31, 29, 27, 0.18);  /* shadow under a primary button */
 
