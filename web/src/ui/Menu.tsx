@@ -158,10 +158,9 @@ function MenuEntry({
   };
   const content = (
     <>
-      {(item.icon || item.checked !== undefined) && (
-        <span className="cl-menu__icon">{item.icon ?? (item.checked ? '✓' : '')}</span>
-      )}
+      {item.icon && <span className="cl-menu__icon">{item.icon}</span>}
       {item.label}
+      {item.checked !== undefined && <span className={cx('cl-menu__switch', item.checked && 'is-on')} aria-hidden="true" />}
     </>
   );
   if (item.href && !item.disabled) {
