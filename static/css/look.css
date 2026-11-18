@@ -189,7 +189,7 @@
 
 /* ---- depth: the side panels carry the soft gradient, the page the soft light ---- */
 .sidebar-right,
-.lounge-sidebar-right { background: var(--side-sheen), var(--chrome-bg); box-shadow: inset 1px 0 0 var(--chrome-edge), -10px 0 32px -12px var(--chrome-shadow); }
+.lounge-sidebar-right { background: var(--side-sheen), var(--chrome-bg); box-shadow: inset 1px 0 0 var(--chrome-edge); }
 .lounge-main,
 .lounge-container,
 .main { background: var(--page-glow), var(--bg-dark); }

@@ -12,7 +12,7 @@
   z-index: 1;
   background: var(--chrome-bg);
   border-right: 1px solid var(--border);
-  box-shadow: inset -1px 0 0 var(--chrome-edge), 10px 0 32px -12px var(--chrome-shadow);  /* a lit edge and a soft shade, so it stands off the page */
+  box-shadow: inset -1px 0 0 var(--chrome-edge);  /* a lit edge: light, not shade, sets it off the page */
   color: var(--text);
   font-size: 13px;
 }
